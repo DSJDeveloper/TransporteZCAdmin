@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Forzar primeicons en iconos pi */
+.pi,
+[class*=" pi-"],
+[class^="pi-"] {
+  font-family: 'primeicons' !important;
+}
+
+/* Global: el label del Button hereda el color del botón */
+.p-button-label {
+  color: inherit !important;
+}
+
+
+
+/* Esto aplica el fix a todos los iconos dentro de componentes de PrimeVue */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+:is(.p-button, .p-icon, .pi) {
+    font-family: 'primeicons' !important;
+    font-style: normal !important;
+}
+
+/* Fuerza que todos los botones de PrimeVue tengan el color correcto */
+.p-button {
+    background-color: var(--color-primary-container) !important;
+    color: var(--color-on-primary-container) !important;
+    border: none !important;
+}
+
+/* Asegura que el label sea visible siempre */
+.p-button-label {
+    color: var(--color-on-primary-container) !important;
+    display: inline-block !important;
+    opacity: 1 !important;
+}

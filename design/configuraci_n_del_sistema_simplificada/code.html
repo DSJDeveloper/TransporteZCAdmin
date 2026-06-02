@@ -1,0 +1,328 @@
+<!DOCTYPE html><html class="light" lang="es"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>LogiTrack - Configuraciones de Parámetros</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed": "#6ffbbe",
+                    "surface-bright": "#f8f9ff",
+                    "on-primary-fixed-variant": "#003fa4",
+                    "on-primary": "#ffffff",
+                    "on-secondary": "#ffffff",
+                    "primary-fixed": "#dae1ff",
+                    "tertiary-container": "#008259",
+                    "outline": "#727687",
+                    "on-tertiary": "#ffffff",
+                    "surface-variant": "#d3e4fe",
+                    "surface-container": "#e5eeff",
+                    "on-tertiary-fixed-variant": "#005236",
+                    "on-tertiary-fixed": "#002113",
+                    "secondary": "#565e74",
+                    "tertiary-fixed-dim": "#4edea3",
+                    "primary-fixed-dim": "#b3c5ff",
+                    "surface-container-low": "#eff4ff",
+                    "surface-container-highest": "#d3e4fe",
+                    "primary-container": "#0066ff",
+                    "on-secondary-fixed": "#131b2e",
+                    "on-surface-variant": "#424656",
+                    "on-error": "#ffffff",
+                    "on-secondary-container": "#5c647a",
+                    "on-primary-container": "#f8f7ff",
+                    "secondary-fixed": "#dae2fd",
+                    "surface-container-lowest": "#ffffff",
+                    "surface": "#f8f9ff",
+                    "surface-tint": "#0054d6",
+                    "outline-variant": "#c2c6d8",
+                    "on-tertiary-container": "#e1ffec",
+                    "surface-dim": "#cbdbf5",
+                    "primary": "#0050cb",
+                    "secondary-container": "#dae2fd",
+                    "inverse-primary": "#b3c5ff",
+                    "surface-container-high": "#dce9ff",
+                    "on-primary-fixed": "#001849",
+                    "secondary-fixed-dim": "#bec6e0",
+                    "on-error-container": "#93000a",
+                    "tertiary": "#006645",
+                    "on-secondary-fixed-variant": "#3f465c",
+                    "error": "#ba1a1a",
+                    "background": "#f8f9ff",
+                    "inverse-surface": "#213145",
+                    "on-surface": "#0b1c30",
+                    "on-background": "#0b1c30",
+                    "inverse-on-surface": "#eaf1ff",
+                    "error-container": "#ffdad6"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "md": "16px",
+                    "xs": "8px",
+                    "sm": "12px",
+                    "base": "4px",
+                    "gutter": "16px",
+                    "xl": "32px",
+                    "margin-mobile": "16px",
+                    "lg": "24px",
+                    "margin-desktop": "40px"
+            },
+            "fontFamily": {
+                    "headline-lg-mobile": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "label-md": ["Inter"],
+                    "body-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+          font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .form-card-shadow {
+            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen">
+<!-- SideNavBar -->
+<aside class="h-screen w-64 fixed left-0 top-0 z-40 bg-surface-container-lowest dark:bg-surface-dim border-r border-outline-variant dark:border-outline shadow-sm dark:shadow-none flex flex-col py-lg">
+<div class="px-lg mb-xl flex items-center gap-sm">
+<div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined">local_shipping</span>
+</div>
+<div>
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary dark:text-primary-fixed-dim leading-none">LogiTrack</h1>
+<p class="text-label-md font-label-md text-on-surface-variant">Gestión Logística</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-md px-lg py-md text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors scale-98 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-body-md text-body-md">Panel</span>
+</a>
+<a class="flex items-center gap-md px-lg py-md text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors scale-98 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-body-md text-body-md">Clientes</span>
+</a>
+<a class="flex items-center gap-md px-lg py-md text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors scale-98 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined">local_shipping</span>
+<span class="font-body-md text-body-md">Unidades</span>
+</a>
+<a class="flex items-center gap-md px-lg py-md text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors scale-98 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="font-body-md text-body-md">Recargas</span>
+</a>
+<a class="flex items-center gap-md px-lg py-md text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors scale-98 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined">swap_horiz</span>
+<span class="font-body-md text-body-md">Movimientos</span>
+</a>
+<a class="flex items-center gap-md px-lg py-md text-primary dark:text-primary-fixed-dim font-bold bg-primary-container/10 border-r-4 border-primary scale-98 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body-md text-body-md">Configuración</span>
+</a>
+</nav>
+<div class="mt-auto px-lg pt-lg border-t border-outline-variant">
+<div class="flex items-center gap-sm">
+<img alt="Virginia Castillo" class="w-10 h-10 rounded-full border-2 border-primary-fixed" src="https://lh3.googleusercontent.com/aida-public/AB6AXuARnHFIlmUnyRsleMSslRGDvJZpEblfcP-YA_PmejOgB3nKZLqIKgC_OqIPdmkpeF12cLMI_phfz_Bif1qsPA8A6AiSS9NeUMx50cxG48N6Oh3PyRcP2uJjmEMm_wzDU-T7jLDqqIvIxUzR96WGkDmIzrvHxgPU2J9ba8NslQh_RTCEqpSR8YcDywNzSLYrCUJXNTHMo4xyWRhmeCiakL1EhpwzpWakwPrboszVLUOVLuDmufxZrrraSapx5QcJvrZIGOgc8O5uR90">
+<div class="overflow-hidden">
+<p class="font-label-md text-label-md text-on-surface truncate">Virginia Castillo</p>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Usuario en línea</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="pl-64 min-h-screen">
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 left-64 h-16 z-30 bg-surface-bright/90 dark:bg-surface-dim/90 border-b border-outline-variant dark:border-outline backdrop-blur-md shadow-sm dark:shadow-none flex justify-between items-center px-lg">
+<div class="flex items-center gap-md flex-1">
+<div class="relative w-full max-w-md focus-within:ring-2 focus-within:ring-primary/20 transition-all rounded-xl">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-xl py-2 pl-10 pr-4 text-body-md font-body-md focus:ring-0" placeholder="Buscar parámetros..." type="text">
+</div>
+</div>
+<div class="flex items-center gap-lg">
+<button class="relative text-secondary dark:text-secondary-fixed-dim hover:text-primary dark:hover:text-primary-fixed-dim cursor-pointer transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="text-secondary dark:text-secondary-fixed-dim hover:text-primary dark:hover:text-primary-fixed-dim cursor-pointer transition-colors">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<div class="h-8 w-px bg-outline-variant mx-2"></div>
+<div class="flex items-center gap-sm">
+<span class="font-label-md text-label-md text-on-surface-variant hidden md:block">Configuración Global</span>
+<span class="material-symbols-outlined text-outline">expand_more</span>
+</div>
+</div>
+</header>
+<!-- Content Canvas -->
+<div class="pt-24 px-lg pb-xl">
+<!-- Breadcrumbs & Title -->
+<div class="mb-lg">
+<div class="flex items-center gap-xs text-label-md text-outline mb-xs">
+<span>Configuraciones</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-primary font-bold">Parámetros de la Empresa</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Configuración de Parámetros</h2>
+<p class="text-body-lg font-body-lg text-on-surface-variant">Gestione la información fiscal, operativa y de cobro de su plataforma logística.</p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-lg">
+<!-- Main Form Section -->
+<div class="space-y-lg lg:col-span-12">
+<!-- Basic Info Card -->
+<section class="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg form-card-shadow">
+<div class="flex items-center gap-sm mb-lg border-b border-surface-container pb-md">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">business_center</span>
+<h3 class="font-headline-sm text-headline-sm">Información de la Empresa</h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<div class="space-y-base">
+<label class="text-label-md font-label-md text-on-surface-variant px-1">Nombre de la Empresa</label>
+<input class="w-full border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-lg text-body-md py-3 bg-surface-container-low transition-all" type="text" value="Transporte Zambrano Castillo">
+</div>
+<div class="space-y-base">
+<label class="text-label-md font-label-md text-on-surface-variant px-1">RIF Empresa</label>
+<input class="w-full border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-lg text-body-md py-3 bg-surface-container-low transition-all" type="text" value="J-00000000-1">
+</div>
+<div class="space-y-base">
+<label class="text-label-md font-label-md text-on-surface-variant px-1">Teléfono Empresa</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">call</span>
+<input class="w-full border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-lg text-body-md py-3 pl-10 bg-surface-container-low transition-all" type="text" value="0414-0000000">
+</div>
+</div>
+<div class="space-y-base">
+<label class="text-label-md font-label-md text-on-surface-variant px-1">Ubicación Principal</label>
+<input class="w-full border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-lg text-body-md py-3 bg-surface-container-low transition-all" type="text" value="Caracas, Venezuela">
+</div>
+</div>
+</section>
+<!-- Financial Parameters -->
+<section class="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg form-card-shadow">
+<div class="flex items-center gap-sm mb-lg border-b border-surface-container pb-md">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">payments</span>
+<h3 class="font-headline-sm text-headline-sm">Parámetros Financieros</h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<div class="space-y-base">
+<label class="text-label-md font-label-md text-on-surface-variant px-1">Precio del Ticket (USD)</label>
+<div class="relative">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 text-outline font-bold">$</span>
+<input class="w-full border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-lg text-body-md py-3 pl-8 bg-surface-container-low transition-all" step="0.01" type="number" value="4.20">
+</div>
+</div>
+<div class="space-y-base">
+<label class="text-label-md font-label-md text-on-surface-variant px-1">Tasa de Cambio (VES)</label>
+<div class="relative">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 text-outline font-bold">Bs</span>
+<input class="w-full border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-lg text-body-md py-3 pl-10 bg-surface-container-low transition-all" step="0.01" type="number" value="125.00">
+</div>
+</div>
+</div>
+</section>
+<!-- Banking Info Card -->
+<section class="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg form-card-shadow">
+<div class="flex items-center gap-sm mb-lg border-b border-surface-container pb-md">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+<h3 class="font-headline-sm text-headline-sm">Información de Pago Móvil</h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-md">
+<div class="space-y-base">
+<label class="text-label-md font-label-md text-on-surface-variant px-1">Banco Receptor</label>
+<select class="w-full border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-lg text-body-md py-3 bg-surface-container-low transition-all">
+<option selected="">Banco de Venezuela</option>
+<option>Banesco</option>
+<option>Mercantil</option>
+<option>BBVA Provincial</option>
+</select>
+</div>
+<div class="space-y-base">
+<label class="text-label-md font-label-md text-on-surface-variant px-1">Cédula / RIF</label>
+<input class="w-full border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-lg text-body-md py-3 bg-surface-container-low transition-all" type="text" value="V-9.246.950">
+</div>
+<div class="space-y-base">
+<label class="text-label-md font-label-md text-on-surface-variant px-1">Teléfono Afiliado</label>
+<input class="w-full border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-lg text-body-md py-3 bg-surface-container-low transition-all" type="text" value="0412-0368283">
+</div>
+</div>
+</section>
+<!-- Actions -->
+<div class="flex items-center justify-end gap-md pt-md">
+<button class="px-lg py-3 rounded-lg border border-outline text-on-surface hover:bg-surface-container transition-all font-bold text-body-md">
+                            Descartar Cambios
+                        </button>
+<button class="px-xl py-3 rounded-lg bg-primary text-on-primary hover:bg-primary-container shadow-md transition-all font-bold text-body-md flex items-center gap-sm" id="updateBtn">
+<span class="material-symbols-outlined text-[20px]">save</span>
+                            Actualizar Empresa
+                        </button>
+</div>
+</div>
+<!-- Sidebar Info / Visual Section -->
+</div>
+</div>
+</main>
+<!-- Micro-interactions Script -->
+<script>
+        document.getElementById('updateBtn').addEventListener('click', function() {
+            const btn = this;
+            const originalContent = btn.innerHTML;
+            
+            // Interaction: Loading state
+            btn.innerHTML = '<span class="material-symbols-outlined animate-spin">sync</span> Guardando...';
+            btn.classList.add('opacity-80', 'pointer-events-none');
+            
+            setTimeout(() => {
+                btn.innerHTML = '<span class="material-symbols-outlined">check_circle</span> Actualizado';
+                btn.classList.remove('bg-primary');
+                btn.classList.add('bg-tertiary-container');
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalContent;
+                    btn.classList.remove('bg-tertiary-container', 'opacity-80', 'pointer-events-none');
+                    btn.classList.add('bg-primary');
+                }, 2000);
+            }, 1200);
+        });
+
+        // Simple tab focus highlight
+        const inputs = document.querySelectorAll('input, select');
+        inputs.forEach(input => {
+            input.addEventListener('focus', () => {
+                input.parentElement.parentElement.classList.add('ring-offset-2');
+            });
+            input.addEventListener('blur', () => {
+                input.parentElement.parentElement.classList.remove('ring-offset-2');
+            });
+        });
+    </script>
+</body></html>

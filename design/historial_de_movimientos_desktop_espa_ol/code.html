@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es" style=""><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>LogiTrack - Historial de Movimientos</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Configuration -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed": "#6ffbbe",
+                    "surface-bright": "#f8f9ff",
+                    "on-primary-fixed-variant": "#003fa4",
+                    "on-primary": "#ffffff",
+                    "on-secondary": "#ffffff",
+                    "primary-fixed": "#dae1ff",
+                    "tertiary-container": "#008259",
+                    "outline": "#727687",
+                    "on-tertiary": "#ffffff",
+                    "surface-variant": "#d3e4fe",
+                    "surface-container": "#e5eeff",
+                    "on-tertiary-fixed-variant": "#005236",
+                    "on-tertiary-fixed": "#002113",
+                    "secondary": "#565e74",
+                    "tertiary-fixed-dim": "#4edea3",
+                    "primary-fixed-dim": "#b3c5ff",
+                    "surface-container-low": "#eff4ff",
+                    "surface-container-highest": "#d3e4fe",
+                    "primary-container": "#0066ff",
+                    "on-secondary-fixed": "#131b2e",
+                    "on-surface-variant": "#424656",
+                    "on-error": "#ffffff",
+                    "on-secondary-container": "#5c647a",
+                    "on-primary-container": "#f8f7ff",
+                    "secondary-fixed": "#dae2fd",
+                    "surface-container-lowest": "#ffffff",
+                    "surface": "#f8f9ff",
+                    "surface-tint": "#0054d6",
+                    "outline-variant": "#c2c6d8",
+                    "on-tertiary-container": "#e1ffec",
+                    "surface-dim": "#cbdbf5",
+                    "primary": "#0050cb",
+                    "secondary-container": "#dae2fd",
+                    "inverse-primary": "#b3c5ff",
+                    "surface-container-high": "#dce9ff",
+                    "on-primary-fixed": "#001849",
+                    "secondary-fixed-dim": "#bec6e0",
+                    "on-error-container": "#93000a",
+                    "tertiary": "#006645",
+                    "on-secondary-fixed-variant": "#3f465c",
+                    "error": "#ba1a1a",
+                    "background": "#f8f9ff",
+                    "inverse-surface": "#213145",
+                    "on-surface": "#0b1c30",
+                    "on-background": "#0b1c30",
+                    "inverse-on-surface": "#eaf1ff",
+                    "error-container": "#ffdad6"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "md": "16px",
+                    "xs": "8px",
+                    "sm": "12px",
+                    "base": "4px",
+                    "gutter": "16px",
+                    "xl": "32px",
+                    "margin-mobile": "16px",
+                    "lg": "24px",
+                    "margin-desktop": "40px"
+            },
+            "fontFamily": {
+                    "headline-lg-mobile": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "label-md": ["Inter"],
+                    "body-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f8f9ff;
+      }
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      /* Custom Scrollbar for the table */
+      .custom-scrollbar::-webkit-scrollbar {
+        height: 8px;
+        width: 8px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #c2c6d8;
+        border-radius: 4px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #727687;
+      }
+    </style>
+</head>
+<body class="bg-background text-on-background">
+<!-- SideNavBar -->
+<aside class="h-screen w-64 fixed left-0 top-0 z-40 bg-surface-container-lowest border-r border-outline-variant shadow-sm flex flex-col py-lg">
+<div class="px-lg mb-xl">
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary">LogiTrack</h1>
+<p class="text-on-surface-variant font-body-md text-body-md">Gestión Logística</p>
+</div>
+<nav class="flex-1 space-y-base px-sm">
+<!-- Nav Items mapped from JSON -->
+<a class="flex items-center gap-md px-md py-sm rounded-lg transition-colors hover:bg-surface-container-high group" href="#">
+<span class="material-symbols-outlined text-on-surface-variant">dashboard</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Panel</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg transition-colors hover:bg-surface-container-high group" href="#">
+<span class="material-symbols-outlined text-on-surface-variant">group</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Clientes</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg transition-colors hover:bg-surface-container-high group" href="#">
+<span class="material-symbols-outlined text-on-surface-variant">local_shipping</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Unidades</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg transition-colors hover:bg-surface-container-high group" href="#">
+<span class="material-symbols-outlined text-on-surface-variant">account_balance_wallet</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Recargas</span>
+</a>
+<!-- Active Navigation: Movements -->
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-primary font-bold bg-primary-container/10 border-r-4 border-primary" href="#">
+<span class="material-symbols-outlined" style='font-variation-settings: "FILL" 1;'>swap_horiz</span>
+<span class="font-body-md text-body-md">Movimientos</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg transition-colors hover:bg-surface-container-high group" href="#">
+<span class="material-symbols-outlined text-on-surface-variant">settings</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Configuración</span>
+</a>
+</nav>
+<div class="mt-auto px-lg pt-lg border-t border-outline-variant flex items-center gap-sm">
+<img alt="Virginia Castillo" class="w-10 h-10 rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCn2nm8NwDJ84uykHxDMwnEM7WVtA4IZCIheJ3kxuG86akcfCMvBYi6WyHYVjggdZVWMM7ImA4jR8etWhKoXtmi2JQ0LbGycEVTA66P799zdVFjZbJDU0ZoxfJ8eSxLNQ01XTGfERpsAp3gwrgthnMxpF7V_A-7k9qhxfvhuT_XUHTB3vclGwPUWrFrndtkoGvq1V--4RCMV01Xu6_BnymT4rAQuZ6wLvk8tbtAbknfKgo1AVVoKsCzyG9_JFZIo5whreefMJeFZeQ"/>
+<div class="overflow-hidden">
+<p class="font-body-md font-bold truncate">Virginia Castillo</p>
+<p class="text-label-md text-secondary truncate">Administrador</p>
+</div>
+</div>
+</aside>
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 left-64 h-16 z-30 bg-surface-bright/90 backdrop-blur-md border-b border-outline-variant flex justify-between items-center px-lg">
+<div class="flex items-center flex-1 max-w-xl">
+<div class="relative w-full focus-within:ring-2 focus-within:ring-primary/20 transition-all rounded-xl bg-surface-container-low px-md py-xs flex items-center gap-xs">
+<span class="material-symbols-outlined text-secondary">search</span>
+<input class="bg-transparent border-none focus:ring-0 w-full font-body-md text-body-md" placeholder="Buscar movimientos..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-lg">
+<button class="relative hover:text-primary transition-all p-xs flex items-center justify-center">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full border-2 border-surface-bright"></span>
+</button>
+<button class="hover:text-primary transition-all p-xs">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<div class="h-8 w-[1px] bg-outline-variant"></div>
+<div class="flex items-center gap-sm cursor-pointer hover:bg-surface-container-high p-xs rounded-lg transition-colors">
+<img alt="Administrator Profile" class="w-8 h-8 rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDW7lYRo_ekX6Nr1_rMSIzaO8g5P2uiCRMe8XcKHxQgIJ7VXFofPDtsr5VGNPUJcjpmzmIvxdLcCGvifeKMMafPwhH0ThCujzA-MUp4X6HoBXynpPsoqXE17g4vq0XZdhnfgEoRTIq0vpziB6N0bYQYFeRoavDwUvlBGSyZ15q4YzpDpmBt3o6_EnrDThmiB7Bt0RwNKIaJHJz-uAW6OadshhXMRjOe_UgKWgZf2ZrPUDoJ4ySRC7lbdfY4ILjbnINB8oP57ep5Lp4"/>
+<span class="material-symbols-outlined text-secondary">expand_more</span>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 pt-20 p-lg min-h-screen">
+<div class="max-w-7xl mx-auto">
+<!-- Page Header -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-md mb-lg">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Historial de Movimientos</h2>
+<p class="font-body-md text-body-md text-secondary">Registro completo de cargos de viaje y recargas de saldo.</p>
+</div>
+<div class="flex items-center gap-sm">
+<button class="flex items-center gap-xs px-md py-sm bg-white border border-outline-variant rounded-xl font-body-md text-body-md text-primary font-semibold hover:bg-surface-container transition-colors shadow-sm">
+<span class="material-symbols-outlined">download</span>
+                        Exportar Datos
+                    </button>
+</div>
+</div>
+<!-- Bento Filter Section -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-sm mb-xl">
+<div class="md:col-span-2 bg-white p-md rounded-xl border border-outline-variant shadow-sm flex flex-col gap-xs">
+<label class="text-label-md text-secondary uppercase tracking-wider">Rango de Fecha</label>
+<div class="flex items-center gap-xs">
+<div class="flex-1 bg-surface-container-low px-sm py-xs rounded-lg border border-outline-variant flex items-center gap-xs">
+<span class="material-symbols-outlined text-secondary text-[18px]">calendar_today</span>
+<input class="bg-transparent border-none focus:ring-0 w-full font-body-md" type="date" value="2026-05-28"/>
+</div>
+<span class="text-secondary">a</span>
+<div class="flex-1 bg-surface-container-low px-sm py-xs rounded-lg border border-outline-variant flex items-center gap-xs">
+<span class="material-symbols-outlined text-secondary text-[18px]">calendar_today</span>
+<input class="bg-transparent border-none focus:ring-0 w-full font-body-md" type="date" value="2026-05-28"/>
+</div>
+</div>
+</div>
+<div class="bg-white p-md rounded-xl border border-outline-variant shadow-sm flex flex-col gap-xs">
+<label class="text-label-md text-secondary uppercase tracking-wider">Unidad</label>
+<select class="bg-surface-container-low border-outline-variant rounded-lg font-body-md text-body-md focus:ring-primary focus:border-primary">
+<option>Todas las unidades</option>
+<option>La Gris</option>
+<option>La Blanca</option>
+<option>El Expreso</option>
+</select>
+</div>
+<div class="bg-white p-md rounded-xl border border-outline-variant shadow-sm flex flex-col gap-xs">
+<label class="text-label-md text-secondary uppercase tracking-wider">Horario</label>
+<select class="bg-surface-container-low border-outline-variant rounded-lg font-body-md text-body-md focus:ring-primary focus:border-primary">
+<option>Todos los horarios</option>
+<option>06:30 AM</option>
+<option>12:00 PM</option>
+<option>05:30 PM</option>
+</select>
+</div>
+</div>
+<!-- Main Data Table Container -->
+<div class="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden flex flex-col">
+<div class="p-md border-b border-outline-variant flex justify-between items-center bg-surface-bright">
+<div class="flex items-center gap-md">
+<span class="font-body-md text-body-md font-bold text-on-surface">Resultados</span>
+<div class="px-sm py-base bg-primary-container text-on-primary-container rounded-full text-label-md">216 Registros</div>
+</div>
+<div class="flex items-center gap-sm">
+<span class="text-body-md text-secondary">Mostrar</span>
+<select class="bg-white border-outline-variant rounded-lg font-body-md py-1">
+<option>10</option>
+<option>25</option>
+<option>50</option>
+</select>
+</div>
+</div>
+<div class="overflow-x-auto custom-scrollbar">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container text-on-surface-variant">
+<th class="px-md py-sm font-bold text-label-md uppercase tracking-wider border-b border-outline-variant">#</th>
+<th class="px-md py-sm font-bold text-label-md uppercase tracking-wider border-b border-outline-variant">Fecha y Hora</th>
+<th class="px-md py-sm font-bold text-label-md uppercase tracking-wider border-b border-outline-variant">Horario</th>
+<th class="px-md py-sm font-bold text-label-md uppercase tracking-wider border-b border-outline-variant">Cliente</th>
+<th class="px-md py-sm font-bold text-label-md uppercase tracking-wider border-b border-outline-variant">Unidad</th>
+<th class="px-md py-sm font-bold text-label-md uppercase tracking-wider border-b border-outline-variant text-right">Tickets</th>
+<th class="px-md py-sm font-bold text-label-md uppercase tracking-wider border-b border-outline-variant text-right">Nuevo Saldo</th>
+<th class="px-md py-sm font-bold text-label-md uppercase tracking-wider border-b border-outline-variant text-center">Estatus</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-md py-sm font-body-md text-on-surface">59385</td>
+<td class="px-md py-sm font-body-md text-secondary">2026-05-28 02:32:40</td>
+<td class="px-md py-sm font-body-md">06:30</td>
+<td class="px-md py-sm font-body-md font-semibold">Valery Lisandry Inojosa Ortiz Bejuma</td>
+<td class="px-md py-sm font-body-md">La Gris</td>
+<td class="px-md py-sm font-body-md text-right">1.00</td>
+<td class="px-md py-sm font-body-md text-right font-bold text-primary">7.00</td>
+<td class="px-md py-sm text-center">
+<span class="inline-block px-sm py-base rounded-full text-label-md font-bold bg-tertiary-fixed text-on-tertiary-fixed-variant uppercase">APROBADA</span>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-md py-sm font-body-md text-on-surface">59386</td>
+<td class="px-md py-sm font-body-md text-secondary">2026-05-28 02:36:27</td>
+<td class="px-md py-sm font-body-md">06:30</td>
+<td class="px-md py-sm font-body-md font-semibold">nehomar silva</td>
+<td class="px-md py-sm font-body-md">La Gris</td>
+<td class="px-md py-sm font-body-md text-right">1.00</td>
+<td class="px-md py-sm font-body-md text-right font-bold text-primary">3.00</td>
+<td class="px-md py-sm text-center">
+<span class="inline-block px-sm py-base rounded-full text-label-md font-bold bg-tertiary-fixed text-on-tertiary-fixed-variant uppercase">APROBADA</span>
+</td>
+</tr>
+<!-- Row 3 (Rejected) -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-md py-sm font-body-md text-on-surface">59387</td>
+<td class="px-md py-sm font-body-md text-secondary">2026-05-28 02:43:18</td>
+<td class="px-md py-sm font-body-md">06:30</td>
+<td class="px-md py-sm font-body-md font-semibold">David andres villegas figueredo</td>
+<td class="px-md py-sm font-body-md">La Gris</td>
+<td class="px-md py-sm font-body-md text-right">1.00</td>
+<td class="px-md py-sm font-body-md text-right font-bold text-error">-3.00</td>
+<td class="px-md py-sm text-center">
+<span class="inline-block px-sm py-base rounded-full text-label-md font-bold bg-error-container text-on-error-container uppercase">RECHAZADA</span>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-md py-sm font-body-md text-on-surface">59388</td>
+<td class="px-md py-sm font-body-md text-secondary">2026-05-28 02:45:02</td>
+<td class="px-md py-sm font-body-md">06:30</td>
+<td class="px-md py-sm font-body-md font-semibold">Camila Valentina Marquez Aquino Bejuma</td>
+<td class="px-md py-sm font-body-md">La Gris</td>
+<td class="px-md py-sm font-body-md text-right">1.00</td>
+<td class="px-md py-sm font-body-md text-right font-bold text-primary">2.00</td>
+<td class="px-md py-sm text-center">
+<span class="inline-block px-sm py-base rounded-full text-label-md font-bold bg-tertiary-fixed text-on-tertiary-fixed-variant uppercase">APROBADA</span>
+</td>
+</tr>
+<!-- Row 5 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-md py-sm font-body-md text-on-surface">59389</td>
+<td class="px-md py-sm font-body-md text-secondary">2026-05-28 02:45:08</td>
+<td class="px-md py-sm font-body-md">06:30</td>
+<td class="px-md py-sm font-body-md font-semibold">Diana Virginia Delgado León Bejuma marzo26</td>
+<td class="px-md py-sm font-body-md">La Gris</td>
+<td class="px-md py-sm font-body-md text-right">1.00</td>
+<td class="px-md py-sm font-body-md text-right font-bold text-primary">1.00</td>
+<td class="px-md py-sm text-center">
+<span class="inline-block px-sm py-base rounded-full text-label-md font-bold bg-tertiary-fixed text-on-tertiary-fixed-variant uppercase">APROBADA</span>
+</td>
+</tr>
+<!-- Row 6 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-md py-sm font-body-md text-on-surface">59390</td>
+<td class="px-md py-sm font-body-md text-secondary">2026-05-28 02:45:53</td>
+<td class="px-md py-sm font-body-md">06:30</td>
+<td class="px-md py-sm font-body-md font-semibold">Daniela Alicia Briceño Lopez Bejuma</td>
+<td class="px-md py-sm font-body-md">La Gris</td>
+<td class="px-md py-sm font-body-md text-right">1.00</td>
+<td class="px-md py-sm font-body-md text-right font-bold text-error">-1.00</td>
+<td class="px-md py-sm text-center">
+<span class="inline-block px-sm py-base rounded-full text-label-md font-bold bg-tertiary-fixed text-on-tertiary-fixed-variant uppercase">APROBADA</span>
+</td>
+</tr>
+<!-- Row 7 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-md py-sm font-body-md text-on-surface">59391</td>
+<td class="px-md py-sm font-body-md text-secondary">2026-05-28 02:45:57</td>
+<td class="px-md py-sm font-body-md">06:30</td>
+<td class="px-md py-sm font-body-md font-semibold">Valentina Rodriguez Bejuma</td>
+<td class="px-md py-sm font-body-md">La Gris</td>
+<td class="px-md py-sm font-body-md text-right">1.00</td>
+<td class="px-md py-sm font-body-md text-right font-bold text-primary">2.00</td>
+<td class="px-md py-sm text-center">
+<span class="inline-block px-sm py-base rounded-full text-label-md font-bold bg-tertiary-fixed text-on-tertiary-fixed-variant uppercase">APROBADA</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination Footer -->
+<div class="p-md bg-surface-bright flex flex-col md:flex-row items-center justify-between gap-md">
+<p class="font-body-md text-body-md text-secondary">Mostrando 1 a 10 de 216 registros</p>
+<nav class="flex items-center gap-base">
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-outline-variant hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[18px]">chevron_left</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg bg-primary text-white font-bold shadow-sm">1</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-outline-variant hover:bg-surface-container transition-colors">2</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-outline-variant hover:bg-surface-container transition-colors">3</button>
+<span class="px-xs">...</span>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-outline-variant hover:bg-surface-container transition-colors">22</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-outline-variant hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+</nav>
+</div>
+</div>
+</div>
+</main>
+<script>
+        // Simple Interaction: Row highlight tracking
+        document.querySelectorAll('tbody tr').forEach(row => {
+            row.addEventListener('mouseenter', () => {
+                row.classList.add('bg-surface-container-low');
+            });
+            row.addEventListener('mouseleave', () => {
+                row.classList.remove('bg-surface-container-low');
+            });
+        });
+
+        // Search Bar Focus Effect
+        const searchInput = document.querySelector('input[type="text"]');
+        if (searchInput) {
+            searchInput.addEventListener('focus', () => {
+                searchInput.parentElement.classList.add('ring-2', 'ring-primary/20');
+            });
+            searchInput.addEventListener('blur', () => {
+                searchInput.parentElement.classList.remove('ring-2', 'ring-primary/20');
+            });
+        }
+    </script>
+</body></html>

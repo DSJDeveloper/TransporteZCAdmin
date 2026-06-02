@@ -1,0 +1,428 @@
+<html class="light" lang="es" style="width: 1280px; height: 1380px; overflow: hidden; position: relative;"><head></head><body class="bg-background text-on-background font-body-md text-body-md overflow-x-hidden">```html
+
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>LogiTrack - Gestión de Recargas</title>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Fonts: Inter -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Shared Style Guidance & Theme Config -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed": "#6ffbbe",
+                    "surface-bright": "#f8f9ff",
+                    "on-primary-fixed-variant": "#003fa4",
+                    "on-primary": "#ffffff",
+                    "on-secondary": "#ffffff",
+                    "primary-fixed": "#dae1ff",
+                    "tertiary-container": "#008259",
+                    "outline": "#727687",
+                    "on-tertiary": "#ffffff",
+                    "surface-variant": "#d3e4fe",
+                    "surface-container": "#e5eeff",
+                    "on-tertiary-fixed-variant": "#005236",
+                    "on-tertiary-fixed": "#002113",
+                    "secondary": "#565e74",
+                    "tertiary-fixed-dim": "#4edea3",
+                    "primary-fixed-dim": "#b3c5ff",
+                    "surface-container-low": "#eff4ff",
+                    "surface-container-highest": "#d3e4fe",
+                    "primary-container": "#0066ff",
+                    "on-secondary-fixed": "#131b2e",
+                    "on-surface-variant": "#424656",
+                    "on-error": "#ffffff",
+                    "on-secondary-container": "#5c647a",
+                    "on-primary-container": "#f8f7ff",
+                    "secondary-fixed": "#dae2fd",
+                    "surface-container-lowest": "#ffffff",
+                    "surface": "#f8f9ff",
+                    "surface-tint": "#0054d6",
+                    "outline-variant": "#c2c6d8",
+                    "on-tertiary-container": "#e1ffec",
+                    "surface-dim": "#cbdbf5",
+                    "primary": "#0050cb",
+                    "secondary-container": "#dae2fd",
+                    "inverse-primary": "#b3c5ff",
+                    "surface-container-high": "#dce9ff",
+                    "on-primary-fixed": "#001849",
+                    "secondary-fixed-dim": "#bec6e0",
+                    "on-error-container": "#93000a",
+                    "tertiary": "#006645",
+                    "on-secondary-fixed-variant": "#3f465c",
+                    "error": "#ba1a1a",
+                    "background": "#f8f9ff",
+                    "inverse-surface": "#213145",
+                    "on-surface": "#0b1c30",
+                    "on-background": "#0b1c30",
+                    "inverse-on-surface": "#eaf1ff",
+                    "error-container": "#ffdad6"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "md": "16px",
+                    "xs": "8px",
+                    "sm": "12px",
+                    "base": "4px",
+                    "gutter": "16px",
+                    "xl": "32px",
+                    "margin-mobile": "16px",
+                    "lg": "24px",
+                    "margin-desktop": "40px"
+            },
+            "fontFamily": {
+                    "headline-lg-mobile": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "label-md": ["Inter"],
+                    "body-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        .bento-item {
+            transition: all 0.3s ease;
+        }
+        .bento-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+        }
+    </style>
+<!-- SideNavBar (Authority: JSON & Contextual Logic) -->
+<aside class="h-screen w-64 fixed left-0 top-0 z-40 bg-surface-container-lowest border-r border-outline-variant shadow-sm flex flex-col py-lg">
+<div class="px-lg mb-xl">
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary">LogiTrack</h1>
+<p class="text-on-surface-variant font-label-md text-label-md opacity-70">Gestión Logística</p>
+</div>
+<nav class="flex-1 space-y-1">
+<!-- Navigation Items Mapping -->
+<a class="flex items-center px-lg py-sm text-on-surface-variant hover:bg-surface-container-high transition-colors scale-98 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined mr-md">dashboard</span>
+<span class="">Panel</span>
+</a>
+<a class="flex items-center px-lg py-sm text-on-surface-variant hover:bg-surface-container-high transition-colors scale-98 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined mr-md">group</span>
+<span class="">Clientes</span>
+</a>
+<a class="flex items-center px-lg py-sm text-on-surface-variant hover:bg-surface-container-high transition-colors scale-98 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined mr-md">local_shipping</span>
+<span class="">Unidades</span>
+</a>
+<!-- Active Tab: Top-ups (Matching "Recargas") -->
+<a class="flex items-center px-lg py-sm text-primary font-bold bg-primary-container/10 border-r-4 border-primary scale-98 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined mr-md">account_balance_wallet</span>
+<span class="">Recargas</span>
+</a>
+<a class="flex items-center px-lg py-sm text-on-surface-variant hover:bg-surface-container-high transition-colors scale-98 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined mr-md">swap_horiz</span>
+<span class="">Movimientos</span>
+</a>
+<a class="flex items-center px-lg py-sm text-on-surface-variant hover:bg-surface-container-high transition-colors scale-98 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined mr-md">settings</span>
+<span class="">Configuraciones</span>
+</a>
+</nav>
+<div class="px-lg mt-auto pt-lg">
+<div class="flex items-center space-x-md">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center overflow-hidden">
+<img alt="Virginia Castillo Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAx25I0f5NU6TKfsf_dlvJaDovwkeApSdTWYJCq31RwHWGGkGz8Olvb12hgzb7Ckc2JXhMvfE6xuQ4oeR7texK4FbzSRPQNyNlgAgAyQsSm6mNVsc5sKCAJVhazIim0wvTjXgmbs4TSShL7xY4s4E__h0l5v3Nbb8JpgheTWoLOcw1fGRU0weP_nJ-y4RY7JezFdJd3DX_k02AUmElxeDIVsjkku0G1W3ddpNPSy2dSRsstcd9qhkGGT77vhkOZX_HigSZsMzDK_2Y"/>
+</div>
+<div>
+<p class="font-bold text-on-surface text-body-md leading-none">Virginia Castillo</p>
+<p class="text-label-md text-on-surface-variant">Administradora</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 left-64 h-16 z-30 bg-surface-bright/90 backdrop-blur-md border-b border-outline-variant flex justify-between items-center px-lg">
+<div class="flex items-center w-1/3">
+<div class="relative w-full max-w-md focus-within:ring-2 focus-within:ring-primary/20 transition-all rounded-lg">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-low border-none focus:ring-0 rounded-lg text-body-md placeholder:text-outline-variant" placeholder="Buscar movimientos, clientes..." type="text"/>
+</div>
+</div>
+<div class="flex items-center space-x-lg">
+<button class="relative hover:text-primary transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full border-2 border-surface-bright"></span>
+</button>
+<button class="hover:text-primary transition-colors">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<div class="h-8 w-[1px] bg-outline-variant mx-sm"></div>
+<div class="flex items-center space-x-xs bg-surface-container px-sm py-xs rounded-full cursor-pointer hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-primary" style='font-variation-settings: "FILL" 1;'>account_circle</span>
+<span class="font-bold text-primary">Virginia</span>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 mt-16 p-lg min-h-[calc(100vh-64px)]">
+<!-- Header & FAB Section -->
+<div class="flex justify-between items-end mb-xl">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Gestión de Recargas</h2>
+<p class="text-on-surface-variant font-body-lg text-body-lg">Supervise el flujo de caja y apruebe transacciones entrantes.</p>
+</div>
+<button class="flex items-center space-x-xs bg-primary text-on-primary px-lg py-md rounded-xl shadow-lg hover:brightness-110 active:scale-95 transition-all">
+<span class="material-symbols-outlined">add</span>
+<span class="font-bold">Nueva Recarga</span>
+</button>
+</div>
+<!-- KPI Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-lg mb-xl">
+<div class="glass-card bento-item p-lg rounded-xl flex flex-col border-l-4 border-l-amber-500">
+<div class="flex justify-between items-start mb-base">
+<span class="text-amber-600 font-label-md text-label-md uppercase tracking-wider">POR APROBAR</span>
+<span class="material-symbols-outlined text-amber-500">pending_actions</span>
+</div>
+<div class="text-headline-lg font-bold text-on-surface">6</div>
+<p class="text-label-md text-on-surface-variant">Acción requerida inmediata</p>
+</div>
+<div class="glass-card bento-item p-lg rounded-xl flex flex-col border-l-4 border-l-error">
+<div class="flex justify-between items-start mb-base">
+<span class="text-error font-label-md text-label-md uppercase tracking-wider">RECHAZADOS</span>
+<span class="material-symbols-outlined text-error">cancel</span>
+</div>
+<div class="text-headline-lg font-bold text-on-surface">889</div>
+<p class="text-label-md text-on-surface-variant">Este mes</p>
+</div>
+<div class="glass-card bento-item p-lg rounded-xl flex flex-col border-l-4 border-l-tertiary">
+<div class="flex justify-between items-start mb-base">
+<span class="text-tertiary font-label-md text-label-md uppercase tracking-wider">APROBADOS</span>
+<span class="material-symbols-outlined text-tertiary">check_circle</span>
+</div>
+<div class="text-headline-lg font-bold text-on-surface">18.216</div>
+<p class="text-label-md text-on-surface-variant">Histórico total</p>
+</div>
+<div class="glass-card bento-item p-lg rounded-xl flex flex-col border-l-4 border-l-primary bg-primary/5">
+<div class="flex justify-between items-start mb-base">
+<span class="text-primary font-label-md text-label-md uppercase tracking-wider">MONTO TOTAL</span>
+<span class="material-symbols-outlined text-primary">payments</span>
+</div>
+<div class="text-headline-lg font-bold text-on-surface">231.785,26</div>
+<p class="text-label-md text-on-surface-variant">USD Acumulados</p>
+</div>
+</div>
+<!-- Filters Section -->
+<div class="glass-card p-lg rounded-xl mb-lg">
+<div class="flex flex-wrap gap-md items-center">
+<div class="flex-1 min-w-[200px]">
+<label class="block text-label-md font-bold text-on-surface-variant mb-base ml-1">Rango de Fecha</label>
+<div class="flex items-center space-x-xs">
+<input class="bg-surface border border-outline-variant rounded-lg text-body-md py-xs px-sm w-full focus:ring-primary" type="date" value="2026-05-28"/>
+<span class="text-outline">al</span>
+<input class="bg-surface border border-outline-variant rounded-lg text-body-md py-xs px-sm w-full focus:ring-primary" type="date" value="2026-05-28"/>
+</div>
+</div>
+<div class="w-48">
+<label class="block text-label-md font-bold text-on-surface-variant mb-base ml-1">Estatus</label>
+<select class="bg-surface border border-outline-variant rounded-lg text-body-md py-xs px-sm w-full focus:ring-primary">
+<option>Todos los estatus</option>
+<option>Pendiente</option>
+<option>Aprobada</option>
+<option>Rechazada</option>
+</select>
+</div>
+<div class="w-48">
+<label class="block text-label-md font-bold text-on-surface-variant mb-base ml-1">Método</label>
+<select class="bg-surface border border-outline-variant rounded-lg text-body-md py-xs px-sm w-full focus:ring-primary">
+<option>Todos los métodos</option>
+<option>Pago Movil</option>
+<option>Efectivo $</option>
+</select>
+</div>
+<div class="flex items-end h-full mt-lg">
+<button class="bg-primary-container text-on-primary-container px-lg py-xs rounded-lg font-bold flex items-center space-x-xs hover:brightness-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">filter_alt</span>
+<span class="">Filtrar</span>
+</button>
+<button class="ml-xs p-xs text-outline hover:text-primary" title="Reiniciar">
+<span class="material-symbols-outlined">restart_alt</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Table Section -->
+<div class="glass-card rounded-xl overflow-hidden shadow-sm">
+<div class="p-lg border-b border-outline-variant flex justify-between items-center bg-surface-container-low/50">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Lista de Recargas</h3>
+<div class="flex items-center space-x-md">
+<span class="text-label-md text-on-surface-variant">Mostrando 10 de 18,216</span>
+<button class="p-base hover:bg-surface-container rounded transition-colors"><span class="material-symbols-outlined">more_vert</span></button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container text-on-surface-variant uppercase font-label-md text-label-md">
+<tr>
+<th class="px-lg py-md border-b border-outline-variant"># REF</th>
+<th class="px-lg py-md border-b border-outline-variant">FECHA</th>
+<th class="px-lg py-md border-b border-outline-variant">CLIENTE</th>
+<th class="px-lg py-md border-b border-outline-variant">MONTO</th>
+<th class="px-lg py-md border-b border-outline-variant">MÉTODO</th>
+<th class="px-lg py-md border-b border-outline-variant">ESTADO</th>
+<th class="px-lg py-md border-b border-outline-variant text-right">ACCIONES</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-lg py-md font-bold text-on-surface">19111</td>
+<td class="px-lg py-md text-on-surface-variant">2026-05-28</td>
+<td class="px-lg py-md">
+<div class="flex items-center space-x-sm">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center text-secondary font-bold text-xs">GB</div>
+<span class="text-on-surface">Genesis Bacalao Bejuma</span>
+</div>
+</td>
+<td class="px-lg py-md font-bold text-on-surface">4.20 <span class="text-xs text-outline">USD</span></td>
+<td class="px-lg py-md text-on-surface-variant">Pago Movil <span class="text-xs ml-base opacity-50">0061...4579</span></td>
+<td class="px-lg py-md">
+<span class="bg-amber-100 text-amber-800 px-sm py-[2px] rounded-full text-xs font-bold uppercase tracking-wider">PENDIENTE</span>
+</td>
+<td class="px-lg py-md text-right">
+<div class="flex justify-end space-x-xs">
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-primary hover:bg-primary/10" title="Ver Detalles"><span class="material-symbols-outlined">visibility</span></button>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-tertiary hover:bg-tertiary/10" title="Aprobar"><span class="material-symbols-outlined" style='font-variation-settings: "FILL" 1;'>check_circle</span></button>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-error hover:bg-error/10" title="Rechazar"><span class="material-symbols-outlined">do_not_disturb_on</span></button>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-lg py-md font-bold text-on-surface">19110</td>
+<td class="px-lg py-md text-on-surface-variant">2026-05-28</td>
+<td class="px-lg py-md">
+<div class="flex items-center space-x-sm">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center text-secondary font-bold text-xs">VD</div>
+<span class="text-on-surface">Diana Virginia Delgado</span>
+</div>
+</td>
+<td class="px-lg py-md font-bold text-on-surface">16.80 <span class="text-xs text-outline">USD</span></td>
+<td class="px-lg py-md text-on-surface-variant">Pago Movil <span class="text-xs ml-base opacity-50">0061...5292</span></td>
+<td class="px-lg py-md">
+<span class="bg-amber-100 text-amber-800 px-sm py-[2px] rounded-full text-xs font-bold uppercase tracking-wider">PENDIENTE</span>
+</td>
+<td class="px-lg py-md text-right">
+<div class="flex justify-end space-x-xs">
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-primary hover:bg-primary/10" title="Ver Detalles"><span class="material-symbols-outlined">visibility</span></button>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-tertiary hover:bg-tertiary/10" title="Aprobar"><span class="material-symbols-outlined">check_circle</span></button>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-error hover:bg-error/10" title="Rechazar"><span class="material-symbols-outlined">do_not_disturb_on</span></button>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-lg py-md font-bold text-on-surface">19107</td>
+<td class="px-lg py-md text-on-surface-variant">2026-05-28</td>
+<td class="px-lg py-md">
+<div class="flex items-center space-x-sm">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center text-secondary font-bold text-xs">SZ</div>
+<span class="text-on-surface">Sebastián Zambrano</span>
+</div>
+</td>
+<td class="px-lg py-md font-bold text-on-surface">5.00 <span class="text-xs text-outline">USD</span></td>
+<td class="px-lg py-md text-on-surface-variant">Efectivo $</td>
+<td class="px-lg py-md">
+<span class="bg-tertiary-container/20 text-tertiary-container px-sm py-[2px] rounded-full text-xs font-bold uppercase tracking-wider">APROBADA</span>
+</td>
+<td class="px-lg py-md text-right">
+<div class="flex justify-end space-x-xs">
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-primary hover:bg-primary/10" title="Ver Detalles"><span class="material-symbols-outlined">visibility</span></button>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-outline-variant cursor-not-allowed opacity-50" title="Borrar"><span class="material-symbols-outlined">delete</span></button>
+</div>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-lg py-md font-bold text-on-surface">19106</td>
+<td class="px-lg py-md text-on-surface-variant">2026-05-28</td>
+<td class="px-lg py-md">
+<div class="flex items-center space-x-sm">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center text-secondary font-bold text-xs">SZ</div>
+<span class="text-on-surface">Sebastián Zambrano</span>
+</div>
+</td>
+<td class="px-lg py-md font-bold text-on-surface">5.00 <span class="text-xs text-outline">USD</span></td>
+<td class="px-lg py-md text-on-surface-variant">Efectivo $</td>
+<td class="px-lg py-md">
+<span class="bg-error-container text-on-error-container px-sm py-[2px] rounded-full text-xs font-bold uppercase tracking-wider">RECHAZADA</span>
+</td>
+<td class="px-lg py-md text-right">
+<div class="flex justify-end space-x-xs">
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-primary hover:bg-primary/10" title="Ver Detalles"><span class="material-symbols-outlined">visibility</span></button>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-error hover:bg-error/10" title="Borrar"><span class="material-symbols-outlined">delete</span></button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination Footer -->
+<div class="p-lg bg-surface-container-low/30 border-t border-outline-variant flex flex-col md:flex-row justify-between items-center gap-md">
+<div class="text-label-md text-on-surface-variant">
+                    Mostrando 1-10 de 18,216 registros
+                </div>
+<div class="flex items-center space-x-base">
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-outline-variant hover:bg-surface-container transition-colors disabled:opacity-30" disabled="">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg bg-primary text-on-primary font-bold">1</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-container transition-colors font-bold">2</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-container transition-colors font-bold">3</button>
+<span class="px-xs text-outline-variant">...</span>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-container transition-colors font-bold">1822</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-outline-variant hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Micro-interaction Script -->
+<script>
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('mousedown', function() {
+                this.style.transform = 'scale(0.98)';
+            });
+            button.addEventListener('mouseup', function() {
+                this.style.transform = 'scale(1)';
+            });
+        });
+    </script>
+```</body></html>

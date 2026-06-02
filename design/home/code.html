@@ -1,0 +1,416 @@
+<!DOCTYPE html><html class="light" lang="es" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>LogiTrack - Panel de Operaciones</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface": "#f8f9ff",
+                    "on-primary-fixed": "#001849",
+                    "surface-container-lowest": "#ffffff",
+                    "outline": "#727687",
+                    "on-secondary-fixed": "#131b2e",
+                    "surface-bright": "#f8f9ff",
+                    "on-surface": "#0b1c30",
+                    "background": "#f8f9ff",
+                    "on-primary-fixed-variant": "#003fa4",
+                    "primary-container": "#0066ff",
+                    "on-surface-variant": "#424656",
+                    "tertiary-fixed-dim": "#4edea3",
+                    "inverse-primary": "#b3c5ff",
+                    "on-tertiary": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "tertiary": "#006645",
+                    "on-tertiary-fixed": "#002113",
+                    "on-secondary-container": "#5c647a",
+                    "tertiary-container": "#008259",
+                    "secondary-container": "#dae2fd",
+                    "surface-dim": "#cbdbf5",
+                    "on-primary-container": "#f8f7ff",
+                    "secondary": "#565e74",
+                    "inverse-surface": "#213145",
+                    "on-background": "#0b1c30",
+                    "surface-container-highest": "#d3e4fe",
+                    "primary-fixed": "#dae1ff",
+                    "secondary-fixed-dim": "#bec6e0",
+                    "secondary-fixed": "#dae2fd",
+                    "on-error": "#ffffff",
+                    "surface-container-high": "#dce9ff",
+                    "surface-container": "#e5eeff",
+                    "outline-variant": "#c2c6d8",
+                    "surface-variant": "#d3e4fe",
+                    "on-tertiary-container": "#e1ffec",
+                    "tertiary-fixed": "#6ffbbe",
+                    "inverse-on-surface": "#eaf1ff",
+                    "surface-container-low": "#eff4ff",
+                    "on-error-container": "#93000a",
+                    "primary": "#0050cb",
+                    "primary-fixed-dim": "#b3c5ff",
+                    "on-secondary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "on-tertiary-fixed-variant": "#005236",
+                    "on-primary": "#ffffff",
+                    "surface-tint": "#0054d6",
+                    "on-secondary-fixed-variant": "#3f465c"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "xs": "8px",
+                    "gutter": "16px",
+                    "xl": "32px",
+                    "lg": "24px",
+                    "margin-desktop": "40px",
+                    "sm": "12px",
+                    "base": "4px",
+                    "md": "16px",
+                    "margin-mobile": "16px"
+            },
+            "fontFamily": {
+                    "body-md": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "body-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #f8f9ff;
+            color: #0b1c30;
+            font-family: 'Inter', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid #e2e8f0;
+            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        .scroll-hide::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body class="font-body-md text-body-md overflow-x-hidden">
+<!-- SideNavBar -->
+<aside class="bg-surface-container-lowest dark:bg-surface-dim h-screen w-64 fixed left-0 top-0 z-40 border-r border-outline-variant dark:border-outline shadow-sm dark:shadow-none flex flex-col py-lg">
+<div class="px-lg mb-xl">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 bg-primary-container rounded flex items-center justify-center">
+<span class="material-symbols-outlined text-white">local_shipping</span>
+</div>
+<div>
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary dark:text-primary-fixed-dim">LogiTrack</h1>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-widest font-semibold">Gestión Logística</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 px-md space-y-base">
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-primary dark:text-primary-fixed-dim font-bold bg-primary-container/10 border-r-4 border-primary transition-all" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="">Panel</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="">Clientes</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined">local_shipping</span>
+<span class="">Unidades</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="">Recargas</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined">swap_horiz</span>
+<span class="">Movimientos</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="">Configuración</span>
+</a>
+</nav>
+<div class="px-lg mt-auto">
+<div class="p-md bg-surface-container rounded-xl flex items-center gap-md">
+<img alt="Administrator Profile" class="w-10 h-10 rounded-full border-2 border-primary-container" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA1O1AlIuQVYFX4EOCfJv-AmxCoSxfPeqG6yqyQq_kqnKsgdwDrL3N-_bgbsAM2PTUWNvj1tewgjZ1Y1CJI436wvDqJIhLPhrWAMaGlaVRluUNpQk810zQUkUd_RDudr0tmYntLnk7fWOz4ERVqe-ZeUPgcMQLt65hkjAP_ykNO64O6xJ6eyRJI_ZlBPhxRmvet7cCYRmHneiWx9RSyV8COugqkO_YSFaZbQQSNxFIUK8SEaDKDRQ6245B4jfSz3xhyd1maBe_9Y5k">
+<div class="overflow-hidden">
+<p class="font-bold text-on-surface truncate">V. Castillo</p>
+<p class="text-[10px] text-on-surface-variant">Administrador del Sistema</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 left-64 h-16 z-30 bg-surface-bright/90 dark:bg-surface-dim/90 border-b border-outline-variant dark:border-outline backdrop-blur-md shadow-sm dark:shadow-none flex justify-between items-center px-lg">
+<div class="flex items-center gap-md flex-1">
+<div class="relative w-full max-w-md focus-within:ring-2 focus-within:ring-primary/20 transition-all rounded-lg">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-lg text-body-md focus:ring-0" placeholder="Buscar centros logísticos, envíos, clientes..." type="text">
+</div>
+</div>
+<div class="flex items-center gap-lg">
+<div class="flex items-center gap-md border-r border-outline-variant pr-lg">
+<button class="relative hover:text-primary dark:hover:text-primary-fixed-dim transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full border-2 border-surface-bright"></span>
+</button>
+<button class="hover:text-primary dark:hover:text-primary-fixed-dim transition-colors">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+</div>
+<div class="flex items-center gap-sm">
+<span class="text-body-md font-semibold text-on-surface">28 de Mayo, 2024</span>
+<span class="material-symbols-outlined text-outline">calendar_today</span>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="ml-64 pt-16 min-h-screen">
+<div class="p-margin-desktop space-y-xl">
+<!-- Header Section -->
+<div class="flex items-center justify-between">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Panel de Operaciones</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Monitoreo en tiempo real de flota y finanzas</p>
+</div>
+
+</div>
+<!-- Overview Metrics -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-lg">
+<!-- Total Debtors Card -->
+<div class="glass-card p-lg rounded-xl flex flex-col justify-between h-48 group hover:border-primary transition-all">
+<div class="flex justify-between items-start">
+<div class="p-sm bg-error-container/20 rounded-lg">
+<span class="material-symbols-outlined text-error">account_balance_wallet</span>
+</div>
+<span class="text-error font-bold flex items-center text-label-md bg-error-container/30 px-xs py-1 rounded">
+<span class="material-symbols-outlined !text-sm">trending_up</span> 12%
+                    </span>
+</div>
+<div>
+<h3 class="text-on-surface-variant font-label-md uppercase tracking-wider">TOTAL DEUDORES</h3>
+<p class="font-headline-lg text-headline-lg text-error">-$610.55</p>
+</div>
+</div>
+<!-- Monthly Clients -->
+<div class="glass-card p-lg rounded-xl flex flex-col justify-between h-48 hover:border-primary transition-all">
+<div class="flex justify-between items-start">
+<div class="p-sm bg-primary-container/10 rounded-lg">
+<span class="material-symbols-outlined text-primary">group</span>
+</div>
+<span class="text-tertiary font-bold flex items-center text-label-md bg-tertiary-container/20 px-xs py-1 rounded">
+<span class="material-symbols-outlined !text-sm">trending_up</span> +18.4%
+                    </span>
+</div>
+<div>
+<h3 class="text-on-surface-variant font-label-md uppercase tracking-wider">CLIENTES ACTIVOS</h3>
+<p class="font-headline-lg text-headline-lg text-on-surface">1,859</p>
+<p class="text-label-md text-outline">Actualizado a Mayo 2024</p>
+</div>
+</div>
+<!-- Operational Units -->
+
+<!-- Alerts / Quick Stats -->
+
+</div>
+<!-- Middle Section: Schedule (Expanded) -->
+<div class="grid grid-cols-1 gap-lg">
+<!-- Daily Reservations Hub -->
+<div class="glass-card rounded-xl overflow-hidden scale-[1.01]">
+<div class="p-lg border-b border-outline-variant flex items-center justify-between">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-primary">schedule</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Reservas Diarias</h3>
+</div>
+<div class="flex gap-xs">
+<input class="border border-outline-variant rounded px-sm py-1 text-body-md" type="date" value="2024-05-28">
+<button class="bg-primary-container text-white px-md py-1 rounded-lg text-label-md font-bold">Filtrar</button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead class="bg-surface-container text-on-surface-variant font-label-md uppercase tracking-tighter">
+<tr>
+<th class="px-lg py-md">HORARIO</th>
+<th class="px-lg py-md">cantidad<br></th>
+
+
+<th class="px-lg py-md text-right">ACCIONES</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="px-lg py-md font-bold text-on-surface">08:30 AM</td>
+<td class="px-lg py-md">1</td>
+
+
+<td class="px-lg py-md text-right">
+<button class="text-primary hover:bg-primary-container/10 p-xs rounded-full"><span class="material-symbols-outlined">visibility</span></button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="px-lg py-md font-bold text-on-surface">06:30 AM</td>
+<td class="px-lg py-md">3</td>
+
+
+<td class="px-lg py-md text-right">
+<button class="text-primary hover:bg-primary-container/10 p-xs rounded-full"><span class="material-symbols-outlined">visibility</span></button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="px-lg py-md font-bold text-on-surface">05:50 AM</td>
+<td class="px-lg py-md">2</td>
+
+
+<td class="px-lg py-md text-right">
+<button class="text-primary hover:bg-primary-container/10 p-xs rounded-full"><span class="material-symbols-outlined">visibility</span></button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Bottom Section: Detailed Stats & Lists -->
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-lg">
+<!-- Weekly Analytics Card -->
+<div class="glass-card p-lg rounded-xl">
+<div class="flex justify-between items-center mb-lg">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Flujo Semanal</h3>
+<span class="material-symbols-outlined text-outline">bar_chart</span>
+</div>
+<div class="space-y-md">
+<div class="flex items-center justify-between">
+<span class="text-body-md text-on-surface-variant w-20">Viernes</span>
+<div class="flex-1 mx-md h-2 bg-surface-container rounded-full overflow-hidden">
+<div class="bg-primary h-full" style="width: 7%"></div>
+</div>
+<span class="text-label-md font-bold">07</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-body-md text-on-surface-variant w-20">Jueves</span>
+<div class="flex-1 mx-md h-2 bg-surface-container rounded-full overflow-hidden">
+<div class="bg-primary h-full" style="width: 30%"></div>
+</div>
+<span class="text-label-md font-bold">30</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-body-md text-on-surface-variant w-20">Miércoles</span>
+<div class="flex-1 mx-md h-2 bg-surface-container rounded-full overflow-hidden">
+<div class="bg-primary h-full" style="width: 29%"></div>
+</div>
+<span class="text-label-md font-bold">29</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-body-md text-on-surface-variant w-20">Martes</span>
+<div class="flex-1 mx-md h-2 bg-surface-container rounded-full overflow-hidden">
+<div class="bg-primary h-full" style="width: 32%"></div>
+</div>
+<span class="text-label-md font-bold">32</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-body-md text-on-surface-variant w-20">Lunes</span>
+<div class="flex-1 mx-md h-2 bg-surface-container rounded-full overflow-hidden">
+<div class="bg-primary h-full" style="width: 35%"></div>
+</div>
+<span class="text-label-md font-bold">35</span>
+</div>
+</div>
+<button class="w-full mt-lg text-primary font-bold text-label-md hover:underline">Reporte de Análisis Completo</button>
+</div>
+<!-- Movements / Activity Feed -->
+<div class="lg:col-span-3 glass-card rounded-xl p-lg">
+<div class="flex justify-between items-center mb-lg">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Movimientos Recientes</h3>
+<div class="flex gap-md">
+<button class="text-label-md font-bold text-on-surface-variant border border-outline-variant px-md py-1 rounded hover:bg-surface-container transition-colors">Exportar CSV</button>
+<button class="text-label-md font-bold text-on-surface-variant border border-outline-variant px-md py-1 rounded hover:bg-surface-container transition-colors">Imprimir</button>
+</div>
+</div>
+<div class="space-y-gutter">
+<div class="flex items-center gap-md p-md hover:bg-surface-container-low rounded-lg transition-all border border-transparent hover:border-outline-variant">
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">local_gas_station</span>
+</div>
+<div class="flex-1">
+<p class="font-bold text-on-surface">Recarga de Combustible: Unidad #402</p>
+<p class="text-body-md text-on-surface-variant">Transacción confirmada vía PetroCard</p>
+</div>
+<div class="text-right">
+<p class="font-bold text-on-surface">-$120.00</p>
+<p class="text-[10px] text-outline uppercase font-semibold">HOY, 09:42 AM</p>
+</div>
+</div>
+<div class="flex items-center gap-md p-md hover:bg-surface-container-low rounded-lg transition-all border border-transparent hover:border-outline-variant">
+<div class="w-12 h-12 rounded-full bg-tertiary-container/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-tertiary">payments</span>
+</div>
+<div class="flex-1">
+<p class="font-bold text-on-surface">Pago de Cliente: AgroCorp Ltd.</p>
+<p class="text-body-md text-on-surface-variant">Renovación de suscripción - 5 Unidades</p>
+</div>
+<div class="text-right">
+<p class="font-bold text-tertiary">+$1,250.00</p>
+<p class="text-[10px] text-outline uppercase font-semibold">HOY, 08:15 AM</p>
+</div>
+</div>
+<div class="flex items-center gap-md p-md hover:bg-surface-container-low rounded-lg transition-all border border-transparent hover:border-outline-variant">
+<div class="w-12 h-12 rounded-full bg-primary-container/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">swap_horiz</span>
+</div>
+<div class="flex-1">
+<p class="font-bold text-on-surface">Cambio de Ruta: Zona B → C</p>
+<p class="text-body-md text-on-surface-variant">Asignado al Conductor: R. Mendez</p>
+</div>
+<div class="text-right">
+<p class="font-bold text-on-surface">Pendiente</p>
+<p class="text-[10px] text-outline uppercase font-semibold">AYER, 11:30 PM</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<script>
+    // Micro-interactions and subtle effects
+    document.querySelectorAll('.glass-card').forEach(card => {
+        card.addEventListener('mouseenter', () => {
+            card.classList.add('scale-[1.01]');
+        });
+        card.addEventListener('mouseleave', () => {
+            card.classList.remove('scale-[1.01]');
+        });
+    });
+</script>
+
+
+</body></html>
