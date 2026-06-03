@@ -189,7 +189,7 @@ async function save() {
             </div>
           </div>
           <div class="space-y-base">
-            <label class="text-label-md font-semibold text-on-surface-variant px-1">Tasa de Cambio (VES) <span class="text-outline font-normal">— Referencial (BCV)</span></label>
+            <label class="text-label-md font-semibold text-on-surface-variant px-1">Tasa de Cambio (VES) <span class="text-outline font-normal">— Referencial (EUR BCV)</span></label>
             <div class="relative">
               <span class="absolute left-3 top-1/2 -translate-y-1/2 text-outline font-bold">Bs</span>
               <input
