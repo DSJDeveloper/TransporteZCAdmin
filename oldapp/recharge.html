@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Transporte Zambrano</title>
+        <meta content="width=device-width, initial-scale=1.0" name="viewport">
+        <meta content="" name="keywords">
+        <meta content="" name="description">
+        <!-- Favicon -->
+        <link href="https://office.transportezc.com/assets/img/logo.png"" rel="icon ">
+
+    <!-- Google Web Fonts -->
+    <link rel="preconnect " href="https://fonts.googleapis.com ">
+    <link rel="preconnect " href="https://fonts.gstatic.com " crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700&display=swap " rel="stylesheet ">
+    
+    <!-- Icon Font Stylesheet -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css " rel="stylesheet ">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css " rel="stylesheet ">
+
+    <!-- Libraries Stylesheet -->
+    <link href="https://office.transportezc.com/assets/lib/owlcarousel/assets/owl.carousel.min.css " rel="stylesheet ">
+    <link href="https://office.transportezc.com/assets/lib/tempusdominus/css/tempusdominus-bootstrap-4.min.css " rel="stylesheet " />
+
+    <!-- Customized Bootstrap Stylesheet -->
+    <link rel="stylesheet " href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css ">
+    <link href="https://office.transportezc.com/assets/css/bootstrap.min.css " rel="stylesheet ">
+
+    <!-- Template Stylesheet -->
+    <link href="https://office.transportezc.com/assets/css/style.css " rel="stylesheet ">
+    <link rel="stylesheet " href="//code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css ">
+     <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css " rel="stylesheet " />
+    <link rel="stylesheet " href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.1/css/bootstrap-select.min.css ">
+    
+    <!-- jQuery más reciente -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js "></script>
+    
+    <!-- DataTables CSS -->
+    <link rel="stylesheet " type="text/css " href="https://cdn.datatables.net/1.12.1/css/jquery.dataTables.min.css ">
+    
+    <!-- DataTables Responsive CSS -->
+    <link rel="stylesheet " type="text/css " href="https://cdn.datatables.net/responsive/2.4.0/css/responsive.dataTables.min.css ">
+    
+    <!-- DataTables JS -->
+    <script type="text/javascript " charset="utf8 " src="https://cdn.datatables.net/1.12.1/js/jquery.dataTables.min.js "></script>
+    
+    <!-- DataTables Responsive JS -->
+    <script type="text/javascript " charset="utf8 " src="https://cdn.datatables.net/responsive/2.4.0/js/dataTables.responsive.min.js "></script>
+
+
+
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js "></script>
+
+   
+
+
+<script type="text/javascript " charset="utf8 " src="https://cdn.datatables.net/responsive/2.4.0/js/dataTables.responsive.min.js "></script>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js "></script>
+    <!-- Popper.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js "></script>
+
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js "></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.1/js/bootstrap-select.min.js "></script>
+
+
+    
+    
+</head>
+
+<body>
+    <div class="position-relative bg-white d-flex p-0 ">
+        <!-- Spinner Start -->
+        <div id="spinner " class="show bg-white position-fixed translate-middle w-100 vh-100 top-50 start-50 d-flex align-items-center justify-content-center ">
+            <div class="spinner-border text-primary " style="width:3rem;height:3rem;" role="status ">
+                <span class="sr-only ">Loading...</span>
+            </div>
+        </div>
+        <!-- Spinner End -->
+
+
+        <!-- Sidebar Start -->
+        <div class="sidebar pe-4 pb-3 ">
+            <nav class="navbar bg-light navbar-light ">
+                <a href="https://office.transportezc.com/" class="navbar-brand mx-4 mb-3 ">
+                    <h3 class="text-primary ">
+                        <img src="https://office.transportezc.com/assets/img/logo.png " class="w-100 ">
+                    </h3>
+                </a>
+                <div class="d-flex align-items-center ms-4 mb-4 ">
+                    <div class="position-relative ">
+                        <img class="rounded-circle " src="https://office.transportezc.com/assets/img/user.jpg " alt="" style="width:40px;height:40px;">
+                        <div class="bg-success rounded-circle border border-2 border-white position-absolute end-0 bottom-0 p-1 "></div>
+                    </div>
+                    <div class="ms-3 ">
+                        <h6 class="mb-0 ">Virginia Castillo</h6>
+                        <span>Usuario en linea</span>
+                    </div>
+                </div>
+                <div class="navbar-nav w-100 ">
+                    <a href="https://office.transportezc.com/" class="nav-item nav-link ">
+                        <i class="fa fa-tachometer-alt me-2 "></i>Panel Principal
+                    </a>
+                                        <a href="https://office.transportezc.com/clients/" class="nav-item nav-link ">
+                        <i class="fa fa-users me-2 "></i>Clientes
+                    </a>
+                                                            <a href="https://office.transportezc.com/units/" class="nav-item nav-link ">
+                        <i class="fa fa-car me-2 "></i>Unidades
+                    </a>
+                                                            <a href="https://office.transportezc.com/recharge/" class="nav-item nav-link active ">
+                        <i class="fa fa-credit-card me-2 "></i>Recargas
+                    </a>
+                                                            <a href="https://office.transportezc.com/move/" class="nav-item nav-link ">
+                        <i class="fa fa-list me-2 "></i>Movimientos
+                    </a>
+                                        
+                                        <div class="nav-item dropdown d-none ">
+                        <a href="#" class="nav-link dropdown-toggle " data-bs-toggle="dropdown "><i class="far fa-file-alt me-2 "></i>Inventario</a>
+                        <div class="dropdown-menu bg-transparent border-0 ">
+                            <a href="https://office.transportezc.com/stock/" class="dropdown-item ">Stock</a>
+                        </div>
+                    </div>
+                                                            <div class="nav-item dropdown ">
+                        <a href="#" class="nav-link dropdown-toggle " data-bs-toggle="dropdown "><i class="fa fa-cogs me-2 "></i>Configuraciones</a>
+                        <div class="dropdown-menu bg-transparent border-0 ">
+                            <a href="https://office.transportezc.com/users/" class="dropdown-item ">Usuarios</a>
+                            <a href="https://office.transportezc.com/company/" class="dropdown-item ">Parametros</a>
+                            <a href="https://office.transportezc.com/status/" class="dropdown-item d-none ">Etapas</a>
+                            <a href="https://office.transportezc.com/category/" class="dropdown-item d-none ">Categorias</a>
+                        </div>
+                    </div>
+                                                            <a href="https://office.transportezc.com/" class="nav-item nav-link d-none "><i class="fa fa-chart-bar me-2 "></i>Reportes</a>
+                                    </div>
+            </nav>
+        </div>
+        <!-- Sidebar End -->
+
+
+        <!-- Content Start -->
+        <div class="content ">
+            <!-- Navbar Start -->
+            <nav class="navbar navbar-expand bg-light navbar-light sticky-top px-4 py-0 ">
+                <a href="index.html " class="navbar-brand d-flex d-lg-none me-4 ">
+                    <h2 class="text-primary mb-0 "><i class="fa fa-hashtag "></i></h2>
+                </a>
+                <a href="#" class="sidebar-toggler flex-shrink-0 ">
+                    <i class="fa fa-bars "></i>
+                </a>
+                <div class="d-none d-md-flex ms-4 ">
+                    <input class="form-control border-0 " type="search " placeholder="Search ">
+                </div>
+                <div class="navbar-nav align-items-center ms-auto ">
+                 
+                    <div class="nav-item dropdown ">
+                        <a href="#" class="nav-link dropdown-toggle " data-bs-toggle="dropdown ">
+                            <i class="fa fa-bell me-lg-2 "></i>
+                            <span class="d-none d-lg-inline-flex ">Notificaciones</span>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-end bg-light border-0 rounded-0 rounded-bottom m-0 ">
+                            <a href="#" class="dropdown-item ">
+                                <h6 class="fw-normal mb-0 ">Profile updated</h6>
+                                <small>15 minutes ago</small>
+                            </a>
+                            <hr class="dropdown-divider ">
+                            <a href="#" class="dropdown-item ">
+                                <h6 class="fw-normal mb-0 ">New user added</h6>
+                                <small>15 minutes ago</small>
+                            </a>
+                            <hr class="dropdown-divider ">
+                            <a href="#" class="dropdown-item ">
+                                <h6 class="fw-normal mb-0 ">Password changed</h6>
+                                <small>15 minutes ago</small>
+                            </a>
+                            <hr class="dropdown-divider ">
+                            <a href="#" class="dropdown-item text-center ">See all notifications</a>
+                        </div>
+                    </div>
+                    <div class="nav-item dropdown ">
+                        <a href="#" class="nav-link dropdown-toggle " data-bs-toggle="dropdown ">
+                            <img class="rounded-circle me-lg-2 " src="https://office.transportezc.com/assets/img/user.jpg " alt="" style="width:40px;height:40px;">
+                            <span class="d-none d-lg-inline-flex ">Virginia Castillo</span>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-end bg-light border-0 rounded-0 rounded-bottom m-0 ">
+                            <a href="https://office.transportezc.com/login/out " class="dropdown-item ">Log Out</a>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+            <!-- Navbar End --> <div class="container-fluid pt-4 px-4 ">
+    <div class="row ">
+        <div class="col-12 mb-2 ">
+             <div class="bg-light rounded p-4 d-lg-flex justify-content-between " >
+                 <div class="card p-2 text-center bg-warning text-white mb-2 ">
+                    PAGOS POR APROBAR <br>
+                    <H1 class="text-white ">11</H1>
+                </div>
+               <div class="card p-2 text-center bg-danger text-white mb-2 ">
+                   PAGOS RECHAZADOS <br>
+                    <H1 class="text-white ">892</H1>
+                </div>
+                 <div class="card p-2 text-center text-success bg-primary text-white mb-2 ">
+                    PAGOS APROBADOS <br>
+                    <H1 class="text-white ">18390</H1>
+                </div>
+                 <div class="card p-2 text-center text-success bg-primary text-white mb-2 ">
+                    TOTAL MONTO RECARGAS <br>
+                    <H1 class="text-white ">234837.40</H1>
+                </div>
+                    <a href="#" onclick="detail()" type="button " class="btn btn-outline-primary m-2 " ><i class="fa fa-credit-card "></i><br> Nueva<br>Recarga</a>
+            </div>
+        </div>
+        <div class="col-12 ">
+                        <div class="bg-light rounded p-4 table-responsive ">
+                            <h6 class="mb-4 ">LISTA DE RECARGAS</h6>
+                             <div class="input-group ">
+                                  <input type="date " class="form-control rounded-0 " placeholder="Recipient 's username" aria-label="Recipient's username " aria-describedby="basic-addon2 " id="from " value="2026-06-02 ">
+                                  <input type="date " class="form-control rounded-0 " placeholder="Recipient 's username" aria-label="Recipient's username " aria-describedby="basic-addon2 " id="to " value="2026-06-02 ">
+                                  <div class="input-group-append ">
+                                    <button class="btn btn-primary rounded-0 " type="button " onclick="reload()">Filtrar</button>
+                                  </div>
+                                </div>
+                                
+                                     <div class="input-group ">
+                                 <select class="form-control form-select rounded-0 " id="status ">
+                                      <option   value="">Todos los estatus</option>
+                                     <option  value="0 ">Pendiente</option>
+                                    
+                                      <option  value="1 ">Aprobada</option>
+                                      <option  value="2 ">Rechazada</option>
+                                    </select>
+                                    
+                                    <select class="form-control form-select rounded-0 " id="method ">
+                                          <option   value="">Todos los metodos</option>
+                                         <option  value="Efectivo $ ">Efectivo $</option>
+                                        
+                                          <option  value="Pago Movil ">Pago Movil</option>
+                                          <option  value="Efectivo ">Efectivo</option>
+                                          </select>
+                                          
+                                          <select class="rounded-0 selectpicker " id="client " data-show-subtext="true " data-live-search="true ">
+                                               
+                                      <option  value="">Todos los estudiantes</option>
+                                                                            <option  value="1 ">Andres Eduardo </option>
+                                                                            <option  value="2 ">Gerzon a Zambrano c</option>
+                                                                            <option  value="3 ">Beikerling Vanessa Paris Acacio cuenta inactiva</option>
+                                                                            <option  value="4 ">Samuel Andres De Simone Sanchez</option>
+                                                                            <option  value="7 ">Delys marcel zambrano arana </option>
+                                                                            <option  value="8 ">Oriana León</option>
+                                                                            <option  value="9 ">Nathalia Cristina Palma Garrido</option>
+                                                                            <option  value="11 ">Camila Vaccari</option>
+                                                                            <option  value="12 ">José Leonardo Zambrano Machado</option>
+                                                                            <option  value="13 ">Natalia Alejandra Pirela Lespe </option>
+                                                                            <option  value="14 ">Xiorelvys González </option>
+                                                                            <option  value="15 ">Luisana Contreras</option>
+                                                                            <option  value="16 ">María José Torres Ojeda </option>
+                                                                            <option  value="17 ">Daniel Bello</option>
+                                                                            <option  value="18 ">Jesús Alejandro Aponte Malavé </option>
+                                                                            <option  value="19 ">Valentina Latouche cuenta inactiva</option>
+                                                                            <option  value="20 ">Stephany Arrighi</option>
+                                                                            <option  value="21 ">eylis rodriguez</option>
+                                                                            <option  value="22 ">Miranda Lucía González Rondón </option>
+                                                                            <option  value="23 ">Juan Pacheco</option>
+                                                                            <option  value="24 ">victoria camacho</option>
+                                                                            <option  value="25 ">Shamez Abou Saadh</option>
+                                                                            <option  value="26 ">Astrid Zambrano</option>
+                                                                            <option  value="29 ">Karen Zuled Garcia Avila</option>
+                                                                            <option  value="30 ">Yibeidi sanchez</option>
+                                                                            <option  value="31 ">Ariuska Escobar</option>
+                                                                            <option  value="32 ">Sofía Vallejo</option>
+                                                                            <option  value="33 ">Victoria Diquez</option>
+                                                                            <option  value="34 ">Axel Tovar</option>
+                                                                            <option  value="35 ">Mercedes Mayerlin Ayala Sanchez</option>
+                                                                            <option  value="36 ">Ismely González</option>
+                                                                            <option  value="37 ">Nataly Castelao</option>
+                                                                            <option  value="38 ">Diana Gabriela Cañizales Martínez </option>
+                                                                            <option  value="39 ">Jaciel Gutiérrez </option>
+                                                                            <option  value="40 ">Antonio Gargano</option>
+                                                                            <option  value="41 ">Legnamar Arrioja</option>
+                                                                            <option  value="42 ">Andrea González</option>
+                                                                            <option  value="43 ">Gabriela Valentina Valera Leon</option>
+                                                                            <option  value="44 ">Nicole Monrroy</option>
+                                                                            <option  value="45 ">Karla Colmenares</option>
+                                                                            <option  value="46 ">Derbyn Adrián Goncalves De Abreu</option>
+                                                                            <option  value="47 ">Eileen Pernía</option>
+                                                                            <option  value="48 ">Andrés ochoa </option>
+                                                                            <option  value="49 ">Sabrina Isabella Solente </option>
+                                                                            <option  value="50 ">Marian Isabella Navarro  cuenta inactiva</option>
+                                                                            <option  value="51 ">Marcos Carrero</option>
+                                                                            <option  value="52 ">Stephany Requena </option>
+                                                                            <option  value="53 ">Luis Betancourt </option>
+                                                                            <option  value="54 ">Francheska Nardecchia </option>
+                                                                            <option  value="55 ">Vanessa Rodríguez </option>
+                                                                            <option  value="56 ">Angélica sierra </option>
+                                                                            <option  value="57 ">Elizabeth Castillo</option>
+                                                                            <option  value="58 ">Maikelly Orisbel Rodríguez Padrón </option>
+                                                                            <option  value="59 ">Angely Montaner </option>
+                                                                            <option  value="60 ">Hector Jesus Guerrero Perdomo </option>
+                                                                            <option  value="61 ">Gabriela Andreina Tovar Oropeza</option>
+                                                                            <option  value="62 ">Siul Vilera </option>
+                                                                            <option  value="63 ">Melissa Martin </option>
+                                                                            <option  value="64 ">Eduardo Reveron</option>
+                                                                            <option  value="65 ">Soffia Blanco</option>
+                                                                            <option  value="66 ">Abigail Nohemi Frías Pabón</option>
+                                                                            <option  value="67 ">Verónica Perdomo Arasme</option>
+                                                                            <option  value="68 ">Mariangel eyleen Martinez parra</option>
+                                                                            <option  value="69 ">Fabiola Rondón</option>
+                                                                            <option  value="70 ">Marcela Nicosia Rodríguez </option>
+                                                                            <option  value="71 ">María Valeria Aparicio Vanezca </option>
+                                                                            <option  value="72 ">Joedlis Perez</option>
+                                                                            <option  value="73 ">José David Vivas Rojas</option>
+                                                                            <option  value="75 ">Fabiola Granado</option>
+                                                                            <option  value="79 ">Denysse Ramos</option>
+                                                                            <option  value="80 ">Camila Arteaga</option>
+                                                                            <option  value="81 ">Sofia Victoria Daniel Quevedo</option>
+                                                                            <option  value="82 ">Victoria Pulido</option>
+                                                                            <option  value="83 ">valeria callaspo</option>
+                                                                            <option  value="84 ">José Luis Almeida Mavarez </option>
+                                                                            <option  value="85 ">María Estrada</option>
+                                                                            <option  value="86 ">Verónica Ibarcena lavieri </option>
+                                                                            <option  value="87 ">Dulce Victoria Tortolero Henríquez </option>
+                                                                            <option  value="88 ">Luis Fernando Infante Gota</option>
+                                                                            <option  value="89 ">Mariangel Molina</option>
+                                                                            <option  value="90 ">Angie del Carmen Flores Pulido </option>
+                                                                            <option  value="91 ">josbelyn benitez</option>
+                                                                            <option  value="92 ">Diego Ledezma</option>
+                                                                            <option  value="93 ">Katherine Almeida </option>
+                                                                            <option  value="94 ">Cesar Pérez</option>
+                                                                            <option  value="95 ">Arantxa Martín</option>
+                                                                            <option  value="96 ">Samuel  Muñoz</option>
+                                                                            <option  value="97 ">Karimar Morales</option>
+                                                                            <option  value="99 ">Sofía Arrieta </option>
+                                                                            <option  value="100 ">Ysaura Gabriela Laya Guerra</option>
+                                                                            <option  value="101 ">Paola Sofia Luces Iglesias</option>
+                                                                            <option  value="102 ">Valentina Medina</option>
+                                                                            <option  value="103 ">Salomé Gómez</option>
+                                                                            <option  value="104 ">Anel Infante </option>
+                                                                            <option  value="105 ">barbara elisa vogt bracho</option>
+                                                                            <option  value="106 ">Ana Karina Matos</option>
+                                                                            <option  value="108 ">Patricia Valentina Parra Rios</option>
+                                                                            <option  value="109 ">Moisés Romero</option>
+                                                                            <option  value="110 ">Pedro Luis Navarro Hernandez</option>
+                                                                            <option  value="111 ">Marco David Zambrano Almeida</option>
+                                                                            <option  value="112 ">Bárbara Valentina Castillo Trómpiz </option>
+                                                                            <option  value="113 ">María José Mora </option>
+                                                                            <option  value="114 ">Veronica Goncalves</option>
+                                                                            <option  value="115 ">Carlos Armando Tovar Geizzelez</option>
+                                                                            <option  value="116 ">Andre Alexander Di Geronimo</option>
+                                                                            <option  value="117 ">Williamny Valentina Valiente Blanco </option>
+                                                                            <option  value="118 ">Aydana Giovanna Hernandez Guerra</option>
+                                                                            <option  value="119 ">Alejandro Guerrero</option>
+                                                                            <option  value="120 ">Nicolás Alejandro Perdomo Inojosa</option>
+                                                                            <option  value="121 ">Marian Sanoja</option>
+                                                                            <option  value="122 ">Rosana Gabriela Ramírez Pérez </option>
+                                                                            <option  value="123 ">Jesus Bolivar</option>
+                                                                            <option  value="124 ">Imanol carvallo cuenta inactiva</option>
+                                                                            <option  value="125 ">Albani Perez </option>
+                                                                            <option  value="126 ">angel jose perez davila</option>
+                                                                            <option  value="127 ">Maria Jose Gonzalez Rivero </option>
+                                                                            <option  value="128 ">Roger Rodríguez </option>
+                                                                            <option  value="129 ">Mathias Samuel Sánchez Castillo </option>
+                                                                            <option  value="130 ">Marcela Maiki</option>
+                                                                            <option  value="131 ">Juan Pablo Carrillo Quintana </option>
+                                                                            <option  value="132 ">Yeximar Brendalis Alvarez Medina </option>
+                                                                            <option  value="133 ">Daniela Roque </option>
+                                                                            <option  value="134 ">Danieli Elimir Zerpa Ledezma </option>
+                                                                            <option  value="135 ">David Jose Betancourt Rodriguez</option>
+                                                                            <option  value="136 ">María altuve </option>
+                                                                            <option  value="138 ">Wehel Kamal</option>
+                                                                            <option  value="139 ">Sarai Alvarez </option>
+                                                                            <option  value="140 ">Diego Torres </option>
+                                                                            <option  value="142 ">Gabriel Alexander Arias Henriquez</option>
+                                                                            <option  value="143 ">Valeri Velasco cuenta inactiva</option>
+                                                                            <option  value="144 ">Mariana Carolina Pineda Piñero</option>
+                                                                            <option  value="145 ">Andrea Valentina Pérez Bohorquez </option>
+                                                                            <option  value="146 ">Anais Contreras</option>
+                                                                            <option  value="147 ">Emanuel Ledezma </option>
+                                                                            <option  value="148 ">Gabriel David Osio Hernandez </option>
+                                                                            <option  value="149 ">Ana Lucia Rincón Figueira </option>
+                                                                            <option  value="150 ">Albany Lopez</option>
+                                                                            <option  value="151 ">Sofia Parra</option>
+                                                                            <option  value="152 ">Angelys Oriana Olivero cuenta inactiva</option>
+                                                                            <option  value="153 ">Daniel David Eurea Ramirez </option>
+                                                                            <option  value="154 ">Ivana Bortolussi </option>
+                                                                            <option  value="155 ">Albany Pérez </option>
+                                                                            <option  value="156 ">Sebastian vicente Cianciardo</option>
+                                                                            <option  value="157 ">Andrés Taborda</option>
+                                                                            <option  value="158 ">Katiuska Joana López Teixeira </option>
+                                                                            <option  value="159 ">Joelys Nazareth Molina Jaspe</option>
+                                                                            <option  value="160 ">Daniel Bustamante Jaspe</option>
+                                                                            <option  value="161 ">Nicole Ceballos </option>
+                                                                            <option  value="162 ">Tatiana tairy tarullo gonzalez</option>
+                                                                            <option  value="163 ">Valeria Pignone</option>
+                                                                            <option  value="165 ">Rodixmar Hidalgo cuenta inactiva</option>
+                                                                            <option  value="166 ">Sophie Alejandra Caraballo Briceño</option>
+                                                                            <option  value="167 ">César Miguel Timaure González</option>
+                                                                            <option  value="168 ">Josmar Alejandra Marquez Contreras</option>
+                                                                            <option  value="169 ">Jean Flores </option>
+                                                                            <option  value="170 ">Marialejandra Sam</option>
+                                                                            <option  value="171 ">diego eduardo serrada carrillo</option>
+                                                                            <option  value="173 ">jesus Borges </option>
+                                                                            <option  value="174 ">Victoria Matute</option>
+                                                                            <option  value="175 ">Celimar camacho</option>
+                                                                            <option  value="176 ">Sebastian Gonzalez Isaac Diaz </option>
+                                                                            <option  value="177 ">Mariantonieta Escorche</option>
+                                                                            <option  value="178 ">Alejandro Jose Osio Hernandez </option>
+                                                                            <option  value="179 ">Gabriela Rodriguez</option>
+                                                                            <option  value="181 ">Laura Gabriela Flores Montesinos</option>
+                                                                            <option  value="182 ">Víctor Perdomo </option>
+                                                                            <option  value="183 ">Albany Avila</option>
+                                                                            <option  value="184 ">Ana Karina Acosta </option>
+                                                                            <option  value="185 ">Oriana Valentina Parra Vega</option>
+                                                                            <option  value="186 ">María José Gudiño Rojas </option>
+                                                                            <option  value="187 ">Raineld Ramses Goyo Barco</option>
+                                                                            <option  value="188 ">Sofia Gomez </option>
+                                                                            <option  value="189 ">Maria Valentina Navas Rios</option>
+                                                                            <option  value="190 ">Marielsy Borges</option>
+                                                                            <option  value="191 ">Jose Miguel Gabriel Mendoza  activa</option>
+                                                                            <option  value="192 ">Ricardo Añez</option>
+                                                                            <option  value="193 ">Anthony Lara</option>
+                                                                            <option  value="194 ">Luis Miguel Vásquez Florez</option>
+                                                                            <option  value="195 ">Barbara Carvajal</option>
+                                                                            <option  value="196 ">Leonardo Ramírez cuenta inactiva </option>
+                                                                            <option  value="197 ">Jesus Andres Leon Echeverri </option>
+                                                                            <option  value="198 ">Marlien angely Márquez calderon</option>
+                                                                            <option  value="200 ">Moisés Capriles</option>
+                                                                            <option  value="201 ">Paola Naomi Arroyo Sabino</option>
+                                                                            <option  value="202 ">Ithaly José mayora Hernández </option>
+                                                                            <option  value="203 ">Genesis Erichsen</option>
+                                                                            <option  value="205 ">Ariana Garcia </option>
+                                                                            <option  value="207 ">Michelle Laya</option>
+                                                                            <option  value="208 ">wilson alessandro anderson velesquez </option>
+                                                                            <option  value="209 ">Johana Briceño </option>
+                                                                            <option  value="210 ">Rosa Paris </option>
+                                                                            <option  value="211 ">Valeria Romero </option>
+                                                                            <option  value="212 ">Nathaly Berroteran  cuenta inactiva</option>
+                                                                            <option  value="213 ">Arlyn Luisana Rosales León </option>
+                                                                            <option  value="214 ">María Gabriela González Andrade </option>
+                                                                            <option  value="215 ">Diego Alejandro Vasquez Florez </option>
+                                                                            <option  value="216 ">Laura Romero</option>
+                                                                            <option  value="217 ">Andres Alejandro Arteaga Ovalles</option>
+                                                                            <option  value="218 ">Barbara Romero Páez </option>
+                                                                            <option  value="220 ">María Fernanda Guerrero Márquez </option>
+                                                                            <option  value="221 ">Claudia Jiménez </option>
+                                                                            <option  value="222 ">Jose Javier chimino maitin</option>
+                                                                            <option  value="223 ">Marisu Leal Esperon</option>
+                                                                            <option  value="224 ">Carlos julio Espinoza Escalona </option>
+                                                                            <option  value="225 ">Valeria Realza</option>
+                                                                            <option  value="226 ">Antonella Lugo</option>
+                                                                            <option  value="227 ">Claudia meza </option>
+                                                                            <option  value="228 ">Maky Julieth Lorca Acevedo</option>
+                                                                            <option  value="229 ">Abraham Elias Silva Rodriguez </option>
+                                                                            <option  value="230 ">Marileisa Gabriela Belisario Sandia</option>
+                                                                            <option  value="231 ">Francesco Boza</option>
+                                                                            <option  value="232 ">Mariangel Hernández</option>
+                                                                            <option  value="233 ">Juan José Medina </option>
+                                                                            <option  value="234 ">Henry David Pulido Machado</option>
+                                                                            <option  value="235 ">Yaferlin Victoria Lira Bravo</option>
+                                                                            <option  value="236 ">Jonathan  cuenta inactiva</option>
+                                                                            <option  value="237 ">Anthonny Ray briceño perez</option>
+                                                                            <option  value="238 ">Nigel De Jesus Quintero Solorzano</option>
+                                                                            <option  value="239 ">Fabiana Gabriela Laya Nieves</option>
+                                                                            <option  value="240 ">Antony Izquierdo </option>
+                                                                            <option  value="242 ">Maria Jose Gonzalez Flores</option>
+                                                                            <option  value="243 ">Sofía Rodríguez</option>
+                                                                            <option  value="244 ">Rashell Alessandra Chavez Torres</option>
+                                                                            <option  value="245 ">Emily Gabriela Esteves Gutiérrez </option>
+                                                                            <option  value="247 ">Patricia Carolina Rogliero Colmenares </option>
+                                                                            <option  value="248 ">ELIAN SILBERSTEIN IACOBUCCI</option>
+                                                                            <option  value="249 ">Barbara Ysari Cabrera</option>
+                                                                            <option  value="250 ">Daniel Fornes</option>
+                                                                            <option  value="251 ">Ricardo David Linares Morales</option>
+                                                                            <option  value="252 ">Santiago Pérez </option>
+                                                                            <option  value="253 ">Andrea katerin anzola delgado</option>
+                                                                            <option  value="254 ">David José González </option>
+                                                                            <option  value="255 ">Francis Martinez </option>
+                                                                            <option  value="256 ">Alma Cáceres </option>
+                                                                            <option  value="257 ">Yeiker Rodríguez </option>
+                                                                            <option  value="258 ">Jesús David Parra Bossio</option>
+                                                                            <option  value="259 ">Luciana Almanzar</option>
+                                                                            <option  value="260 ">José Daniel Gómez Contreras </option>
+                                                                            <option  value="261 ">Neire Albarrán</option>
+                                                                            <option  value="262 ">Carla Patricia Morales Bravo </option>
+                                                                            <option  value="263 ">Sofía isla Uzcátegui </option>
+                                                                            <option  value="264 ">Karen Daniela Marrero Rodriguez </option>
+                                                                            <option  value="265 ">Valentina Monsalve</option>
+                                                                            <option  value="266 ">Katherine Hernández</option>
+                                                                            <option  value="267 ">Eyler Jimenez</option>
+                                                                            <option  value="268 ">Nicolle Glisbelyn Arrieta Piñero</option>
+                                                                            <option  value="269 ">Javier Vargas</option>
+                                                                            <option  value="270 ">Paulina Díaz </option>
+                                                                            <option  value="271 ">Kristen Andrea Jiménez Ulloa</option>
+                                                                            <option  value="272 ">Fabián Ernesto Rodríguez Villegas </option>
+                                                                            <option  value="273 ">Ricardo Barroso</option>
+                                                                            <option  value="276 ">Joel Alejandro Vielma Herrera </option>
+                                                                            <option  value="277 ">Gabriela Celis</option>
+                                                                            <option  value="278 ">Paola Valentina Morales García </option>
+                                                                            <option  value="279 ">José Gregorio López Arana</option>
+                                                                            <option  value="280 ">Gabriela Alejandra Quintela Garcia</option>
+                                                                            <option  value="281 ">Hostary Molina</option>
+                                                                            <option  value="282 ">Sara Valentina Ramirez Alvarado</option>
+                                                                            <option  value="283 ">Angelo Fabrizio Mac Gregor </option>
+                                                                            <option  value="284 ">José David Neira Sandovale</option>
+                                                                            <option  value="285 ">Barbara Valentina Camacho Jimenez</option>
+                                                                            <option  value="286 ">Angy Pire</option>
+                                                                            <option  value="287 ">Andrea De Francesco</option>
+                                                                            <option  value="288 ">Maria Reyes </option>
+                                                                            <option  value="289 ">Jose Angel Castillo </option>
+                                                                            <option  value="290 ">Genesis Del Nogal</option>
+                                                                            <option  value="291 ">Andrea Valentina Agorrea Cequeda</option>
+                                                                            <option  value="292 ">Alexandra Gómez </option>
+                                                                            <option  value="293 ">Lucia Prato Gasia </option>
+                                                                            <option  value="294 ">Bárbara Alejandra Chacón Carreño</option>
+                                                                            <option  value="295 ">Franklin Sebastián Ugueto Millán</option>
+                                                                            <option  value="296 ">Ramon Antonio Romero Esqueda </option>
+                                                                            <option  value="297 ">Emperatriz salas </option>
+                                                                            <option  value="298 ">Jireh Ceballos </option>
+                                                                            <option  value="299 ">Patricia Belisario </option>
+                                                                            <option  value="300 ">Rafael Alejandro González Pérez </option>
+                                                                            <option  value="301 ">wenyeli poveda</option>
+                                                                            <option  value="302 ">Chris Ferreira </option>
+                                                                            <option  value="303 ">Loarchy David Chacin Carrillo </option>
+                                                                            <option  value="304 ">paula soares</option>
+                                                                            <option  value="305 ">Marialis Castaño</option>
+                                                                            <option  value="306 ">Anamillex Garcia</option>
+                                                                            <option  value="307 ">Jade Rivqs</option>
+                                                                            <option  value="308 ">Juan Rondon</option>
+                                                                            <option  value="309 ">Stefanía Chiquinquirá Oberto Ramirez</option>
+                                                                            <option  value="310 ">Manuel Martinis </option>
+                                                                            <option  value="311 ">Michelle Marianna Colmenares Perez </option>
+                                                                            <option  value="312 ">Wuilmer Onasis Navarro Bravo</option>
+                                                                            <option  value="313 ">Karine Julieth Loaiza Chirino </option>
+                                                                            <option  value="314 ">marialys trujillo</option>
+                                                                            <option  value="315 ">Adarleth Colina</option>
+                                                                            <option  value="316 ">Shantal Sbrollini </option>
+                                                                            <option  value="317 ">María Stephanie Jaimes pacheco </option>
+                                                                            <option  value="318 ">Emil Reyes</option>
+                                                                            <option  value="319 ">Katrina Carrizales</option>
+                                                                            <option  value="320 ">Daniel Mendez</option>
+                                                                            <option  value="321 ">Aneliyi Pérez </option>
+                                                                            <option  value="322 ">Valeria fernanda morlet sanchez </option>
+                                                                            <option  value="323 ">Barbara Patricia Carrero Velasco</option>
+                                                                            <option  value="324 ">Jeiner Merentes</option>
+                                                                            <option  value="325 ">María Betania Muñoz Diaz</option>
+                                                                            <option  value="326 ">Pedro Vera Richany</option>
+                                                                            <option  value="328 ">Bárbara Yulieth Nieto Gonzales </option>
+                                                                            <option  value="329 ">Luis Enrique Junior Araña Aponte </option>
+                                                                            <option  value="330 ">Marcos Guntiñas </option>
+                                                                            <option  value="332 ">Jesús Alejandro Moreno Colmenares</option>
+                                                                            <option  value="333 ">Ana Martínez </option>
+                                                                            <option  value="334 ">Maria Laura Cuevas</option>
+                                                                            <option  value="335 ">Mariah Dauhajre</option>
+                                                                            <option  value="336 ">maría lira </option>
+                                                                            <option  value="337 ">Ashley De Jesús Flores Croquer </option>
+                                                                            <option  value="338 ">Fabiola Laya </option>
+                                                                            <option  value="339 ">Maria José García Galavís</option>
+                                                                            <option  value="340 ">Camila Anabeth Sosa Rodríguez </option>
+                                                                            <option  value="341 ">Camila Antonella  Aparicio Bolivar </option>
+                                                                            <option  value="342 ">James Ferrer Paredes</option>
+                                                                            <option  value="343 ">Avril Sofía de los Angeles Diaz Rodríguez </option>
+                                                                            <option  value="344 ">Angeles Paola Mendez Romero</option>
+                                                                            <option  value="345 ">Valentina Lozada Pérez</option>
+                                                                            <option  value="346 ">Francisco Jose Fernandes Salcedo</option>
+                                                                            <option  value="347 ">Oscar Enrique Sarmiento Delgado </option>
+                                                                            <option  value="348 ">Barbara Ugas Yucci</option>
+                                                                            <option  value="349 ">Elsa Laya </option>
+                                                                            <option  value="350 ">Moisés David Guevara Laya </option>
+                                                                            <option  value="351 ">Barbara Valentina Rodriguez Belisario</option>
+                                                                            <option  value="352 ">camila andrea silva cesarini </option>
+                                                                            <option  value="353 ">Daniela Azocar cuenta inactiva</option>
+                                                                            <option  value="354 ">Jorge Luis Ramos Da Graca </option>
+                                                                            <option  value="355 ">Natasha Oropeza</option>
+                                                                            <option  value="356 ">Victoria Cabrera</option>
+                                                                            <option  value="357 ">Sarah Escorche </option>
+                                                                            <option  value="358 ">Ricardo Pérez </option>
+                                                                            <option  value="359 ">Aniello Antonio Di Martino Marin</option>
+                                                                            <option  value="360 ">Santiago Pineda</option>
+                                                                            <option  value="361 ">Santiago Ramos</option>
+                                                                            <option  value="362 ">Barbara Cabarcas</option>
+                                                                            <option  value="363 ">Edwin Aranguren</option>
+                                                                            <option  value="365 ">Daniela Aida Díaz Martínez</option>
+                                                                            <option  value="366 ">Camila Alejandra Cortez Pérez - Bejuma</option>
+                                                                            <option  value="367 ">Carlos Alberto Alfonzo Ramos</option>
+                                                                            <option  value="368 ">Layoneer Antonio Paredes Rosario </option>
+                                                                            <option  value="369 ">Carlos Eduardo Castillo  Gamez Bejuma</option>
+                                                                            <option  value="371 ">Eilyn Daniela Mejias Mota Bejuma</option>
+                                                                            <option  value="372 ">Virginia</option>
+                                                                            <option  value="373 ">Brikany Perez - Bejuma</option>
+                                                                            <option  value="374 ">david fermin</option>
+                                                                            <option  value="375 ">Celiangel Lucia Ortega pinto Bejuma </option>
+                                                                            <option  value="376 ">Arianna Patricia Guillarte García - Bejuma</option>
+                                                                            <option  value="377 ">Maria Paulina Vivas Castillo - Bejuma</option>
+                                                                            <option  value="378 ">Gabriel Escalona - Bejuma</option>
+                                                                            <option  value="379 ">Albani Sarai Aponte Mora-Bejuma</option>
+                                                                            <option  value="380 ">Camila Villegas- Bejuma</option>
+                                                                            <option  value="381 ">Jose Alejandro Leon Ortega- Bejuma</option>
+                                                                            <option  value="382 ">Samuel Ernesto Cedeño Mendez - Bejuma</option>
+                                                                            <option  value="383 ">Raul Mendoza - Bejuma</option>
+                                                                            <option  value="384 ">José Alejandro Corvo Deus</option>
+                                                                            <option  value="385 ">Nicolle Yulieth Inojosa Betancourt </option>
+                                                                            <option  value="386 ">Luciana Mogollon</option>
+                                                                            <option  value="387 ">Moisés Alejandro Flores  Chirgua</option>
+                                                                            <option  value="388 ">Ana Cecilia Castillo Ortega Bejuma</option>
+                                                                            <option  value="389 ">Niveska Josebeth Tortolero Molina Bejuma</option>
+                                                                            <option  value="390 ">Eddymar Gabriela Hernández romero Lagunitas</option>
+                                                                            <option  value="391 ">Yuliana Nasser Bejuma</option>
+                                                                            <option  value="392 ">Davianny Colmenares Bejuma</option>
+                                                                            <option  value="393 ">Genesis  Bacalao Bejuma</option>
+                                                                            <option  value="394 ">Italo rafael cedeño mendez Bejuma</option>
+                                                                            <option  value="395 ">Gabriel Alejandro Moreno Machado </option>
+                                                                            <option  value="396 ">Rolando Pieters Bejuma</option>
+                                                                            <option  value="397 ">Camila Del Valle Muñoz Contreras </option>
+                                                                            <option  value="398 ">Angela Sabrina Espinoza </option>
+                                                                            <option  value="402 ">Fiorella Victoria Ramos Trejo</option>
+                                                                            <option  value="403 ">María Victoria Páez Ojeda Bejuma</option>
+                                                                            <option  value="404 ">Soraida Corrales</option>
+                                                                            <option  value="405 ">Samuel Michelena cuenta inactiva</option>
+                                                                            <option  value="406 ">Andrea Fabiola Martinez Morales </option>
+                                                                            <option  value="407 ">Alicia Antonieta Rodríguez Goudet</option>
+                                                                            <option  value="408 ">Pedro Martin Ramos Castillo </option>
+                                                                            <option  value="409 ">María Laura Figueredo  Bejuma</option>
+                                                                            <option  value="410 ">Stefania Danielys Ojeda Ramos </option>
+                                                                            <option  value="411 ">Yelimar Gabiriela Miranda Montero Bejuma</option>
+                                                                            <option  value="413 ">Camila Antonella Guillen cuenta inactiva</option>
+                                                                            <option  value="414 ">Camila Santos </option>
+                                                                            <option  value="415 ">Sofía De Los Angeles Caricote Gamez</option>
+                                                                            <option  value="416 ">Paola quintero cuenta inactiva</option>
+                                                                            <option  value="417 ">Camila lucia Romero flores bejuma</option>
+                                                                            <option  value="418 ">Maria Victoria Peralta</option>
+                                                                            <option  value="419 ">Albani Yomari de los Angeles Pacheco Gonzalez </option>
+                                                                            <option  value="420 ">Aliriannys Nakari Fernández Vieras </option>
+                                                                            <option  value="421 ">Daniel Cabrera </option>
+                                                                            <option  value="422 ">Arianna Valentina González olivero cuenta inactiva</option>
+                                                                            <option  value="423 ">Aleiya Venecia Frias Pérez cuenta inactiva</option>
+                                                                            <option  value="424 ">Vivian Carolina pinto castellanos </option>
+                                                                            <option  value="425 ">Luis Fernando Cedeño Heredia</option>
+                                                                            <option  value="426 ">Luis Roberto León Sipols</option>
+                                                                            <option  value="429 ">Daniela moneo hernandez</option>
+                                                                            <option  value="430 ">Anthony fuentes </option>
+                                                                            <option  value="431 ">Luis Alejandro Morillo Pacheco </option>
+                                                                            <option  value="432 ">José M Mendoza L cuenta inactiva</option>
+                                                                            <option  value="433 ">Mauricio Alejandro Morillo Aponte</option>
+                                                                            <option  value="434 ">Valentina Rodriguez Bejuma</option>
+                                                                            <option  value="435 ">Luisa Fernanda Cabrera Villadal Bejuma</option>
+                                                                            <option  value="438 ">Geberth arturo colmenarez castillo</option>
+                                                                            <option  value="439 ">Gary Sánchez </option>
+                                                                            <option  value="440 ">Ariam karelis Noguera Fernandez</option>
+                                                                            <option  value="441 ">Andrea Alejandra Piamo Camacho </option>
+                                                                            <option  value="442 ">José David puerta colmenares </option>
+                                                                            <option  value="443 ">Diego Solano </option>
+                                                                            <option  value="444 ">Juan Andres Jimenez Rivas </option>
+                                                                            <option  value="445 ">Naismar yatzaret Requena Ojeda </option>
+                                                                            <option  value="446 ">Sebastián Zambrano </option>
+                                                                            <option  value="447 ">Milegni Coromoto Rodríguez Manzo</option>
+                                                                            <option  value="448 ">Gabriela alexandra fuenmayor tovar </option>
+                                                                            <option  value="449 ">Renata Valeria figueira sierra </option>
+                                                                            <option  value="450 ">Jade Andreina Meza Rodríguez </option>
+                                                                            <option  value="451 ">Marian corina Pacheco Rodriguez</option>
+                                                                            <option  value="452 ">maria morillo</option>
+                                                                            <option  value="453 ">Mileidy Isabel Mora Pinto </option>
+                                                                            <option  value="454 ">Nicole Diadnelys Castañeda Nare</option>
+                                                                            <option  value="455 ">Vir</option>
+                                                                            <option  value="456 ">latouche Valentina cuenta activa</option>
+                                                                            <option  value="457 ">Patricia Belisario olvido contrseña</option>
+                                                                            <option  value="458 ">mayra alejandra correa lugo</option>
+                                                                            <option  value="459 ">Daniela sarai azocar</option>
+                                                                            <option  value="460 ">nehomar silva</option>
+                                                                            <option  value="461 ">Juliany Becerra</option>
+                                                                            <option  value="462 ">Sofía Alejandra marrero Trujillo </option>
+                                                                            <option  value="463 ">Jesus Alfredo Ramírez Marrero</option>
+                                                                            <option  value="464 ">Arturo Arreaza</option>
+                                                                            <option  value="465 ">Franyeiry Fernández </option>
+                                                                            <option  value="466 ">Christopher Gabriel de Jesús Natera Pacheco </option>
+                                                                            <option  value="467 ">Santiago jose Avendaño Vallenjo</option>
+                                                                            <option  value="468 ">Rodixmar Marquez Cuenta activa</option>
+                                                                            <option  value="469 ">Eliana Valentina Reyes Hernández </option>
+                                                                            <option  value="470 ">Marialis Castaño</option>
+                                                                            <option  value="471 ">Paula Nieves</option>
+                                                                            <option  value="472 ">Isabella de Jesús Gámez Mora</option>
+                                                                            <option  value="473 ">Reynaldo Gabriel Delgado Paiva</option>
+                                                                            <option  value="475 ">Acevedo jonathan</option>
+                                                                            <option  value="476 ">Brian Gabriel Campo López </option>
+                                                                            <option  value="477 ">Arianna v González  o bejuma</option>
+                                                                            <option  value="478 ">Elimar Barrios</option>
+                                                                            <option  value="479 ">Carlos Daza</option>
+                                                                            <option  value="480 ">Vicente Pittelli</option>
+                                                                            <option  value="481 ">Santiago Da Costa Martínez </option>
+                                                                            <option  value="482 ">Mariangel Virginia Gonzalez Martinez </option>
+                                                                            <option  value="483 ">Francisco José Rubio León Bejuma</option>
+                                                                            <option  value="484 ">María Victoria seijas Gómez </option>
+                                                                            <option  value="485 ">yenifer azambrano cuenta activa</option>
+                                                                            <option  value="486 ">Camila Nazareth Pino</option>
+                                                                            <option  value="487 ">Cristhian Jesus Bastidas Lopez</option>
+                                                                            <option  value="488 ">Sara Valentina Román Vivas Bejuma</option>
+                                                                            <option  value="489 ">sebastian zadquiel brandt álvarez </option>
+                                                                            <option  value="490 ">Diego eduardo prato labrador </option>
+                                                                            <option  value="491 ">Valery Lisandry Inojosa Ortiz Bejuma</option>
+                                                                            <option  value="492 ">Luis alfredo olivero sevilla Bejuma</option>
+                                                                            <option  value="493 ">carla roque </option>
+                                                                            <option  value="494 ">Camila Valentina Marquez Aquino Bejuma</option>
+                                                                            <option  value="495 ">Beatriz Sánchez Bejuma</option>
+                                                                            <option  value="496 ">Diana Blanco introd sep 25</option>
+                                                                            <option  value="497 ">Stefanny Ixchel Espinosa Silva</option>
+                                                                            <option  value="498 ">Nazareth Carolina Norato Russo</option>
+                                                                            <option  value="499 ">Paola Vega </option>
+                                                                            <option  value="500 ">Michelle Alexandra Castellanos Corrales Bejuma</option>
+                                                                            <option  value="501 ">Valeria Alexandra Guillen Montero</option>
+                                                                            <option  value="502 ">Tiago Alexander Acosta Hidalgo </option>
+                                                                            <option  value="503 ">Emilio alessandro Ferazzoli Linares </option>
+                                                                            <option  value="504 ">Daniel Fernández </option>
+                                                                            <option  value="505 ">Emily Alejandra Toro Vasquez </option>
+                                                                            <option  value="506 ">David Alejandro Rodríguez Román </option>
+                                                                            <option  value="507 ">María Angélica Oviedo Garcia</option>
+                                                                            <option  value="508 ">Diana uribe </option>
+                                                                            <option  value="509 ">Karen Valeria Arevalo Mendoza </option>
+                                                                            <option  value="510 ">Ernesto Samuel Flores Palencia Bejuma</option>
+                                                                            <option  value="511 ">Ariadna Herrera </option>
+                                                                            <option  value="512 ">Anna García bejuma</option>
+                                                                            <option  value="513 ">Raymar Guerra bejuma</option>
+                                                                            <option  value="514 ">Karen Nayeli Seijas Chiquito</option>
+                                                                            <option  value="515 ">Diego  luis Alvarado Sevilla Bejuma</option>
+                                                                            <option  value="516 ">Angelys olivero cuenta activa</option>
+                                                                            <option  value="517 ">Jorge Alejandro Landaeta Abreu</option>
+                                                                            <option  value="518 ">Samuel Yedra</option>
+                                                                            <option  value="519 ">Aleiya frías cuenta nueva </option>
+                                                                            <option  value="520 ">Nahir gonzalez </option>
+                                                                            <option  value="521 ">Camila Guillen cuenta activa </option>
+                                                                            <option  value="522 ">Julibeth Carolina Bethencourt Da corte </option>
+                                                                            <option  value="523 ">Daniela Alicia Briceño Lopez  Bejuma</option>
+                                                                            <option  value="524 ">paola quintero cuenta activa</option>
+                                                                            <option  value="525 ">Jhonkeiner Rojas </option>
+                                                                            <option  value="526 ">Sarah Virginia Martinez Mendez</option>
+                                                                            <option  value="527 ">Julio César Colmenares Molina Bejuma</option>
+                                                                            <option  value="528 ">Dorly Veronica gil</option>
+                                                                            <option  value="529 ">yonnielys perez</option>
+                                                                            <option  value="530 ">Jorge Rafael Villegas Monteiro </option>
+                                                                            <option  value="531 ">Keilyn Vera</option>
+                                                                            <option  value="532 ">Rigmar Faraco</option>
+                                                                            <option  value="533 ">Fernando Javier Acacio Herrera</option>
+                                                                            <option  value="534 ">Rubí Alejandra Bustamante García</option>
+                                                                            <option  value="535 ">Wilmarys Montaño</option>
+                                                                            <option  value="536 ">Melanie Estevez </option>
+                                                                            <option  value="537 ">Gabriela Andrade </option>
+                                                                            <option  value="538 ">Beikerling Vanessa Paris cuenta activa</option>
+                                                                            <option  value="539 ">Imanol carvallo cuenta activa</option>
+                                                                            <option  value="540 ">Marian Isabella Navarro cuenta activa</option>
+                                                                            <option  value="541 ">Andre Alixandir Di Geronimo Gonzalez</option>
+                                                                            <option  value="542 ">Oscar Darío Cardona </option>
+                                                                            <option  value="543 ">Leonardo Ramirez  cuenta activa </option>
+                                                                            <option  value="544 ">Samuel Michelena </option>
+                                                                            <option  value="545 ">Valeri Velasco  cuenta activa</option>
+                                                                            <option  value="546 ">Estefany Fuentes</option>
+                                                                            <option  value="547 ">Luis Garcia </option>
+                                                                            <option  value="548 ">Emily Johely Urriola Linarez</option>
+                                                                            <option  value="549 ">Victoria Rodriguez  marzo26</option>
+                                                                            <option  value="550 ">Alejandro eskandar Bejuma marzo26</option>
+                                                                            <option  value="551 ">Juan Pablo Carrillo pinzon Bejuma marzo 26</option>
+                                                                            <option  value="552 ">Valery Vanessa Zarramera García marzo26</option>
+                                                                            <option  value="553 ">Karelen Mariel Piñero Henriquez marzo26</option>
+                                                                            <option  value="554 ">Luis Guillermo Rodríguez Herrera maro26</option>
+                                                                            <option  value="555 ">Eduarggina Valentina Angarita Gomez</option>
+                                                                            <option  value="556 ">Hilliany López marzo26</option>
+                                                                            <option  value="557 ">Diana Virginia Delgado León Bejuma marzo26</option>
+                                                                            <option  value="558 ">David andres villegas figueredo </option>
+                                                                            <option  value="559 ">Mauro Salvatore Gargano Giarratana </option>
+                                                                            <option  value="560 ">Jesus Gabriel Parra Rodriguez mariara</option>
+                                                                            <option  value="561 ">Jade Nava</option>
+                                                                            <option  value="562 ">Gabriel José Orozco Bastidas marzo26</option>
+                                                                            <option  value="563 ">Albanys Jiménez  marzo26 mariara</option>
+                                                                            <option  value="564 ">Brittany Salazar </option>
+                                                                            <option  value="565 ">Jade Nasser Aletti bejuma marzo26</option>
+                                                                            <option  value="566 ">Rosmelyn Escobar cuenta activa</option>
+                                                                            <option  value="567 ">Camila Escalona marzo26</option>
+                                                                            <option  value="568 ">Douglas Alejandro Castellanos Briceñ</option>
+                                                                            <option  value="569 ">Yenifer Alejandra zambrano cuenta inactiva</option>
+                                                                            <option  value="570 ">Nathaly berroteran cuenta activa</option>
+                                                                            <option  value="571 ">Fabiola Rodriguez</option>
+                                                                            <option  value="572 ">Anabel del Carmen Natera González </option>
+                                                                            <option  value="573 ">Jorwin Cumare</option>
+                                                                            <option  value="574 ">José Antonio Chiquito Cedeño </option>
+                                                                            <option  value="575 ">Victor Manuel Molina Scorza</option>
+                                                                            <option  value="576 ">Rubens Soto</option>
+                                                                            <option  value="577 ">Anaylis Carolina Sevilla Palencia</option>
+                                                                            <option  value="578 ">Christopher Ernesto Barrios Díaz </option>
+                                                                            <option  value="579 ">Israel kaloway Rivas rios </option>
+                                                                            <option  value="580 ">Samantha Cova </option>
+                                                                            <option  value="581 ">Alejandra Valentina Garcia Gutierrez </option>
+                                                                            <option  value="582 ">Jesus flores mayo26</option>
+                                                                            <option  value="583 ">Cesar Adolfo Rivas Gonzalez</option>
+                                                                            <option  value="585 "></option>
+                                                                            <option  value="586 ">susej Barrientos </option>
+                                                                            <option  value="587 ">Carlos Benavides</option>
+                                                                            <option  value="588 ">sofia garcia</option>
+                                                                            <option  value="589 ">Christian Josue Coss Marruffo </option>
+                                                                        </select>
+                                </div>
+                            <hr>
+                            <table id="table " class="display " >
+                                <thead class="bg-dark text-white ">
+                                    <tr>
+                                        <th scope="col ">#</th>
+                                        <th scope="col ">Fecha</th>
+                                        <th scope="col ">Cliente</th>
+                                        <th scope="col ">Monto</th>
+                                        <th scope="col ">Metodo</th>
+                                        <th scope="col ">Ref</th>
+                                        <th scope="col ">Estatus</th>
+                                        <th scope="col "></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                                                        <tr>
+                                        <th scope="row ">19293</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">Rosmelyn Escobar cuenta activa</td>
+                                        <td>8.40</td>
+                                        <td>Pago Movil</td>
+                                        <td>001385283749</td>
+                                        <td><small class='bg bg-warning p-1 rounded text-white'>PENDIENTE</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1f32cabfa63-4f7260a2-f8da-4821-b651-5fee91ab9db1.jpeg "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            <a href='https://office.transportezc.com/recharge/approbed/19293' onclick="return confirm('¿Estás seguro de que deseas aprobar esta recarga?');"><i class='fa fa-check text-success cp me-3 fa-lg'></i></a>
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19293')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19292</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">Nahir gonzalez </td>
+                                        <td>4.20</td>
+                                        <td>Pago Movil</td>
+                                        <td>782874589</td>
+                                        <td><small class='bg bg-warning p-1 rounded text-white'>PENDIENTE</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1f232aea851-Screenshot_20260602_143752.jpg "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            <a href='https://office.transportezc.com/recharge/approbed/19292' onclick="return confirm('¿Estás seguro de que deseas aprobar esta recarga?');"><i class='fa fa-check text-success cp me-3 fa-lg'></i></a>
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19292')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19291</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">David Jose Betancourt Rodriguez</td>
+                                        <td>4.20</td>
+                                        <td>Pago Movil</td>
+                                        <td>00965844</td>
+                                        <td><small class='bg bg-warning p-1 rounded text-white'>PENDIENTE</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1f218904794-IMG_0387.png "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            <a href='https://office.transportezc.com/recharge/approbed/19291' onclick="return confirm('¿Estás seguro de que deseas aprobar esta recarga?');"><i class='fa fa-check text-success cp me-3 fa-lg'></i></a>
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19291')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19290</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">Valeri Velasco  cuenta activa</td>
+                                        <td>4.20</td>
+                                        <td>Pago Movil</td>
+                                        <td>006239868835</td>
+                                        <td><small class='bg bg-warning p-1 rounded text-white'>PENDIENTE</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1f1b0710230-Screenshot_20260602-141952_BDV.jpg "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            <a href='https://office.transportezc.com/recharge/approbed/19290' onclick="return confirm('¿Estás seguro de que deseas aprobar esta recarga?');"><i class='fa fa-check text-success cp me-3 fa-lg'></i></a>
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19290')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19289</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">José David Vivas Rojas</td>
+                                        <td>21.00</td>
+                                        <td>Pago Móvil</td>
+                                        <td>061533681658</td>
+                                        <td><small class='bg bg-success p-1 rounded text-white'>APROBADA</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1f020a6b358-IMG_3767.png "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19289')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19288</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">Douglas Alejandro Castellanos Briceñ</td>
+                                        <td>4.20</td>
+                                        <td>Pago Movil</td>
+                                        <td>1047</td>
+                                        <td><small class='bg bg-success p-1 rounded text-white'>APROBADA</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1efed427bb2-Screenshot_20260602_120240_Mercantil Banco.jpg "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19288')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19287</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">Luis Miguel Vásquez Florez</td>
+                                        <td>105.00</td>
+                                        <td>Pago Móvil</td>
+                                        <td>3730</td>
+                                        <td><small class='bg bg-success p-1 rounded text-white'>APROBADA</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1ee6ca88ea0-IMG-20260602-WA0024.jpg "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19287')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19286</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">Victoria Rodriguez  marzo26</td>
+                                        <td>8.40</td>
+                                        <td>Pago Movil</td>
+                                        <td>061533170800</td>
+                                        <td><small class='bg bg-success p-1 rounded text-white'>APROBADA</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1ee57b76596-Pago Móvil Banesco nro.061533170800.02-06-2026 10_14_58AM.png "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19286')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19285</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">Sofía Rodríguez</td>
+                                        <td>8.40</td>
+                                        <td>Pago Movil</td>
+                                        <td>782560251</td>
+                                        <td><small class='bg bg-success p-1 rounded text-white'>APROBADA</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1ee2e87cd6c-Screenshot_2026-06-02-10-03-49-615_bnc.bncnet.mobile2-edit.jpg "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19285')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19284</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">Angelys olivero cuenta activa</td>
+                                        <td>4.20</td>
+                                        <td>Pago Movil</td>
+                                        <td>061532516693</td>
+                                        <td><small class='bg bg-success p-1 rounded text-white'>APROBADA</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1ee27070c14-IMG-20260602-WA0002.jpg "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19284')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19283</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">Yibeidi sanchez</td>
+                                        <td>25.20</td>
+                                        <td>Pago Movil</td>
+                                        <td></td>
+                                        <td><small class='bg bg-success p-1 rounded text-white'>APROBADA</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1ee0f9b7172-IMG-20260602-WA0016.jpg "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19283')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19282</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">Anel Infante </td>
+                                        <td>21.00</td>
+                                        <td>Pago Movil</td>
+                                        <td>7016</td>
+                                        <td><small class='bg bg-success p-1 rounded text-white'>APROBADA</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1ed501f30f5-IMG-20260601-WA0020.jpg "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19282')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19281</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">Anais Contreras</td>
+                                        <td>25.20</td>
+                                        <td>Pago Movil</td>
+                                        <td>2717</td>
+                                        <td><small class='bg bg-success p-1 rounded text-white'>APROBADA</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1ed0d7c4528-IMG_0623.png "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19281')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19280</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">José Luis Almeida Mavarez </td>
+                                        <td>8.40</td>
+                                        <td>Pago Movil</td>
+                                        <td>782457822</td>
+                                        <td><small class='bg bg-success p-1 rounded text-white'>APROBADA</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1ecc2f2565a-IMG-20260602-WA0008.jpg "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19280')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19279</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">Sabrina Isabella Solente </td>
+                                        <td>25.20</td>
+                                        <td>Pago Movil</td>
+                                        <td>061532771643</td>
+                                        <td><small class='bg bg-warning p-1 rounded text-white'>PENDIENTE</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1ecbeb4c950-IMG_5116.jpeg "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            <a href='https://office.transportezc.com/recharge/approbed/19279' onclick="return confirm('¿Estás seguro de que deseas aprobar esta recarga?');"><i class='fa fa-check text-success cp me-3 fa-lg'></i></a>
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19279')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19278</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">Valeri Velasco  cuenta activa</td>
+                                        <td>4.20</td>
+                                        <td>Pago Movil</td>
+                                        <td>006235673247</td>
+                                        <td><small class='bg bg-warning p-1 rounded text-white'>PENDIENTE</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1ecb107b84f-Screenshot_20260602-083840_BDV.jpg "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            <a href='https://office.transportezc.com/recharge/approbed/19278' onclick="return confirm('¿Estás seguro de que deseas aprobar esta recarga?');"><i class='fa fa-check text-success cp me-3 fa-lg'></i></a>
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19278')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19277</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">Marileisa Gabriela Belisario Sandia</td>
+                                        <td>4.20</td>
+                                        <td>Pago Movil</td>
+                                        <td>315331520104</td>
+                                        <td><small class='bg bg-warning p-1 rounded text-white'>PENDIENTE</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1ec9cf0d097-Screenshot_2026-06-02-08-16-25-841_com.mercantilbanco.mercantilmovil.jpg "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            <a href='https://office.transportezc.com/recharge/approbed/19277' onclick="return confirm('¿Estás seguro de que deseas aprobar esta recarga?');"><i class='fa fa-check text-success cp me-3 fa-lg'></i></a>
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19277')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19276</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">sebastian zadquiel brandt álvarez </td>
+                                        <td>16.80</td>
+                                        <td>Pago Móvil</td>
+                                        <td>006235555934</td>
+                                        <td><small class='bg bg-warning p-1 rounded text-white'>PENDIENTE</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1ec83b3254f-IMG_0294.png "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            <a href='https://office.transportezc.com/recharge/approbed/19276' onclick="return confirm('¿Estás seguro de que deseas aprobar esta recarga?');"><i class='fa fa-check text-success cp me-3 fa-lg'></i></a>
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19276')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19275</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">José Leonardo Zambrano Machado</td>
+                                        <td>4.20</td>
+                                        <td>Pago Movil</td>
+                                        <td>001384946902</td>
+                                        <td><small class='bg bg-warning p-1 rounded text-white'>PENDIENTE</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1ec72299d42-Screenshot_20260602_080539_com_android_chrome_ChromeTabbedActivity.jpg "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            <a href='https://office.transportezc.com/recharge/approbed/19275' onclick="return confirm('¿Estás seguro de que deseas aprobar esta recarga?');"><i class='fa fa-check text-success cp me-3 fa-lg'></i></a>
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19275')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19274</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">Jesús Alejandro Aponte Malavé </td>
+                                        <td>4.20</td>
+                                        <td>Pago Movil</td>
+                                        <td>782400918</td>
+                                        <td><small class='bg bg-warning p-1 rounded text-white'>PENDIENTE</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1ebc0aa49a1-IMG_2783.png "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            <a href='https://office.transportezc.com/recharge/approbed/19274' onclick="return confirm('¿Estás seguro de que deseas aprobar esta recarga?');"><i class='fa fa-check text-success cp me-3 fa-lg'></i></a>
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19274')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19273</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">Arianna v González  o bejuma</td>
+                                        <td>12.60</td>
+                                        <td>Pago Movil</td>
+                                        <td>782400262</td>
+                                        <td><small class='bg bg-warning p-1 rounded text-white'>PENDIENTE</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1ebbd7b2c6a-IMG_5589.png "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            <a href='https://office.transportezc.com/recharge/approbed/19273' onclick="return confirm('¿Estás seguro de que deseas aprobar esta recarga?');"><i class='fa fa-check text-success cp me-3 fa-lg'></i></a>
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19273')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19272</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">Imanol carvallo cuenta activa</td>
+                                        <td>4.20</td>
+                                        <td>Pago Movil</td>
+                                        <td>4991</td>
+                                        <td><small class='bg bg-success p-1 rounded text-white'>APROBADA</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1eb06556427-Screenshot_20260602_062827.jpg "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19272')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19271</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">Joelys Nazareth Molina Jaspe</td>
+                                        <td>4.20</td>
+                                        <td>Pago Movil</td>
+                                        <td>5634</td>
+                                        <td><small class='bg bg-success p-1 rounded text-white'>APROBADA</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1eaf905dc57-Screenshot_20260602-062454.jpg "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19271')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19270</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">Stefanny Ixchel Espinosa Silva</td>
+                                        <td>8.40</td>
+                                        <td>Pago Movil</td>
+                                        <td>6659</td>
+                                        <td><small class='bg bg-success p-1 rounded text-white'>APROBADA</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1ead9131f5d-IMG_0925.png "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19270')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19269</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">Ana Lucia Rincón Figueira </td>
+                                        <td>16.80</td>
+                                        <td>Pago Movil</td>
+                                        <td>006234666628</td>
+                                        <td><small class='bg bg-success p-1 rounded text-white'>APROBADA</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1eaac0eec0a-IMG-20260602-WA0000.jpg "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19269')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19268</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">Carlos Eduardo Castillo  Gamez Bejuma</td>
+                                        <td>4.20</td>
+                                        <td>Pago Movil</td>
+                                        <td>006234731796</td>
+                                        <td><small class='bg bg-success p-1 rounded text-white'>APROBADA</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1ea78c066cf-Screenshot_20260602-055048.jpg "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19268')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19267</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">Juan Andres Jimenez Rivas </td>
+                                        <td>4.20</td>
+                                        <td>Pago Movil</td>
+                                        <td>061532489095</td>
+                                        <td><small class='bg bg-success p-1 rounded text-white'>APROBADA</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1ea6827eac8-IMG_6382.png "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19267')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19266</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">Beatriz Sánchez Bejuma</td>
+                                        <td>4.20</td>
+                                        <td>Pago Movil</td>
+                                        <td>15075</td>
+                                        <td><small class='bg bg-success p-1 rounded text-white'>APROBADA</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1ea33291583-IMG-20260602-WA0003.jpg "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19266')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19265</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">Daniel Fernández </td>
+                                        <td>16.80</td>
+                                        <td>Pago Movil</td>
+                                        <td>061532483804</td>
+                                        <td><small class='bg bg-success p-1 rounded text-white'>APROBADA</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1ea304683c2-IMG-20260602-WA0000.jpg "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19265')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19264</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">sofia garcia</td>
+                                        <td>12.60</td>
+                                        <td>Pago Movil</td>
+                                        <td>006234704232</td>
+                                        <td><small class='bg bg-success p-1 rounded text-white'>APROBADA</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1ea303ceecf-IMG-20260602-WA0001.jpg "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19264')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19263</th>
+                                        <th>2026-06-01</th>
+                                        <td  scope="row ">Vanessa Rodríguez </td>
+                                        <td>8.40</td>
+                                        <td>Pago Movil</td>
+                                        <td>2513</td>
+                                        <td><small class='bg bg-success p-1 rounded text-white'>APROBADA</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1ea194bde43-IMG-20260602-WA0000.jpg "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19263')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19262</th>
+                                        <th>2026-05-26</th>
+                                        <td  scope="row ">Valeri Velasco  cuenta activa</td>
+                                        <td>4.20</td>
+                                        <td>Efectivo $</td>
+                                        <td></td>
+                                        <td><small class='bg bg-success p-1 rounded text-white'>APROBADA</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1e98eb08d80-IMG-20260526-WA0019.jpg "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19262')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19261</th>
+                                        <th>2026-06-01</th>
+                                        <td  scope="row ">Karen Valeria Arevalo Mendoza </td>
+                                        <td>29.40</td>
+                                        <td>Pago Movil</td>
+                                        <td>2731</td>
+                                        <td><small class='bg bg-success p-1 rounded text-white'>APROBADA</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/"><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19261')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                    <tr>
+                                        <th scope="row ">19260</th>
+                                        <th>2026-06-02</th>
+                                        <td  scope="row ">Sarah Virginia Martinez Mendez</td>
+                                        <td>8.40</td>
+                                        <td>Pago Movil</td>
+                                        <td>00826039</td>
+                                        <td><small class='bg bg-success p-1 rounded text-white'>APROBADA</small></td>
+                                        <td>
+                                            <a target="_blank " href="https://app.transportezc.com/assets/img/6a1e84b3c8c8a-IMG_2536.png "><i  class='fa fa-arrow-circle-down  text-primary cp me-3 fa-lg'></i></a>
+                                            
+                                            <a href="#" class="cp fa-lg " onclick="deleteC('19260')"><i class="fa fa-trash text-danger "></i></a></td>
+                                    </tr>
+                                                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+    </div>
+</div>
+<form id="formrecharge "></form>
+<script type="text/javascript ">
+    let dataClient = [];
+        $(document).ready(function(){
+            $('#table').DataTable({
+                responsive: true,
+                paging: true, // Pagina automáticamente los registros
+                searching: true, // Habilita la búsqueda
+                info: true, // Muestra información sobre la tabla
+                ordering: false, // Permite ordenar las columnas
+                language: {
+                    search: "Buscar:",
+                    lengthMenu: "Mostrar _MENU_ registros por página ",
+                    info: "Mostrando _START_ a _END_ de _TOTAL_ registros ",
+                    infoEmpty: "Mostrando 0 a 0 de 0 registros ",
+                    infoFiltered: "(filtrado de _MAX_ registros en total)",
+                    zeroRecords: "No se encontraron registros ",
+                    paginate: {
+                        first: "Primero ",
+                        last: "Último ",
+                        next: "Siguiente ",
+                        previous: "Anterior "
+                    }
+                }
+            });
+        });
+        
+      function deleteC(id){
+        if (confirm('¿Estás seguro de continuar?')) {
+            jQuery.ajax({
+                url: 'recharge/delete/'+id,
+                method: 'GET',
+                success: function(response) {
+                  alert('¡El formulario se envió correctamente!');
+                  location.reload();
+                  console.log(response);
+                },
+                error: function(error) {
+                  console.error('Error al enviar el formulario:', error);
+                }
+          });
+          
+        }else{
+            return;
+        }
+ 
+    }
+
+    function get(){
+          jQuery.ajax({
+                url: 'clients/get',
+                method: 'GET',
+                success: function(response) {
+                    obj =   JSON.parse(response);
+                dataClient = obj.data;
+                },
+                error: function(error) {
+                  console.error('Error al enviar el formulario:', error);
+                }
+          });
+    }
+
+    function detail(){
+
+        $("#modallg ").modal("show ");
+        $(".modal-body ").append(`<div class='row p-3'>
+            <h5><strong>Procesar una nueva recarga</strong></h5>
+                                <div class='col-12 col-md-6'>
+                                    <label>Seleccion al cliente</label>
+                                    <select class='form-control form-select clients' name='idclient'  id="clients " form='formrecharge'>
+                                        <option value=''>Seleccione</option>
+                                    </select>
+
+                                    <label>Monto de la recarga</label>
+                                    <input class='form-control' name='amount' form='formrecharge'>
+
+                                    <label>Tasa de cambio (opcional)</label>
+                                    <input class='form-control' name='tasa' form='formrecharge'>
+                                </div>
+                                <div class='col-12 col-md-6'>
+                                    <label>Metodo de pago</label>
+                                    <select class='form-control form-select' name='method' form='formrecharge'>
+                                        <option>Efectivo</option>
+                                         <option>Pago Movil</option>
+                                    </select>
+
+                                    <label>Referencia del pago</label>
+                                    <input class='form-control' name='ref' form='formrecharge'>
+
+                                    <label>Fecha en la que realizo el pago</label>
+                                    <input class='form-control' type="date " name='date' form='formrecharge'>
+                                </div>
+                                <br><br>
+
+                                <button class='btn btn-primary mt-4 save' onclick='saveF()'>Procesar</button>
+                                </div>`);
+         // Añadir opciones al select de clientes
+    $(".clients ").html(""); // Limpiar cualquier opción previa
+    for (var i = dataClient.length - 1; i >= 0; i--) {
+        const element = dataClient[i];
+        $(".clients ").append(`<option value="${element.id}">${element.name}</option>`);
+    }
+
+    // Inicializar Select2 después de agregar el select dinámicamente
+    $('#clients').select2({
+        placeholder: "Selecciona un cliente ",
+        allowClear: true,
+        dropdownParent: $('#modallg'),
+        width: '100%' // Asegurar que ocupe el 100% del ancho
+
+
+    });
+    }
+
+        function saveF(){
+        event.preventDefault();
+        var formData = new FormData($('#formrecharge')[0]);
+        formData.append("status ",1);
+        jQuery.ajax({
+            url: 'recharge/post',
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+              alert('¡El formulario se envió correctamente!');
+              location.reload();
+                $(".save ").html(`Procesar`);
+                $(".save ").remvoveClass(`disabled`);
+            },
+            error: function(error) {
+              console.error('Error al enviar el formulario:', error);
+                $(".save ").html(`Procesar`);
+                $(".save ").remvoveClass(`disabled`);
+            },
+            beforeSend:function(){
+                $(".save ").html(`Espere...`);
+                $(".save ").addClass(`disabled`);
+            }
+      });
+
+ 
+    }
+     function reload(){
+        top.location.href= 'https://office.transportezc.com/recharge?from='+$("#from ").val()+'&to='+$("#to ").val()+'&method='+$("#method option:selected ").val()+'&status='+$("#status option:selected ").val()+'&client='+$("#client option:selected ").val();
+    }
+    this.get();
+</script>
+
+         
+        </div>
+        <!-- Content End -->
+
+
+        <!-- Back to Top -->
+    </div>
+<!-- Large modal -->
+
+<div class="modal fade bd-example-modal-sm " id='modallg' tabindex="-1 " role="dialog " aria-labelledby="myLargeModalLabel " aria-hidden="true ">
+  <div class="modal-dialog modal-lg ">
+    <div class="modal-content modal-content-lg ">
+      <div class="modal-body "></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade bd-example-modal-sm " tabindex="-1 " id='modalsm'role="dialog " aria-labelledby="mySmallModalLabel " aria-hidden="true ">
+  <div class="modal-dialog modal-sm ">
+    <div class="modal-content modal-content-sm ">
+     <div class="modal-body-sm "></div>
+    </div>
+  </div>
+</div>    
+</body>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js "></script>
+<script src="https://office.transportezc.com/assets/js/main.js "></script>
+<script type="text/javascript ">
+$(document).ready(function () {
+    $('.selectpicker').selectpicker();
+});
+</script>
+<script>'undefined'=== typeof _trfq || (window._trfq = []);'undefined'=== typeof _trfd && (window._trfd=[]),_trfd.push({'tccl.baseHost':'secureserver.net'},{'ap':'cpsh-oh'},{'server':'p3plzcpnl507540'},{'dcenter':'p3'},{'cp_id':'10826201'},{'cp_cl':'8'}) // Monitoring performance to make your website faster. If you want to opt-out, please contact web hosting support.</script><script src='https://img1.wsimg.com/traffic-assets/js/tccl.min.js'></script></html>
