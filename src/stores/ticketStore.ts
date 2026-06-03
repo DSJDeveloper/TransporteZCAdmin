@@ -183,7 +183,7 @@ export const useTicketStore = defineStore("ticket", () => {
     loading.value.tasa = true;
     try {
       const response = await fetch(
-        "https://ve.dolarapi.com/v1/dolares/oficial",
+        "https://ve.dolarapi.com/v1/euros/oficial",
       );
       if (!response.ok) throw new Error("Error al consultar la API");
 

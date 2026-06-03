@@ -1,20 +1,23 @@
 <script setup lang="ts">
 import { ref, computed, reactive, watch, onMounted } from "vue"
-import { useUsuarioStore } from "../stores/usuarioStore"
-import type { Usuario } from "../services/usuarioService"
+import { useRouteStore } from "../stores/routeStore"
+import { useBankInfoStore } from "../stores/bankInfoStore"
+import type { Route, RouteForm } from "../services/routeService"
 
-const store = useUsuarioStore()
+const bankInfoStore = useBankInfoStore()
+
+const store = useRouteStore()
 
 const search = ref("")
 const page = ref(1)
 const perPage = ref(10)
-const sortField = ref("name")
+const sortField = ref("id")
 const sortAsc = ref(true)
 
 const dialogOpen = ref(false)
-const editing = ref<Usuario | null>(null)
+const editing = ref<Route | null>(null)
 const saving = ref(false)
-const form = ref({ name: "", email: "", password: "", role: "student" as "admin" | "student" | "driver" })
+const form = ref<RouteForm>({ code: "", description: "", idbank_info: null, status: 0 })
 const errors = reactive<Record<string, string>>({})
 
 const refreshing = ref(false)
@@ -24,24 +27,23 @@ async function refreshData() {
   refreshing.value = false
 }
 
-const deleting = ref<Usuario | null>(null)
+const deleting = ref<Route | null>(null)
 const deletingConfirm = ref(false)
 
 const filtered = computed(() => {
   const q = search.value.toLowerCase().trim()
   if (!q) return store.list
   return store.list.filter(
-    (u) =>
-      (u.name ?? "").toLowerCase().includes(q) ||
-      u.email.toLowerCase().includes(q) ||
-      u.role.toLowerCase().includes(q),
+    (r) =>
+      r.code.toLowerCase().includes(q) ||
+      r.description.toLowerCase().includes(q) ||
+      (r.bank_info_name ?? "").toLowerCase().includes(q),
   )
 })
 
 const totalPages = computed(() => Math.max(1, Math.ceil(filtered.value.length / perPage.value)))
 
-function compare(a: Usuario, b: Usuario, field: string): number {
-  
+function compare(a: Route, b: Route, field: string): number {
   const va = (a as any)[field]
   const vb = (b as any)[field]
   if (typeof va === "number" && typeof vb === "number") return va - vb
@@ -94,9 +96,11 @@ watch(perPage, () => { page.value = 1 })
 watch([sortField, sortAsc], () => { page.value = 1 })
 
 const columns = [
-  { key: "name", label: "NOMBRE" },
-  { key: "email", label: "EMAIL" },
-  { key: "role", label: "PERFIL" },
+  { key: "id", label: "ID" },
+  { key: "code", label: "CÓDIGO" },
+  { key: "description", label: "DESCRIPCIÓN" },
+  { key: "bank_info_name", label: "INFORMACIÓN BANCARIA" },
+  { key: "status", label: "ESTADO" },
 ]
 
 function sortIcon(key: string): string {
@@ -115,8 +119,8 @@ function toggleSort(key: string) {
 
 function validate(): boolean {
   const e: Record<string, string> = {}
-  if (!form.value.email.trim()) e.email = "El email es obligatorio"
-  if (!editing.value && !form.value.password.trim()) e.password = "La contraseña es obligatoria"
+  if (!form.value.code.trim()) e.code = "El código es obligatorio"
+  if (!form.value.description.trim()) e.description = "La descripción es obligatoria"
   Object.assign(errors, e)
   return Object.keys(errors).length === 0
 }
@@ -129,14 +133,19 @@ function clearErrors() {
 
 function openCreate() {
   editing.value = null
-  form.value = { name: "", email: "", password: "", role: "student" }
+  form.value = { code: "", description: "", idbank_info: null, status: 0 }
   clearErrors()
   dialogOpen.value = true
 }
 
-function openEdit(u: Usuario) {
-  editing.value = u
-  form.value = { name: u.name ?? "", email: u.email, password: "", role: u.role }
+function openEdit(r: Route) {
+  editing.value = r
+  form.value = {
+    code: r.code,
+    description: r.description,
+    idbank_info: r.idbank_info,
+    status: r.status,
+  }
   clearErrors()
   dialogOpen.value = true
 }
@@ -146,20 +155,9 @@ async function save() {
   if (!validate()) return
   saving.value = true
   try {
-    let ok = false
-    if (editing.value) {
-      ok = await store.update(editing.value.id, {
-        name: form.value.name || null,
-        role: form.value.role,
-      })
-    } else {
-      ok = await store.create({
-        name: form.value.name,
-        email: form.value.email,
-        password: form.value.password,
-        role: form.value.role,
-      })
-    }
+    const ok = editing.value
+      ? await store.update(editing.value.id, form.value)
+      : await store.create(form.value)
     if (ok) {
       dialogOpen.value = false
     }
@@ -168,8 +166,8 @@ async function save() {
   }
 }
 
-function confirmDelete(u: Usuario) {
-  deleting.value = u
+function confirmDelete(r: Route) {
+  deleting.value = r
   deletingConfirm.value = true
 }
 
@@ -182,30 +180,31 @@ async function doDelete() {
   }
 }
 
-onMounted(() => store.fetchAll())
+onMounted(() => {
+  store.fetchAll()
+  bankInfoStore.fetchAll()
+})
 </script>
 
 <template>
   <div class="p-margin-mobile md:p-margin-desktop min-h-screen">
-    <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-md mb-lg">
       <div>
-        <h2 class="font-headline-lg text-headline-lg text-on-surface">Gestión de Usuarios</h2>
-        <p class="font-body-lg text-body-lg text-on-surface-variant hidden sm:block">Administración de perfiles y accesos al sistema</p>
+        <h2 class="font-headline-lg text-headline-lg text-on-surface">Gestión de Rutas</h2>
+        <p class="font-body-lg text-body-lg text-on-surface-variant hidden sm:block">Administración de rutas y datos de pago móvil</p>
       </div>
       <button
         class="bg-primary hover:bg-surface-tint text-on-primary px-lg py-sm rounded-xl font-headline-sm text-headline-sm flex items-center justify-center gap-sm transition-all shadow-md active:scale-95 w-full sm:w-auto"
         @click="openCreate"
       >
-        <span class="material-symbols-outlined">person_add</span>
-        <span>Nuevo Usuario</span>
+        <span class="material-symbols-outlined">add_circle</span>
+        <span>Nueva Ruta</span>
       </button>
     </div>
 
-    <!-- Toolbar -->
     <section class="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-sm overflow-hidden">
       <div class="p-md md:p-lg border-b border-outline-variant flex flex-col md:flex-row md:items-center md:justify-between gap-md bg-surface-container-low/30">
-        <h4 class="font-headline-sm text-headline-sm text-on-surface">Lista de Usuarios</h4>
+        <h4 class="font-headline-sm text-headline-sm text-on-surface">Lista de Rutas</h4>
         <div class="flex items-center gap-md w-full md:w-auto">
           <div class="flex items-center gap-xs text-body-md text-on-surface-variant whitespace-nowrap">
             <span class="hidden md:inline">Mostrar</span>
@@ -213,12 +212,10 @@ onMounted(() => store.fetchAll())
               v-model.number="perPage"
               class="bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md py-1 pl-2 pr-1 focus:ring-primary focus:border-primary outline-none"
             >
-           <option :value="10">10</option>
-            <option :value="25">25</option>
-            <option :value="50">50</option>
-            <option :value="100">100</option>
-            <option :value="150">150</option>
-            <option :value="500">500</option>
+              <option :value="10">10</option>
+              <option :value="25">25</option>
+              <option :value="50">50</option>
+              <option :value="100">100</option>
             </select>
             <span class="hidden md:inline">registros</span>
           </div>
@@ -235,35 +232,31 @@ onMounted(() => store.fetchAll())
             <input
               v-model="search"
               class="w-full md:w-56 pl-9 pr-3 py-1.5 bg-surface-container-low border border-outline-variant rounded-lg text-body-md focus:border-primary outline-none transition-all"
-              placeholder="Buscar usuarios..."
+              placeholder="Buscar rutas..."
               type="text"
             />
           </div>
         </div>
       </div>
 
-      <!-- Loading state -->
       <div v-if="store.loading" class="p-xl text-center text-on-surface-variant">
         <span class="animate-spin material-symbols-outlined inline-block">sync</span>
-        <p class="mt-2">Cargando usuarios...</p>
+        <p class="mt-2">Cargando rutas...</p>
       </div>
 
-      <!-- Empty state -->
       <div v-else-if="!filtered.length" class="p-xl text-center text-on-surface-variant">
-        <span class="material-symbols-outlined text-[48px] text-outline">group</span>
-        <p class="mt-2">No se encontraron usuarios</p>
+        <span class="material-symbols-outlined text-[48px] text-outline">alt_route</span>
+        <p class="mt-2">No se encontraron rutas</p>
       </div>
 
-      <!-- Data: table (md+) or cards (mobile) -->
       <template v-else>
-        <!-- Desktop table -->
         <div class="hidden md:block overflow-x-auto">
           <table class="w-full text-left font-body-md text-body-md border-collapse">
             <thead class="bg-surface-container-high/20 border-b border-outline-variant">
               <tr>
                 <th v-for="col in columns" :key="col.key"
                   class="px-lg py-md font-bold text-on-surface-variant uppercase text-[11px] tracking-widest cursor-pointer select-none hover:text-on-surface transition-colors"
-                  :class="col.key === 'role' ? 'text-center' : ''"
+                  :class="col.key === 'status' ? 'text-center' : ''"
                   @click="toggleSort(col.key)"
                 >
                   <span class="inline-flex items-center gap-1">
@@ -276,36 +269,29 @@ onMounted(() => store.fetchAll())
               </tr>
             </thead>
             <tbody class="divide-y divide-outline-variant">
-              <tr v-for="u in paginated" :key="u.id" class="hover:bg-primary-container/5 transition-colors group">
+              <tr v-for="r in paginated" :key="r.id" class="hover:bg-primary-container/5 transition-colors group">
+                <td class="px-lg py-md text-outline font-bold">{{ String(r.id).padStart(2, "0") }}</td>
                 <td class="px-lg py-md">
-                  <div class="flex items-center gap-sm">
-                    <div class="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-primary">
-                      <span class="material-symbols-outlined text-[18px]">person</span>
-                    </div>
-                    <span class="font-bold text-on-surface">{{ u.name || "—" }}</span>
-                  </div>
+                  <code class="bg-surface-container-high px-xs rounded text-primary font-bold">{{ r.code }}</code>
                 </td>
-                <td class="px-lg py-md text-on-surface-variant">{{ u.email }}</td>
+                <td class="px-lg py-md font-bold text-on-surface">{{ r.description }}</td>
+                <td class="px-lg py-md text-on-surface-variant">{{ r.bank_info_name ?? "Sin banco" }}</td>
                 <td class="px-lg py-md text-center">
                   <span
-                    v-if="u.role === 'admin'"
-                    class="bg-error-container/30 text-error px-sm py-1 rounded-full text-[12px] font-bold"
-                  >Admin</span>
-                  <span
-                    v-else-if="u.role === 'driver'"
+                    v-if="r.status === 0"
                     class="bg-tertiary-fixed text-on-tertiary-fixed px-sm py-1 rounded-full text-[12px] font-bold"
-                  >Conductor</span>
+                  >Activo</span>
                   <span
                     v-else
-                    class="bg-primary-container/30 text-primary px-sm py-1 rounded-full text-[12px] font-bold"
-                  >Estudiante</span>
+                    class="bg-error-container text-on-error-container px-sm py-1 rounded-full text-[12px] font-bold"
+                  >Inactivo</span>
                 </td>
                 <td class="px-lg py-md text-right">
                   <div class="flex justify-end gap-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button class="p-xs hover:bg-primary/10 rounded-lg text-primary transition-colors" title="Editar" @click="openEdit(u)">
+                    <button class="p-xs hover:bg-primary/10 rounded-lg text-primary transition-colors" title="Editar" @click="openEdit(r)">
                       <span class="material-symbols-outlined">edit</span>
                     </button>
-                    <button class="p-xs hover:bg-error/10 rounded-lg text-error transition-colors" title="Eliminar" @click="confirmDelete(u)">
+                    <button class="p-xs hover:bg-error/10 rounded-lg text-error transition-colors" title="Eliminar" @click="confirmDelete(r)">
                       <span class="material-symbols-outlined">delete</span>
                     </button>
                   </div>
@@ -315,43 +301,44 @@ onMounted(() => store.fetchAll())
           </table>
         </div>
 
-        <!-- Mobile cards -->
         <div class="md:hidden divide-y divide-outline-variant">
-          <div v-for="u in paginated" :key="u.id" class="p-md space-y-sm">
+          <div v-for="r in paginated" :key="r.id" class="p-md space-y-sm">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-sm">
                 <div class="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-primary">
-                  <span class="material-symbols-outlined text-[18px]">person</span>
+                  <span class="material-symbols-outlined text-[18px]">alt_route</span>
                 </div>
                 <div>
-                  <span class="font-bold text-on-surface text-[14px]">{{ u.name || "—" }}</span>
-                  <span class="block text-[12px] text-on-surface-variant">{{ u.email }}</span>
+                  <span class="font-bold text-on-surface">{{ r.description }}</span>
+                  <code class="ml-2 bg-surface-container-high px-1.5 rounded text-primary font-bold text-[12px]">{{ r.code }}</code>
                 </div>
               </div>
               <span
-                v-if="u.role === 'admin'"
-                class="bg-error-container/30 text-error px-2 py-0.5 rounded-full text-[11px] font-bold"
-              >Admin</span>
-              <span
-                v-else-if="u.role === 'driver'"
+                v-if="r.status === 0"
                 class="bg-tertiary-fixed text-on-tertiary-fixed px-2 py-0.5 rounded-full text-[11px] font-bold"
-              >Conductor</span>
+              >Activo</span>
               <span
                 v-else
-                class="bg-primary-container/30 text-primary px-2 py-0.5 rounded-full text-[11px] font-bold"
-              >Estudiante</span>
+                class="bg-error-container text-on-error-container px-2 py-0.5 rounded-full text-[11px] font-bold"
+              >Inactivo</span>
+            </div>
+            <div class="text-body-md text-on-surface-variant">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[16px] text-outline">account_balance</span>
+                <span>{{ r.bank_info_name ?? "Sin banco" }}</span>
+              </div>
             </div>
             <div class="flex justify-end gap-xs pt-xs">
               <button
                 class="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border border-outline-variant text-primary font-bold text-[13px] hover:bg-primary-container/10 transition-colors"
-                @click="openEdit(u)"
+                @click="openEdit(r)"
               >
                 <span class="material-symbols-outlined text-[18px]">edit</span>
                 Editar
               </button>
               <button
                 class="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border border-outline-variant text-error font-bold text-[13px] hover:bg-error-container/10 transition-colors"
-                @click="confirmDelete(u)"
+                @click="confirmDelete(r)"
               >
                 <span class="material-symbols-outlined text-[18px]">delete</span>
                 Eliminar
@@ -361,7 +348,6 @@ onMounted(() => store.fetchAll())
         </div>
       </template>
 
-      <!-- Pagination -->
       <div class="p-md md:p-lg border-t border-outline-variant flex flex-col md:flex-row items-center justify-between gap-md bg-surface-container-low/20">
         <p class="font-body-md text-body-md text-on-surface-variant text-center md:text-left">
           Mostrando <span class="font-bold text-on-surface">{{ fromRecord }}-{{ toRecord }}</span> de <span class="font-bold text-on-surface">{{ filtered.length }}</span> registros
@@ -400,14 +386,13 @@ onMounted(() => store.fetchAll())
       </div>
     </section>
 
-    <!-- Create/Edit Dialog -->
     <Teleport to="body">
       <div v-if="dialogOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" @click="dialogOpen = false"></div>
         <div class="relative bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant w-full max-w-lg mx-auto p-md md:p-xl max-h-[90vh] overflow-y-auto">
           <div class="flex items-center justify-between mb-lg">
             <h3 class="font-headline-sm text-headline-sm text-on-surface">
-              {{ editing ? "Editar Usuario" : "Nuevo Usuario" }}
+              {{ editing ? "Editar Ruta" : "Nueva Ruta" }}
             </h3>
             <button class="text-outline hover:text-on-surface transition-colors" @click="dialogOpen = false">
               <span class="material-symbols-outlined">close</span>
@@ -415,55 +400,58 @@ onMounted(() => store.fetchAll())
           </div>
           <form @submit.prevent="save" class="space-y-lg">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-lg">
-              <div class="space-y-base md:col-span-2">
-                <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Nombre</label>
+              <div class="space-y-base">
+                <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Código</label>
                 <input
-                  v-model="form.name"
-                  class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md outline-none"
-                  placeholder="Nombre completo"
-                />
-              </div>
-              <div class="space-y-base md:col-span-2">
-                <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Email</label>
-                <input
-                  v-model="form.email"
+                  v-model="form.code"
                   :class="[
                     'w-full h-11 px-md bg-surface-container-lowest border rounded-xl transition-all font-body-md text-body-md outline-none',
-                    errors.email
+                    errors.code
                       ? 'border-error focus:ring-2 focus:ring-error focus:border-error'
                       : 'border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary'
                   ]"
-                  placeholder="correo@ejemplo.com"
-                  :disabled="!!editing"
-                  @input="errors.email && delete errors.email"
+                  placeholder="Ej. RUTA-001"
+                  @input="errors.code && delete errors.code"
                 />
-                <p v-if="errors.email" class="text-error text-[12px] font-bold">{{ errors.email }}</p>
+                <p v-if="errors.code" class="text-error text-[12px] font-bold">{{ errors.code }}</p>
               </div>
               <div class="space-y-base">
-                <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Contraseña</label>
-                <input
-                  v-model="form.password"
-                  :class="[
-                    'w-full h-11 px-md bg-surface-container-lowest border rounded-xl transition-all font-body-md text-body-md outline-none',
-                    errors.password
-                      ? 'border-error focus:ring-2 focus:ring-error focus:border-error'
-                      : 'border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary'
-                  ]"
-                  :placeholder="editing ? 'Dejar vacío para mantener' : '••••••••'"
-                  type="password"
-                  @input="errors.password && delete errors.password"
-                />
-                <p v-if="errors.password" class="text-error text-[12px] font-bold">{{ errors.password }}</p>
-              </div>
-              <div class="space-y-base">
-                <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Perfil</label>
+                <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Estado</label>
                 <select
-                  v-model="form.role"
+                  v-model="form.status"
                   class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface"
                 >
-                  <option value="student">Estudiante</option>
-                  <option value="driver">Conductor</option>
-                  <option value="admin">Admin</option>
+                  <option :value="0">Activo</option>
+                  <option :value="1">Inactivo</option>
+                </select>
+              </div>
+              <div class="space-y-base md:col-span-2">
+                <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Descripción</label>
+                <input
+                  v-model="form.description"
+                  :class="[
+                    'w-full h-11 px-md bg-surface-container-lowest border rounded-xl transition-all font-body-md text-body-md outline-none',
+                    errors.description
+                      ? 'border-error focus:ring-2 focus:ring-error focus:border-error'
+                      : 'border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary'
+                  ]"
+                  placeholder="Ej. Ruta Universidad - Centro"
+                  @input="errors.description && delete errors.description"
+                />
+                <p v-if="errors.description" class="text-error text-[12px] font-bold">{{ errors.description }}</p>
+              </div>
+              <div class="space-y-base">
+                <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Información Bancaria</label>
+                <select
+                  v-model.number="form.idbank_info"
+                  class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface"
+                >
+                  <option :value="null">Sin banco asociado</option>
+                  <option
+                    v-for="b in bankInfoStore.list"
+                    :key="b.id"
+                    :value="b.id"
+                  >{{ b.bank_name }} ({{ b.bank_code }})</option>
                 </select>
               </div>
             </div>
@@ -492,7 +480,6 @@ onMounted(() => store.fetchAll())
       </div>
     </Teleport>
 
-    <!-- Delete Confirm Dialog -->
     <Teleport to="body">
       <div v-if="deletingConfirm" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" @click="deletingConfirm = false"></div>
@@ -502,8 +489,8 @@ onMounted(() => store.fetchAll())
               <span class="material-symbols-outlined text-error text-[28px]">warning</span>
             </div>
             <div>
-              <h3 class="font-headline-sm text-headline-sm text-on-surface">Eliminar Usuario</h3>
-              <p class="text-body-md text-on-surface-variant mt-1">¿Estás seguro de eliminar a <strong>{{ deleting?.email }}</strong>?</p>
+              <h3 class="font-headline-sm text-headline-sm text-on-surface">Eliminar Ruta</h3>
+              <p class="text-body-md text-on-surface-variant mt-1">¿Estás seguro de eliminar <strong>{{ deleting?.description }}</strong>?</p>
               <p class="text-body-md text-on-surface-variant">Esta acción no se puede deshacer.</p>
             </div>
           </div>

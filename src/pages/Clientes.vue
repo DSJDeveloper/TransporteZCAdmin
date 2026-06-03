@@ -1,10 +1,17 @@
 <script setup lang="ts">
 import { ref, computed, reactive, watch, onMounted } from "vue"
 import { useClientStore } from "../stores/clientStore"
+import { useTicketStore } from "../stores/ticketStore"
+import { useAuthStore } from "../stores/authStore"
 import type { Client, ClientForm } from "../services/clientService"
 import ticketsService from "../services/ticketsService"
 import type { Movimiento } from "../services/ticketsService"
 import { formatDateTime, formatCurrency } from "../utils/formatters"
+import { useDialog } from "../composables/useDialog"
+import ConfirmDialog from "../components/ConfirmDialog.vue"
+
+const ticketStore = useTicketStore()
+const auth = useAuthStore()
 
 const store = useClientStore()
 
@@ -24,6 +31,13 @@ const editing = ref<Client | null>(null)
 const saving = ref(false)
 const form = ref<ClientForm>({ name: "", documentID: "", email: "", phone: "", carrer: "", creditLimit: "", status: "0" })
 const errors = reactive<Record<string, string>>({})
+
+const refreshing = ref(false)
+async function refreshData() {
+  refreshing.value = true
+  await store.fetchAll()
+  refreshing.value = false
+}
 
 const movementsLimit = 20
 
@@ -231,6 +245,33 @@ async function doDelete() {
   }
 }
 
+const ticketDeductDialog = useDialog<{ client: Client }>()
+const ticketCount = ref(1)
+const deducting = ref(false)
+const confirmTicketDeduct = useDialog<{ client: Client; count: number }>()
+
+async function doDeductTickets() {
+  const payload = confirmTicketDeduct.data.value
+  if (!payload) return
+  deducting.value = true
+  try {
+    const ok = await ticketStore.cobrarTicketsBulk([
+      {
+        client_uid: payload.client.uid,
+        ticket_count: payload.count,
+        shedule: "Manual",
+      },
+    ])
+    if (ok) {
+      await store.fetchAll()
+      confirmTicketDeduct.close()
+      ticketDeductDialog.close()
+    }
+  } finally {
+    deducting.value = false
+  }
+}
+
 onMounted(() => store.fetchAll())
 </script>
 
@@ -275,6 +316,14 @@ onMounted(() => store.fetchAll())
             </select>
             <span class="hidden md:inline">registros</span>
           </div>
+          <button
+            class="h-7 w-7 flex items-center justify-center rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-all shrink-0 disabled:opacity-40"
+            :disabled="refreshing"
+            @click="refreshData"
+            title="Refrescar datos"
+          >
+            <span class="material-symbols-outlined text-[18px]" :class="{ 'animate-spin': refreshing }">sync</span>
+          </button>
           <div class="relative flex-1 md:flex-none">
             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
             <input
@@ -343,12 +392,15 @@ onMounted(() => store.fetchAll())
                 <td class="px-lg py-md text-body-md text-on-surface-variant">{{ c.phone }}</td>
                 <td class="px-lg py-md text-body-md text-on-surface-variant">{{ c.email }}</td>
                 <td class="px-lg py-md text-right font-bold" :class="c.balance < 0 ? 'text-error' : 'text-primary'">
-                  {{ c.balance.toFixed(2) }} USD
+                  {{ c.balance.toFixed(2) }}
                 </td>
                 <td class="px-lg py-md text-center">
                     <div class="flex items-center justify-center gap-xs opacity-0 group-hover:opacity-100 transition-opacity">
                       <button class="p-xs hover:bg-secondary/10 rounded-lg text-secondary transition-colors" title="Ver movimientos" @click="openMovements(c)">
                         <span class="material-symbols-outlined text-[20px]">receipt_long</span>
+                      </button>
+                      <button class="p-xs hover:bg-warning/10 rounded-lg text-warning transition-colors" title="Restar ticket" @click="ticketDeductDialog.open({ client: c })">
+                        <span class="material-symbols-outlined text-[20px]">do_disturb</span>
                       </button>
                       <button class="p-xs hover:bg-primary/10 rounded-lg text-primary transition-colors" title="Editar" @click="openEdit(c)">
                         <span class="material-symbols-outlined text-[20px]">edit</span>
@@ -395,7 +447,7 @@ onMounted(() => store.fetchAll())
             </div>
             <div class="flex items-center justify-between">
               <span class="font-bold" :class="c.balance < 0 ? 'text-error' : 'text-primary'">
-                {{ c.balance.toFixed(2) }} USD
+                {{ c.balance.toFixed(2) }}
               </span>
               <div class="flex gap-xs">
                 <button
@@ -404,6 +456,13 @@ onMounted(() => store.fetchAll())
                 >
                   <span class="material-symbols-outlined text-[18px]">receipt_long</span>
                   Movimientos
+                </button>
+                <button
+                  class="flex-1 flex items-center justify-center gap-1 py-2 px-3 rounded-lg border border-outline-variant text-warning font-bold text-[13px] hover:bg-warning/10 transition-colors"
+                  @click="ticketDeductDialog.open({ client: c })"
+                >
+                  <span class="material-symbols-outlined text-[18px]">do_disturb</span>
+                  Ticket
                 </button>
                 <button
                   class="flex-1 flex items-center justify-center gap-1 py-2 px-3 rounded-lg border border-outline-variant text-primary font-bold text-[13px] hover:bg-primary-container/10 transition-colors"
@@ -547,6 +606,65 @@ onMounted(() => store.fetchAll())
         </div>
       </div>
     </Teleport>
+
+    <!-- Restar Ticket Dialog -->
+    <Teleport to="body">
+      <div v-if="ticketDeductDialog.visible.value" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" @click="ticketDeductDialog.close"></div>
+        <div class="relative bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant w-full max-w-sm mx-auto p-md md:p-xl">
+          <div class="flex items-center justify-between mb-lg">
+            <h3 class="font-headline-sm text-headline-sm text-on-surface">Restar Ticket</h3>
+            <button class="text-outline hover:text-on-surface transition-colors" @click="ticketDeductDialog.close">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <div class="space-y-lg">
+            <div class="flex items-center gap-md p-md bg-surface-container rounded-lg">
+              <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                <span class="material-symbols-outlined">person</span>
+              </div>
+              <div>
+                <p class="font-bold text-on-surface">{{ ticketDeductDialog.data.value?.client.name }}</p>
+                <p class="text-body-md text-on-surface-variant">Saldo actual: <strong :class="(ticketDeductDialog.data.value?.client.balance ?? 0) < 0 ? 'text-error' : 'text-primary'">{{ (ticketDeductDialog.data.value?.client.balance ?? 0).toFixed(2) }}</strong></p>
+              </div>
+            </div>
+            <div class="space-y-base">
+              <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Cantidad de ticket a procesar</label>
+              <select
+                v-model.number="ticketCount"
+                class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface"
+              >
+                <option v-for="n in 10" :key="n" :value="n">{{ n }}</option>
+              </select>
+            </div>
+            <div class="flex flex-col-reverse sm:flex-row justify-end gap-md pt-md border-t border-outline-variant">
+              <button
+                class="h-11 px-lg rounded-xl border border-outline-variant text-on-surface-variant font-bold hover:bg-surface-container transition-all"
+                @click="ticketDeductDialog.close"
+              >Cancelar</button>
+              <button
+                class="h-11 px-lg rounded-xl bg-warning text-white font-bold hover:shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-xs"
+                @click="confirmTicketDeduct.open({ client: ticketDeductDialog.data.value!.client, count: ticketCount })"
+              >
+                <span class="material-symbols-outlined text-[18px]">do_disturb</span>
+                Procesar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <ConfirmDialog
+      :visible="confirmTicketDeduct.visible.value"
+      title="Restar Ticket"
+      :message="`¿Está seguro de restar <strong>${confirmTicketDeduct.data.value?.count ?? 0} ticket(s)</strong> a <strong>${confirmTicketDeduct.data.value?.client.name ?? ''}</strong>?`"
+      confirm-label="Sí, restar ticket"
+      variant="danger"
+      :loading="deducting"
+      @confirm="doDeductTickets"
+      @cancel="confirmTicketDeduct.close"
+    />
 
     <!-- Create/Edit Dialog -->
     <Teleport to="body">

@@ -30,9 +30,11 @@ interface RpcResult<T> {
 }
 
 export async function getClients(): Promise<Client[]> {
-  const { data, error } = await supabase.from("clients").select("*").order("id", { ascending: true })
+  const { data: raw, error } = await supabase.rpc("get_clients")
   if (error) throw error
-  return data ?? []
+  const result = raw as unknown as { success: boolean; data?: Client[]; message?: string }
+  if (!result.success) throw new Error(result.message ?? "Error al cargar los clientes")
+  return result.data ?? []
 }
 
 export async function createClient(client: ClientForm): Promise<Client> {

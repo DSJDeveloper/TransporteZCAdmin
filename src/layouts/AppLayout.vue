@@ -115,12 +115,28 @@ function toggleConfig() {
                 <span>Parámetros</span>
               </router-link>
               <router-link
+                to="/configuracion/info-bancaria"
+                class="flex items-center gap-md px-md py-sm rounded-lg font-bold transition-all text-on-surface-variant hover:bg-surface-container-high border-l-2 border-transparent"
+                :class="route.path === '/configuracion/info-bancaria' ? 'text-primary border-primary bg-primary-container/10' : ''"
+              >
+                <span class="material-symbols-outlined text-[18px]">account_balance</span>
+                <span>Info. Bancaria</span>
+              </router-link>
+              <router-link
                 to="/configuracion/horarios"
                 class="flex items-center gap-md px-md py-sm rounded-lg font-bold transition-all text-on-surface-variant hover:bg-surface-container-high border-l-2 border-transparent"
                 :class="route.path === '/configuracion/horarios' ? 'text-primary border-primary bg-primary-container/10' : ''"
               >
                 <span class="material-symbols-outlined text-[18px]">schedule</span>
                 <span>Horarios</span>
+              </router-link>
+              <router-link
+                to="/configuracion/rutas"
+                class="flex items-center gap-md px-md py-sm rounded-lg font-bold transition-all text-on-surface-variant hover:bg-surface-container-high border-l-2 border-transparent"
+                :class="route.path === '/configuracion/rutas' ? 'text-primary border-primary bg-primary-container/10' : ''"
+              >
+                <span class="material-symbols-outlined text-[18px]">alt_route</span>
+                <span>Rutas</span>
               </router-link>
               <router-link
                 to="/configuracion/usuarios"

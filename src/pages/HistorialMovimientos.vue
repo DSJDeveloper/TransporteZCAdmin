@@ -12,6 +12,12 @@ import type { DataTablePageEvent, DataTableSortEvent } from "primevue/datatable"
 import { downloadCSV } from "../utils/exportCsv"
 const hoy = toStr(new Date())
 const loading = ref(false)
+const refreshing = ref(false)
+async function refreshData() {
+  refreshing.value = true
+  await loadData()
+  refreshing.value = false
+}
 const transactions = ref<Transaction[]>([])
 const totalCount = ref(0)
 const first = ref(0)
@@ -169,6 +175,14 @@ onMounted(async () => {
         <p class="font-body-md text-body-md text-secondary">Registro completo de cargos de viaje y recargas de saldo.</p>
       </div>
       <div class="flex items-center gap-sm">
+        <button
+          class="h-9 w-9 flex items-center justify-center rounded-xl border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-all shrink-0 disabled:opacity-40"
+          :disabled="refreshing"
+          @click="refreshData"
+          title="Refrescar datos"
+        >
+          <span class="material-symbols-outlined text-[18px]" :class="{ 'animate-spin': refreshing }">sync</span>
+        </button>
         <button
           class="flex items-center gap-xs px-md py-sm bg-white border border-outline-variant rounded-xl font-body-md text-body-md text-primary font-semibold hover:bg-surface-container transition-colors shadow-sm disabled:opacity-40"
           :disabled="loading"

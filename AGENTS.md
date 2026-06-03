@@ -145,6 +145,31 @@ src/
 - Backend: RLS policies + `SECURITY DEFINER` RPCs with explicit `IF NOT is_admin()` guards
 - Covers: Configuracion, Horarios, Usuarios, manage_* RPCs, company RLS
 
+## Security migration (2026-06-02) — RPC-only access
+
+All direct `supabase.from("table").select()` calls were removed from `src/services/`.
+Access to every table now goes exclusively through `supabase.rpc()`.
+
+**New RPCs** in `scripts/migracion_seguridad_v2.sql` (deploy to Supabase):
+- `get_clients()`, `get_units()` — admin-only list via RPC
+- `get_client_names()`, `get_unit_names()` — name-only cache (no guard needed)
+- `get_client_balance(p_client_id)` — balance lookup
+- `get_transactions_paginated(...)`, `get_transactions_export(...)` — paginated + export
+- `manage_solicitude(p_action, ...)` — full CRUD via RPC (replaces direct table ops)
+- `manage_horario` — added `'list'` action
+- `is_admin()` guard added to: `manage_unit`, `manage_client`, `update_user_role`
+- Duplicate overloads of `manage_unit`, `manage_profile`, `manage_horario` cleaned up
+
+**Migrated files:**
+- `clientService.ts` → `get_clients` RPC
+- `unitService.ts` → `get_units` RPC
+- `horarioService.ts` → `manage_horario('list')` RPC
+- `transactionService.ts` → `get_transactions_paginated` / `get_transactions_export` RPCs
+- `ticketsService.ts` → `get_client_balance` RPC
+- `solicitudeService.ts` → `manage_solicitude` RPC
+
+`supabase.from()` only remains in `companyService.ts` (company data is public-read by design).
+
 ## Gotchas
 
 - `.env` has real Supabase credentials and is **committed to git**. Don't leak or add secrets.

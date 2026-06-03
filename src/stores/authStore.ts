@@ -12,6 +12,13 @@ export interface ClientProfile {
   created_at: string;
   role: UserRole;
   uuid: string;
+  /* Driver-specific fields (only set when role = 'driver') */
+  photo_url?: string | null;
+  unit_id?: number;
+  unit_name?: string;
+  unit_number?: string;
+  unit_plate?: string;
+  unit_status?: number;
 }
 
 export interface AuthStoreState {

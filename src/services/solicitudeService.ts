@@ -16,6 +16,12 @@ export interface SolicitudeInput {
   route: string | null
 }
 
+interface RpcResult<T> {
+  success: boolean
+  data?: T
+  message?: string
+}
+
 export const solicitudeService = {
   async getPendingByClient(idclient: number): Promise<Solicitude[]> {
     const { data, error } = await supabase
@@ -25,55 +31,83 @@ export const solicitudeService = {
   },
 
   async getAll(): Promise<Solicitude[]> {
-    const { data, error } = await supabase
-      .from('solicitude')
-      .select('*')
-      .order('id', { ascending: false })
+    const { data: raw, error } = await supabase.rpc("manage_solicitude", {
+      p_action: "list",
+      p_id: null,
+      p_date: null,
+      p_idclient: null,
+      p_shedule: null,
+      p_route: null,
+      p_status: null,
+    })
     if (error) throw error
-    return data ?? []
+    const result = raw as unknown as RpcResult<Solicitude[]>
+    if (!result.success) throw new Error(result.message ?? "Error al cargar solicitudes")
+    return result.data ?? []
   },
 
   async getByClient(idclient: number): Promise<Solicitude[]> {
-    const { data, error } = await supabase
-      .from('solicitude')
-      .select('*')
-      .eq('idclient', idclient)
-      .order('id', { ascending: false })
+    const { data: raw, error } = await supabase.rpc("manage_solicitude", {
+      p_action: "list_by_client",
+      p_id: null,
+      p_date: null,
+      p_idclient: idclient,
+      p_shedule: null,
+      p_route: null,
+      p_status: null,
+    })
     if (error) throw error
-    return data ?? []
+    const result = raw as unknown as RpcResult<Solicitude[]>
+    if (!result.success) throw new Error(result.message ?? "Error al cargar solicitudes")
+    return result.data ?? []
   },
 
   async getById(id: number): Promise<Solicitude | null> {
-    const { data, error } = await supabase
-      .from('solicitude')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle()
+    const { data: raw, error } = await supabase.rpc("manage_solicitude", {
+      p_action: "get_by_id",
+      p_id: id,
+      p_date: null,
+      p_idclient: null,
+      p_shedule: null,
+      p_route: null,
+      p_status: null,
+    })
     if (error) throw error
-    return data
+    const result = raw as unknown as RpcResult<Solicitude>
+    if (!result.success) return null
+    return result.data ?? null
   },
 
   async create(input: SolicitudeInput): Promise<Solicitude> {
-    const { data, error } = await supabase
-      .from('solicitude')
-      .insert(input)
-      .select()
-      .maybeSingle()
+    const { data: raw, error } = await supabase.rpc("manage_solicitude", {
+      p_action: "create",
+      p_id: null,
+      p_date: input.date,
+      p_idclient: input.idclient,
+      p_shedule: input.shedule,
+      p_route: input.route,
+      p_status: null,
+    })
     if (error) throw error
-    if (!data) throw new Error('No se pudo crear la solicitud')
-    return data
+    const result = raw as unknown as RpcResult<Solicitude>
+    if (!result.success) throw new Error(result.message ?? "Error al crear la solicitud")
+    return result.data as Solicitude
   },
 
   async update(id: number, input: Partial<SolicitudeInput>): Promise<Solicitude> {
-    const { data, error } = await supabase
-      .from('solicitude')
-      .update(input)
-      .eq('id', id)
-      .select()
-      .maybeSingle()
+    const { data: raw, error } = await supabase.rpc("manage_solicitude", {
+      p_action: "update",
+      p_id: id,
+      p_date: input.date ?? null,
+      p_idclient: input.idclient ?? null,
+      p_shedule: input.shedule ?? null,
+      p_route: input.route ?? null,
+      p_status: null,
+    })
     if (error) throw error
-    if (!data) throw new Error('No se pudo actualizar la solicitud')
-    return data
+    const result = raw as unknown as RpcResult<Solicitude>
+    if (!result.success) throw new Error(result.message ?? "Error al actualizar la solicitud")
+    return result.data as Solicitude
   },
 
   async cancel(id: number, idclient: number): Promise<Solicitude> {
@@ -85,11 +119,18 @@ export const solicitudeService = {
   },
 
   async remove(id: number): Promise<void> {
-    const { error } = await supabase
-      .from('solicitude')
-      .delete()
-      .eq('id', id)
+    const { data: raw, error } = await supabase.rpc("manage_solicitude", {
+      p_action: "delete",
+      p_id: id,
+      p_date: null,
+      p_idclient: null,
+      p_shedule: null,
+      p_route: null,
+      p_status: null,
+    })
     if (error) throw error
+    const result = raw as unknown as RpcResult<never>
+    if (!result.success) throw new Error(result.message ?? "Error al eliminar la solicitud")
   },
 }
 

@@ -45,9 +45,19 @@ const router = createRouter({
           component: () => import("../pages/Configuracion.vue"),
         },
         {
+          path: "configuracion/info-bancaria",
+          name: "info-bancaria",
+          component: () => import("../pages/InfoBancaria.vue"),
+        },
+        {
           path: "configuracion/horarios",
           name: "horarios",
           component: () => import("../pages/Horarios.vue"),
+        },
+        {
+          path: "configuracion/rutas",
+          name: "rutas",
+          component: () => import("../pages/Rutas.vue"),
         },
         {
           path: "configuracion/usuarios",

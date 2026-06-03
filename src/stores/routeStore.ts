@@ -1,9 +1,16 @@
 import { defineStore } from "pinia"
 import { ref } from "vue"
-import { getUnits, createUnit, updateUnit, deleteUnit, type Unit, type UnitForm } from "../services/unitService"
+import {
+  getRoutes,
+  createRoute,
+  updateRoute,
+  deleteRoute,
+  type Route,
+  type RouteForm,
+} from "../services/routeService"
 
-export const useUnitStore = defineStore("unit", () => {
-  const list = ref<Unit[]>([])
+export const useRouteStore = defineStore("route", () => {
+  const list = ref<Route[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
 
@@ -11,10 +18,10 @@ export const useUnitStore = defineStore("unit", () => {
     loading.value = true
     error.value = null
     try {
-      list.value = await getUnits()
+      list.value = await getRoutes()
       return true
     } catch (err) {
-      error.value = "Error al cargar las unidades"
+      error.value = "Error al cargar las rutas"
       console.error(err)
       return false
     } finally {
@@ -22,15 +29,15 @@ export const useUnitStore = defineStore("unit", () => {
     }
   }
 
-  async function create(input: UnitForm) {
+  async function create(input: RouteForm) {
     loading.value = true
     error.value = null
     try {
-      await createUnit(input)
-      await fetchAll()
+      const record = await createRoute(input)
+      list.value.push(record)
       return true
     } catch (err) {
-      error.value = "Error al crear la unidad"
+      error.value = "Error al crear la ruta"
       console.error(err)
       return false
     } finally {
@@ -38,15 +45,18 @@ export const useUnitStore = defineStore("unit", () => {
     }
   }
 
-  async function update(id: number, input: Partial<UnitForm>) {
+  async function update(id: number, input: Partial<RouteForm>) {
     loading.value = true
     error.value = null
     try {
-      await updateUnit(id, input)
-      await fetchAll()
+      const record = await updateRoute(id, input)
+      const idx = list.value.findIndex((r) => r.id === id)
+      if (idx !== -1) {
+        list.value[idx] = record
+      }
       return true
     } catch (err) {
-      error.value = "Error al actualizar la unidad"
+      error.value = "Error al actualizar la ruta"
       console.error(err)
       return false
     } finally {
@@ -58,11 +68,11 @@ export const useUnitStore = defineStore("unit", () => {
     loading.value = true
     error.value = null
     try {
-      await deleteUnit(id)
-      list.value = list.value.filter((u) => u.id !== id)
+      await deleteRoute(id)
+      list.value = list.value.filter((r) => r.id !== id)
       return true
     } catch (err) {
-      error.value = "Error al eliminar la unidad"
+      error.value = "Error al eliminar la ruta"
       console.error(err)
       return false
     } finally {

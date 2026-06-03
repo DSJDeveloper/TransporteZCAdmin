@@ -31,6 +31,13 @@ const processingId = ref<number | null>(null)
 const imgError = ref(false)
 const previewImgError = ref(false)
 
+const refreshing = ref(false)
+async function refreshData() {
+  refreshing.value = true
+  await Promise.all([loadPage(), store.fetchStats()])
+  refreshing.value = false
+}
+
 function onImgError() {
   imgError.value = true
 }
@@ -348,6 +355,14 @@ onMounted(async () => {
           <input v-model="search" placeholder="Buscar por cliente, ref o ID..." type="text"
             class="w-full h-10 pl-9 pr-3 bg-surface-container-lowest border border-outline-variant rounded-xl text-body-md outline-none focus:ring-2 focus:ring-primary transition-all" />
         </div>
+        <button
+          class="h-10 w-10 flex items-center justify-center rounded-xl border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-all shrink-0 disabled:opacity-40"
+          :disabled="refreshing"
+          @click="refreshData"
+          title="Refrescar datos"
+        >
+          <span class="material-symbols-outlined text-[18px]" :class="{ 'animate-spin': refreshing }">sync</span>
+        </button>
         <button
           class="h-10 px-md rounded-xl border border-outline-variant text-on-surface-variant font-bold text-[13px] hover:bg-surface-container transition-all shrink-0 flex items-center gap-1"
           @click="clearFilters">

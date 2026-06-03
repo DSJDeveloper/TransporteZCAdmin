@@ -2,12 +2,13 @@
 import { ref, computed, onMounted, watch } from "vue"
 import { useCompanyStore } from "../stores/companyStore"
 import { useAuthStore } from "../stores/authStore"
+import { useTicketStore } from "../stores/ticketStore"
 
 const store = useCompanyStore()
 const auth = useAuthStore()
 
 const isAdmin = computed(() => auth.user?.role === "admin")
-
+const ticketStore = useTicketStore()
 const form = ref({
   name: "",
   rif: "",
@@ -21,9 +22,9 @@ const form = ref({
 
 onMounted(async () => {
   await store.fetchCompany()
-  if (store.company) {
-    syncForm()
-  }
+  if (store.company) syncForm()
+  await ticketStore.getTasa()
+  form.value.tasa = ticketStore.tasa
 })
 
 watch(() => store.company, (val) => {
@@ -188,7 +189,7 @@ async function save() {
             </div>
           </div>
           <div class="space-y-base">
-            <label class="text-label-md font-semibold text-on-surface-variant px-1">Tasa de Cambio (VES)</label>
+            <label class="text-label-md font-semibold text-on-surface-variant px-1">Tasa de Cambio (VES) <span class="text-outline font-normal">— Referencial (BCV)</span></label>
             <div class="relative">
               <span class="absolute left-3 top-1/2 -translate-y-1/2 text-outline font-bold">Bs</span>
               <input
@@ -196,15 +197,19 @@ async function save() {
                 class="w-full border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-lg text-body-md py-3 pl-10 pr-3 bg-surface-container-low transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                 step="0.01"
                 type="number"
-                :disabled="!isAdmin"
+                disabled
               />
+              <div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                <span v-if="ticketStore.loading.tasa" class="animate-spin material-symbols-outlined text-[16px] text-outline">sync</span>
+                <span v-else class="material-symbols-outlined text-[16px] text-tertiary" title="Valor obtenido del Banco Central de Venezuela">check_circle</span>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       <!-- Banking Info Card -->
-      <section class="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg form-card-shadow mb-lg">
+      <!-- <section class="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg form-card-shadow mb-lg">
         <div class="flex items-center gap-sm mb-lg border-b border-surface-container pb-md">
           <span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">account_balance</span>
           <h3 class="text-headline-sm font-semibold">Información Bancaria</h3>
@@ -241,7 +246,7 @@ async function save() {
             />
           </div>
         </div>
-      </section>
+      </section> -->
 
       <!-- Actions -->
       <div v-if="isAdmin" class="flex items-center justify-end gap-md pt-md">

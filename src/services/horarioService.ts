@@ -16,9 +16,17 @@ interface RpcResult<T> {
 }
 
 export async function getHorarios(): Promise<Horario[]> {
-  const { data, error } = await supabase.from("horario").select("*").order("id", { ascending: true })
+  const { data: raw, error } = await supabase.rpc("manage_horario", {
+    p_action: "list",
+    p_id: null,
+    p_code: null,
+    p_shudle: null,
+    p_status: null,
+  })
   if (error) throw error
-  return data ?? []
+  const result = raw as unknown as { success: boolean; data?: Horario[]; message?: string }
+  if (!result.success) throw new Error(result.message ?? "Error al cargar los horarios")
+  return result.data ?? []
 }
 
 export async function createHorario(input: HorarioForm): Promise<Horario> {

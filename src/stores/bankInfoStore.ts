@@ -1,9 +1,16 @@
 import { defineStore } from "pinia"
 import { ref } from "vue"
-import { getUnits, createUnit, updateUnit, deleteUnit, type Unit, type UnitForm } from "../services/unitService"
+import {
+  getBankInfoList,
+  createBankInfo,
+  updateBankInfo,
+  deleteBankInfo,
+  type BankInfo,
+  type BankInfoForm,
+} from "../services/bankInfoService"
 
-export const useUnitStore = defineStore("unit", () => {
-  const list = ref<Unit[]>([])
+export const useBankInfoStore = defineStore("bankInfo", () => {
+  const list = ref<BankInfo[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
 
@@ -11,10 +18,10 @@ export const useUnitStore = defineStore("unit", () => {
     loading.value = true
     error.value = null
     try {
-      list.value = await getUnits()
+      list.value = await getBankInfoList()
       return true
     } catch (err) {
-      error.value = "Error al cargar las unidades"
+      error.value = "Error al cargar la informacion bancaria"
       console.error(err)
       return false
     } finally {
@@ -22,15 +29,15 @@ export const useUnitStore = defineStore("unit", () => {
     }
   }
 
-  async function create(input: UnitForm) {
+  async function create(input: BankInfoForm) {
     loading.value = true
     error.value = null
     try {
-      await createUnit(input)
-      await fetchAll()
+      const record = await createBankInfo(input)
+      list.value.push(record)
       return true
     } catch (err) {
-      error.value = "Error al crear la unidad"
+      error.value = "Error al crear la informacion bancaria"
       console.error(err)
       return false
     } finally {
@@ -38,15 +45,18 @@ export const useUnitStore = defineStore("unit", () => {
     }
   }
 
-  async function update(id: number, input: Partial<UnitForm>) {
+  async function update(id: number, input: Partial<BankInfoForm>) {
     loading.value = true
     error.value = null
     try {
-      await updateUnit(id, input)
-      await fetchAll()
+      const record = await updateBankInfo(id, input)
+      const idx = list.value.findIndex((b) => b.id === id)
+      if (idx !== -1) {
+        list.value[idx] = record
+      }
       return true
     } catch (err) {
-      error.value = "Error al actualizar la unidad"
+      error.value = "Error al actualizar la informacion bancaria"
       console.error(err)
       return false
     } finally {
@@ -58,11 +68,11 @@ export const useUnitStore = defineStore("unit", () => {
     loading.value = true
     error.value = null
     try {
-      await deleteUnit(id)
-      list.value = list.value.filter((u) => u.id !== id)
+      await deleteBankInfo(id)
+      list.value = list.value.filter((b) => b.id !== id)
       return true
     } catch (err) {
-      error.value = "Error al eliminar la unidad"
+      error.value = "Error al eliminar la informacion bancaria"
       console.error(err)
       return false
     } finally {

@@ -164,15 +164,15 @@ export const ticketsService = {
    * Obtiene el saldo disponible del usuario
    */
   async getSaldoDisponible(idclient: number) {
-    const { data, error } = await supabase
-      .from("clients")
-      .select("balance")
-      .eq("id", idclient)
-      .single();
+    const { data: raw, error } = await supabase.rpc("get_client_balance", {
+      p_client_id: idclient,
+    });
 
     if (error) throw error;
+    const result = raw as unknown as { success: boolean; balance?: number; message?: string };
+    if (!result.success) throw new Error(result.message ?? "Error al obtener el saldo");
 
-    return data?.balance || 0;
+    return result.balance ?? 0;
   },
 
   async getClienteByUid(uid: string) {

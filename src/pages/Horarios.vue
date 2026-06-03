@@ -23,6 +23,13 @@ const saving = ref(false)
 const form = ref<HorarioForm>({ code: "", shudle: "", status: 0 })
 const errors = reactive<Record<string, string>>({})
 
+const refreshing = ref(false)
+async function refreshData() {
+  refreshing.value = true
+  await horarioStore.fetchAll()
+  refreshing.value = false
+}
+
 const deleting = ref<Horario | null>(null)
 const deletingConfirm = ref(false)
 
@@ -216,6 +223,14 @@ onMounted(() => horarioStore.fetchAll())
             </select>
             <span class="hidden md:inline">registros</span>
           </div>
+          <button
+            class="h-7 w-7 flex items-center justify-center rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-all shrink-0 disabled:opacity-40"
+            :disabled="refreshing"
+            @click="refreshData"
+            title="Refrescar datos"
+          >
+            <span class="material-symbols-outlined text-[18px]" :class="{ 'animate-spin': refreshing }">sync</span>
+          </button>
         </div>
         <div class="relative w-full md:w-56">
           <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>

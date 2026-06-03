@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, reactive, watch, onMounted } from "vue"
 import { useUnitStore } from "../stores/unitStore"
+import { useRouteStore } from "../stores/routeStore"
+import { uploadUnitPhoto } from "../services/unitService"
 import type { Unit, UnitForm } from "../services/unitService"
 
 const store = useUnitStore()
+const routeStore = useRouteStore()
 
 const search = ref("")
 const page = ref(1)
@@ -14,8 +17,18 @@ const sortAsc = ref(true)
 const dialogOpen = ref(false)
 const editing = ref<Unit | null>(null)
 const saving = ref(false)
-const form = ref<UnitForm>({ name: "", number: "", plate: "", status: 0, driver: "" })
+const uploadingPhoto = ref(false)
+const showPassword = ref(false)
+const photoPreview = ref<string | null>(null)
+const form = ref<UnitForm>({ name: "", number: "", plate: "", status: 0, driver: "", idroute: null, email: "", password: "", photo_url: null })
 const errors = reactive<Record<string, string>>({})
+
+const refreshing = ref(false)
+async function refreshData() {
+  refreshing.value = true
+  await store.fetchAll()
+  refreshing.value = false
+}
 
 const deleting = ref<Unit | null>(null)
 const deletingConfirm = ref(false)
@@ -28,7 +41,9 @@ const filtered = computed(() => {
       u.name.toLowerCase().includes(q) ||
       u.driver.toLowerCase().includes(q) ||
       u.plate.toLowerCase().includes(q) ||
-      u.number.toLowerCase().includes(q),
+      u.number.toLowerCase().includes(q) ||
+      u.email.toLowerCase().includes(q) ||
+      (u.route_name ?? "").toLowerCase().includes(q),
   )
 })
 
@@ -88,10 +103,12 @@ watch([sortField, sortAsc], () => { page.value = 1 })
 
 const columns = [
   { key: "id", label: "ID" },
+  { key: "photo_url", label: "FOTO" },
   { key: "name", label: "UNIDAD" },
   { key: "driver", label: "CONDUCTOR" },
   { key: "number", label: "NÚMERO" },
   { key: "plate", label: "PLACA" },
+  { key: "route_name", label: "RUTA" },
   { key: "status", label: "ESTADO" },
 ]
 
@@ -115,6 +132,15 @@ function validate(): boolean {
   if (!form.value.number.trim()) e.number = "El número es obligatorio"
   if (!form.value.plate.trim()) e.plate = "La placa es obligatoria"
   if (!form.value.driver.trim()) e.driver = "El nombre del conductor es obligatorio"
+  if (form.value.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.email)) {
+    e.email = "El formato del correo no es válido"
+  }
+  if (form.value.email && !editing.value && form.value.password.length < 4) {
+    e.password = "La contraseña debe tener al menos 4 caracteres"
+  }
+  if (editing.value && form.value.password && form.value.password.length < 4) {
+    e.password = "La contraseña debe tener al menos 4 caracteres"
+  }
   Object.assign(errors, e)
   return Object.keys(errors).length === 0
 }
@@ -127,14 +153,17 @@ function clearErrors() {
 
 function openCreate() {
   editing.value = null
-  form.value = { name: "", number: "", plate: "", status: 0, driver: "" }
+  form.value = { name: "", number: "", plate: "", status: 0, driver: "", idroute: null, email: "", password: "", photo_url: null }
+  photoPreview.value = null
   clearErrors()
   dialogOpen.value = true
 }
 
 function openEdit(u: Unit) {
   editing.value = u
-  form.value = { name: u.name, number: u.number, plate: u.plate, status: u.status, driver: u.driver }
+  form.value = { name: u.name, number: u.number, plate: u.plate, status: u.status, driver: u.driver, idroute: u.idroute, email: u.email, password: "", photo_url: u.photo_url }
+  photoPreview.value = u.photo_url
+  showPassword.value = false
   clearErrors()
   dialogOpen.value = true
 }
@@ -144,6 +173,10 @@ async function save() {
   if (!validate()) return
   saving.value = true
   try {
+    if (photoFile.value) {
+      const tempId = editing.value?.id ?? -Date.now()
+      form.value.photo_url = await uploadUnitPhoto(photoFile.value, tempId)
+    }
     const ok = editing.value
       ? await store.update(editing.value.id, form.value)
       : await store.create(form.value)
@@ -153,6 +186,26 @@ async function save() {
   } finally {
     saving.value = false
   }
+}
+
+const photoFile = ref<File | null>(null)
+
+function onPhotoSelected(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  photoFile.value = file
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    photoPreview.value = e.target?.result as string
+  }
+  reader.readAsDataURL(file)
+}
+
+function removePhoto() {
+  photoFile.value = null
+  photoPreview.value = null
+  form.value.photo_url = null
 }
 
 function confirmDelete(u: Unit) {
@@ -169,7 +222,10 @@ async function doDelete() {
   }
 }
 
-onMounted(() => store.fetchAll())
+onMounted(() => {
+  store.fetchAll()
+  routeStore.fetchAll()
+})
 </script>
 
 <template>
@@ -209,6 +265,14 @@ onMounted(() => store.fetchAll())
             </select>
             <span class="hidden md:inline">registros</span>
           </div>
+          <button
+            class="h-7 w-7 flex items-center justify-center rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-all shrink-0 disabled:opacity-40"
+            :disabled="refreshing"
+            @click="refreshData"
+            title="Refrescar datos"
+          >
+            <span class="material-symbols-outlined text-[18px]" :class="{ 'animate-spin': refreshing }">sync</span>
+          </button>
           <div class="relative flex-1 md:flex-none">
             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
             <input
@@ -258,6 +322,12 @@ onMounted(() => store.fetchAll())
               <tr v-for="u in paginated" :key="u.id" class="hover:bg-primary-container/5 transition-colors group">
                 <td class="px-lg py-md text-outline font-bold">{{ String(u.id).padStart(2, "0") }}</td>
                 <td class="px-lg py-md">
+                  <div class="w-8 h-8 rounded-full overflow-hidden bg-surface-container-high flex items-center justify-center">
+                    <img v-if="u.photo_url" :src="u.photo_url" alt="" class="w-full h-full object-cover" />
+                    <span v-else class="material-symbols-outlined text-[18px] text-outline">person</span>
+                  </div>
+                </td>
+                <td class="px-lg py-md">
                   <div class="flex items-center gap-sm">
                     <div class="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-primary">
                       <span class="material-symbols-outlined text-[18px]">local_shipping</span>
@@ -270,6 +340,13 @@ onMounted(() => store.fetchAll())
                   <code class="bg-surface-container-high px-xs rounded text-primary font-bold">{{ u.number }}</code>
                 </td>
                 <td class="px-lg py-md font-mono text-on-surface">{{ u.plate }}</td>
+                <td class="px-lg py-md text-on-surface-variant">
+                  <span v-if="u.route_name && u.route_name !== 'Sin ruta'" class="inline-flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[16px] text-outline">alt_route</span>
+                    {{ u.route_name }}
+                  </span>
+                  <span v-else class="text-outline italic">Sin ruta</span>
+                </td>
                 <td class="px-lg py-md text-center">
                   <span
                     v-if="u.status === 0"
@@ -300,7 +377,11 @@ onMounted(() => store.fetchAll())
           <div v-for="u in paginated" :key="u.id" class="p-md space-y-sm">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-sm">
-                <div class="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-primary">
+                <div class="w-8 h-8 rounded-full overflow-hidden bg-surface-container-high flex items-center justify-center shrink-0">
+                  <img v-if="u.photo_url" :src="u.photo_url" alt="" class="w-full h-full object-cover" />
+                  <span v-else class="material-symbols-outlined text-[18px] text-outline">person</span>
+                </div>
+                <div class="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-primary shrink-0">
                   <span class="material-symbols-outlined text-[18px]">local_shipping</span>
                 </div>
                 <div>
@@ -323,6 +404,11 @@ onMounted(() => store.fetchAll())
                 <span>{{ u.driver }}</span>
               </div>
               <span class="font-mono text-on-surface text-[13px]">{{ u.plate }}</span>
+            </div>
+            <div class="text-body-md text-on-surface-variant flex items-center gap-1">
+              <span class="material-symbols-outlined text-[16px] text-outline">alt_route</span>
+              <span v-if="u.route_name && u.route_name !== 'Sin ruta'">{{ u.route_name }}</span>
+              <span v-else class="text-outline italic">Sin ruta</span>
             </div>
             <div class="flex justify-end gap-xs pt-xs">
               <button
@@ -457,6 +543,94 @@ onMounted(() => store.fetchAll())
                   @input="errors.driver && delete errors.driver"
                 />
                 <p v-if="errors.driver" class="text-error text-[12px] font-bold">{{ errors.driver }}</p>
+              </div>
+              <div class="space-y-base">
+                <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Ruta</label>
+                <select
+                  v-model.number="form.idroute"
+                  class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface"
+                >
+                  <option :value="null">Sin ruta</option>
+                  <option
+                    v-for="r in routeStore.list"
+                    :key="r.id"
+                    :value="r.id"
+                  >{{ r.code }} - {{ r.description }}</option>
+                </select>
+              </div>
+              <div class="space-y-base md:col-span-2">
+                <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Foto de la Unidad</label>
+                <div class="flex items-center gap-md">
+                  <div class="w-16 h-16 rounded-full overflow-hidden bg-surface-container-high flex items-center justify-center shrink-0 border border-outline-variant">
+                    <img v-if="photoPreview" :src="photoPreview" alt="" class="w-full h-full object-cover" />
+                    <span v-else class="material-symbols-outlined text-[32px] text-outline">person</span>
+                  </div>
+                  <div class="flex flex-col gap-xs">
+                    <label
+                      class="h-9 px-md rounded-lg bg-primary text-on-primary font-bold text-[13px] flex items-center gap-1 cursor-pointer hover:bg-surface-tint transition-all"
+                    >
+                      <span class="material-symbols-outlined text-[18px]">upload</span>
+                      Subir foto
+                      <input type="file" accept="image/*" class="hidden" @change="onPhotoSelected" />
+                    </label>
+                    <button
+                      v-if="photoPreview"
+                      type="button"
+                      class="h-9 px-md rounded-lg border border-outline-variant text-error font-bold text-[13px] flex items-center gap-1 hover:bg-error-container/10 transition-all"
+                      @click="removePhoto"
+                    >
+                      <span class="material-symbols-outlined text-[18px]">delete</span>
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="space-y-base">
+                <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">
+                  Correo del Conductor
+                  <span class="text-outline font-normal normal-case">(para inicio de sesión)</span>
+                </label>
+                <input
+                  v-model="form.email"
+                  :class="[
+                    'w-full h-11 px-md bg-surface-container-lowest border rounded-xl transition-all font-body-md text-body-md outline-none',
+                    errors.email
+                      ? 'border-error focus:ring-2 focus:ring-error focus:border-error'
+                      : 'border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary'
+                  ]"
+                  placeholder="conductor@ejemplo.com"
+                  type="email"
+                  @input="errors.email && delete errors.email"
+                />
+                <p v-if="errors.email" class="text-error text-[12px] font-bold">{{ errors.email }}</p>
+              </div>
+              <div class="space-y-base">
+                <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">
+                  Contraseña
+                  <span class="text-outline font-normal normal-case">{{ editing ? '(dejar vacío para mantener)' : '' }}</span>
+                </label>
+                <div class="relative">
+                  <input
+                    v-model="form.password"
+                    :class="[
+                      'w-full h-11 px-md bg-surface-container-lowest border rounded-xl transition-all font-body-md text-body-md outline-none pr-11',
+                      errors.password
+                        ? 'border-error focus:ring-2 focus:ring-error focus:border-error'
+                        : 'border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary'
+                    ]"
+                    placeholder="Mín. 4 caracteres"
+                    :type="showPassword ? 'text' : 'password'"
+                    @input="errors.password && delete errors.password"
+                  />
+                  <button
+                    type="button"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface transition-colors"
+                    @click="showPassword = !showPassword"
+                  >
+                    <span class="material-symbols-outlined text-[20px]">{{ showPassword ? 'visibility_off' : 'visibility' }}</span>
+                  </button>
+                </div>
+                <p v-if="errors.password" class="text-error text-[12px] font-bold">{{ errors.password }}</p>
               </div>
               <div class="space-y-base">
                 <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Estado</label>
