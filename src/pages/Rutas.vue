@@ -2,9 +2,13 @@
 import { ref, computed, reactive, watch, onMounted } from "vue"
 import { useRouteStore } from "../stores/routeStore"
 import { useBankInfoStore } from "../stores/bankInfoStore"
+import { useRouteHorarioStore } from "../stores/routeHorarioStore"
+import { useHorarioStore } from "../stores/horarioStore"
 import type { Route, RouteForm } from "../services/routeService"
 
 const bankInfoStore = useBankInfoStore()
+const horarioStore = useHorarioStore()
+const routeHorarioStore = useRouteHorarioStore()
 
 const store = useRouteStore()
 
@@ -29,6 +33,37 @@ async function refreshData() {
 
 const deleting = ref<Route | null>(null)
 const deletingConfirm = ref(false)
+
+const horarioDialog = ref(false)
+const horarioRoute = ref<Route | null>(null)
+const assignedHorarios = ref<Set<number>>(new Set())
+const togglingHorario = ref(false)
+
+async function openHorarios(r: Route) {
+  horarioRoute.value = r
+  await loadHorariosData(r)
+  horarioDialog.value = true
+}
+
+async function toggleHorario(idhorario: number) {
+  if (!horarioRoute.value || togglingHorario.value) return
+  togglingHorario.value = true
+  try {
+    const routeId = horarioRoute.value.id
+    const assigned = routeHorarioStore.getHorarios(routeId)
+    const existing = assigned.find((h) => h.idhorario === idhorario)
+
+    if (existing) {
+      const ok = await routeHorarioStore.remove(existing.id, routeId)
+      if (ok) assignedHorarios.value.delete(idhorario)
+    } else {
+      const ok = await routeHorarioStore.assign(routeId, idhorario)
+      if (ok) assignedHorarios.value.add(idhorario)
+    }
+  } finally {
+    togglingHorario.value = false
+  }
+}
 
 const filtered = computed(() => {
   const q = search.value.toLowerCase().trim()
@@ -58,6 +93,10 @@ const sorted = computed(() => {
     return sortAsc.value ? cmp : -cmp
   })
 })
+
+const sortedHorarios = computed(() =>
+  [...horarioStore.list].sort((a, b) => a.code.localeCompare(b.code, "es")),
+)
 
 const paginated = computed(() => {
   const start = (page.value - 1) * perPage.value
@@ -180,9 +219,17 @@ async function doDelete() {
   }
 }
 
+async function loadHorariosData(r: Route) {
+  await routeHorarioStore.fetchByRoute(r.id)
+  assignedHorarios.value = new Set(
+    routeHorarioStore.getHorarios(r.id).map((h) => h.idhorario),
+  )
+}
+
 onMounted(() => {
   store.fetchAll()
   bankInfoStore.fetchAll()
+  horarioStore.fetchAll()
 })
 </script>
 
@@ -288,6 +335,9 @@ onMounted(() => {
                 </td>
                 <td class="px-lg py-md text-right">
                   <div class="flex justify-end gap-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button class="p-xs hover:bg-secondary/10 rounded-lg text-secondary transition-colors" title="Horarios" @click="openHorarios(r)">
+                      <span class="material-symbols-outlined">schedule</span>
+                    </button>
                     <button class="p-xs hover:bg-primary/10 rounded-lg text-primary transition-colors" title="Editar" @click="openEdit(r)">
                       <span class="material-symbols-outlined">edit</span>
                     </button>
@@ -329,6 +379,13 @@ onMounted(() => {
               </div>
             </div>
             <div class="flex justify-end gap-xs pt-xs">
+              <button
+                class="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border border-outline-variant text-secondary font-bold text-[13px] hover:bg-secondary-container/10 transition-colors"
+                @click="openHorarios(r)"
+              >
+                <span class="material-symbols-outlined text-[18px]">schedule</span>
+                Horarios
+              </button>
               <button
                 class="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border border-outline-variant text-primary font-bold text-[13px] hover:bg-primary-container/10 transition-colors"
                 @click="openEdit(r)"
@@ -503,6 +560,72 @@ onMounted(() => {
               class="h-11 px-lg rounded-xl bg-error text-on-error font-bold hover:shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-xs"
               @click="doDelete"
             >Eliminar</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div v-if="horarioDialog" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" @click="horarioDialog = false"></div>
+        <div class="relative bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant w-full max-w-lg mx-auto p-md md:p-xl max-h-[90vh] overflow-y-auto">
+          <div class="flex items-center justify-between mb-lg">
+            <h3 class="font-headline-sm text-headline-sm text-on-surface">
+              Horarios — {{ horarioRoute?.code }} {{ horarioRoute?.description }}
+            </h3>
+            <button class="text-outline hover:text-on-surface transition-colors" @click="horarioDialog = false">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <div v-if="horarioStore.loading" class="p-xl text-center text-on-surface-variant">
+            <span class="animate-spin material-symbols-outlined inline-block">sync</span>
+            <p class="mt-2">Cargando horarios...</p>
+          </div>
+
+          <div v-else-if="!sortedHorarios.length" class="p-xl text-center text-on-surface-variant">
+            <span class="material-symbols-outlined text-[48px] text-outline">schedule</span>
+            <p class="mt-2">No hay horarios disponibles. Créalos primero en Gestión de Horarios.</p>
+          </div>
+
+          <div v-else class="space-y-sm">
+            <div
+              v-for="h in sortedHorarios"
+              :key="h.id"
+              class="flex items-center justify-between p-md rounded-xl border transition-all cursor-pointer select-none"
+              :class="assignedHorarios.has(h.id)
+                ? 'bg-primary-container/10 border-primary text-on-surface'
+                : 'border-outline-variant text-on-surface hover:bg-surface-container-low'"
+              @click="toggleHorario(h.id)"
+            >
+              <div class="flex items-center gap-md">
+                <span
+                  class="material-symbols-outlined"
+                  :class="assignedHorarios.has(h.id) ? 'text-primary' : 'text-outline'"
+                >
+                  {{ assignedHorarios.has(h.id) ? 'check_circle' : 'radio_button_unchecked' }}
+                </span>
+                <div>
+                  <span class="font-bold">{{ h.shudle }}</span>
+                  <code class="ml-2 bg-surface-container-high px-1.5 rounded text-primary font-bold text-[12px]">{{ h.code }}</code>
+                </div>
+              </div>
+              <span
+                v-if="h.status === 0"
+                class="bg-tertiary-fixed text-on-tertiary-fixed px-2 py-0.5 rounded-full text-[11px] font-bold"
+              >Activo</span>
+              <span
+                v-else
+                class="bg-error-container text-on-error-container px-2 py-0.5 rounded-full text-[11px] font-bold"
+              >Inactivo</span>
+            </div>
+          </div>
+
+          <div class="flex justify-end pt-md border-t border-outline-variant mt-lg">
+            <button
+              class="h-11 px-lg rounded-xl bg-primary text-on-primary font-bold hover:shadow-lg transition-all"
+              @click="horarioDialog = false"
+            >Cerrar</button>
           </div>
         </div>
       </div>

@@ -66,7 +66,7 @@ BEGIN
       id, instance_id, email, encrypted_password,
       email_confirmed_at, raw_user_meta_data,
       created_at, updated_at, confirmation_sent_at,
-      aud, role
+      aud, role, is_sso_user
     ) VALUES (
       v_auth_id,
       '00000000-0000-0000-0000-000000000000',
@@ -75,14 +75,14 @@ BEGIN
       NOW(),
       json_build_object('sub', v_auth_id, 'user_name', p_name, 'role', p_role, 'email', p_email),
       NOW(), NOW(), NOW(),
-      'authenticated', 'authenticated'
+      'authenticated', 'authenticated', false
     );
 
     INSERT INTO auth.identities (
-      id, user_id, provider, identity_data,
+      id, user_id, provider, provider_id, identity_data,
       created_at, updated_at, last_sign_in_at
     ) VALUES (
-      v_auth_id, v_auth_id, 'email',
+      v_auth_id, v_auth_id, 'email', p_email,
       json_build_object('sub', v_auth_id, 'email', p_email, 'user_name', p_name),
       NOW(), NOW(), NOW()
     );

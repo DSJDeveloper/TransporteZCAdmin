@@ -48,7 +48,9 @@ checksum_cmd() {
 
 # ── Build ─────────────────────────────────────────────────────
 echo "→ Building project…"
-npm run build
+BUILD_HASH=$(date +%s | md5sum 2>/dev/null | head -c 8 || date +%s | md5 2>/dev/null | head -c 8 || date +%s | shasum -a 256 | head -c 8)
+VITE_BUILD_HASH="$BUILD_HASH" npm run build
+echo "{\"version\":\"$BUILD_HASH\",\"builtAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > dist/version.json
 
 echo "→ Ensuring remote directory exists…"
 remote "mkdir -p $REMOTE_PATH"
@@ -75,12 +77,14 @@ BUILTIN="
     server_tokens off;
     client_max_body_size 10M;
 
+    location = /index.html {
+        add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0' always;
+        expires off;
+        try_files \$uri /index.html;
+    }
+
     location / {
         try_files \$uri \$uri/ /index.html;
-        location = /index.html {
-            add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0' always;
-            expires off;
-        }
     }
 
     location /assets/ {
@@ -92,6 +96,12 @@ BUILTIN="
     location ~* \\.(ico|webp|png|svg|pdf)\$ {
         expires 30d;
         add_header Cache-Control 'public, max-age=2592000';
+        access_log off;
+    }
+
+    location = /version.json {
+        add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0' always;
+        expires off;
         access_log off;
     }
 

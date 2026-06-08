@@ -7,6 +7,9 @@ import basicSsl from '@vitejs/plugin-basic-ssl'
 
 // https://vite.dev/config/
 export default defineConfig({
+  define: {
+    __APP_BUILD_HASH__: JSON.stringify(process.env.VITE_BUILD_HASH ?? 'dev'),
+  },
   plugins: [
     vue(),
     basicSsl(),
