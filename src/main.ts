@@ -12,6 +12,12 @@ import ToastService from 'primevue/toastservice'
 import router from './router'
 import App from './App.vue'
 
+/**
+ * @description Track page loads per tab to distinguish refresh vs new tab.
+ * Must run before router beforeEach to ensure initAuth can read the value.
+ */
+const loadCount = parseInt(sessionStorage.getItem('load_count') || '0') + 1
+sessionStorage.setItem('load_count', String(loadCount))
 
 import './assets/main.css'
 import './assets/variables.css'

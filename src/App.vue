@@ -26,6 +26,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useTabTracker } from './composables/useTabTracker'
+
+useTabTracker()
 
 const BUILD_HASH = typeof __APP_BUILD_HASH__ !== 'undefined' ? __APP_BUILD_HASH__ : 'dev'
 const POLL_INTERVAL = 5 * 60 * 1000
