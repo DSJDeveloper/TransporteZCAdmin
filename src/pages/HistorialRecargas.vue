@@ -7,6 +7,8 @@ import type { Recharge } from "../services/rechargeService.ts"
 import FiltroRango from "../components/FiltroRango.vue"
 import type { FiltroRango as FiltroRangoType } from "../components/FiltroRango.vue"
 import { formatDate, formatDateTime, formatCurrency, toStr } from "../utils/formatters.ts"
+import ConfirmDialog from "../components/ConfirmDialog.vue"
+import { useDialog } from "../composables/useDialog"
 
 const ALLOWED_SORT_FIELDS = ["id", "date", "amount", "method", "status", "client_name"] as const
 type SortField = typeof ALLOWED_SORT_FIELDS[number]
@@ -30,6 +32,16 @@ const previewPdf = ref<string | null>(null)
 const processingId = ref<number | null>(null)
 const imgError = ref(false)
 const previewImgError = ref(false)
+
+const confirmAction = useDialog<{ recharge: Recharge; action: "approve" | "reject" }>()
+async function handleConfirmAction() {
+  const payload = confirmAction.data.value
+  if (!payload) return
+  const { recharge, action } = payload
+  await handleAction(recharge, action)
+  confirmAction.close()
+  closeDetail()
+}
 
 const refreshing = ref(false)
 async function refreshData() {
@@ -469,12 +481,12 @@ onMounted(async () => {
                     </button>
                     <button v-if="canAct(r.status)"
                       class="w-8 h-8 rounded-lg flex items-center justify-center text-tertiary hover:bg-tertiary/10 transition-colors disabled:opacity-40"
-                      title="Aprobar" :disabled="processingId === r.id" @click="handleAction(r, 'approve')">
+                      title="Aprobar" :disabled="processingId === r.id" @click="confirmAction.open({ recharge: r, action: 'approve' })">
                       <span class="material-symbols-outlined text-[20px]">check_circle</span>
                     </button>
                     <button v-if="canAct(r.status)"
                       class="w-8 h-8 rounded-lg flex items-center justify-center text-error hover:bg-error/10 transition-colors disabled:opacity-40"
-                      title="Rechazar" :disabled="processingId === r.id" @click="handleAction(r, 'reject')">
+                      title="Rechazar" :disabled="processingId === r.id" @click="confirmAction.open({ recharge: r, action: 'reject' })">
                       <span class="material-symbols-outlined text-[20px]">do_not_disturb_on</span>
                     </button>
                     <span v-if="!canAct(r.status)"
@@ -521,12 +533,12 @@ onMounted(async () => {
                 </button>
                 <button v-if="canAct(r.status)"
                   class="w-7 h-7 rounded-lg flex items-center justify-center text-tertiary hover:bg-tertiary/10 transition-colors disabled:opacity-40"
-                  title="Aprobar" :disabled="processingId === r.id" @click="handleAction(r, 'approve')">
+                  title="Aprobar" :disabled="processingId === r.id" @click="confirmAction.open({ recharge: r, action: 'approve' })">
                   <span class="material-symbols-outlined text-[18px]">check_circle</span>
                 </button>
                 <button v-if="canAct(r.status)"
                   class="w-7 h-7 rounded-lg flex items-center justify-center text-error hover:bg-error/10 transition-colors disabled:opacity-40"
-                  title="Rechazar" :disabled="processingId === r.id" @click="handleAction(r, 'reject')">
+                  title="Rechazar" :disabled="processingId === r.id" @click="confirmAction.open({ recharge: r, action: 'reject' })">
                   <span class="material-symbols-outlined text-[18px]">do_not_disturb_on</span>
                 </button>
               </div>
@@ -728,14 +740,14 @@ onMounted(async () => {
               <button
                 class="h-11 px-lg rounded-xl bg-error text-on-error font-bold hover:shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-xs disabled:opacity-50"
                 :disabled="processingId === detailRecharge.id"
-                @click="handleAction(detailRecharge, 'reject'); closeDetail()">
+                @click="confirmAction.open({ recharge: detailRecharge!, action: 'reject' })">
                 <span class="material-symbols-outlined text-[18px]">do_not_disturb_on</span>
                 Rechazar
               </button>
               <button
                 class="h-11 px-lg rounded-xl bg-tertiary text-on-tertiary font-bold hover:shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-xs disabled:opacity-50"
                 :disabled="processingId === detailRecharge.id"
-                @click="handleAction(detailRecharge, 'approve'); closeDetail()">
+                @click="confirmAction.open({ recharge: detailRecharge!, action: 'approve' })">
                 <span class="material-symbols-outlined text-[18px]">check_circle</span>
                 Aprobar
               </button>
@@ -789,6 +801,18 @@ onMounted(async () => {
         </div>
       </div>
     </Teleport>
+
+    <!-- Confirm Action Dialog -->
+    <ConfirmDialog
+      :visible="confirmAction.visible.value"
+      :title="confirmAction.data.value?.action === 'approve' ? 'Aprobar Recarga' : 'Rechazar Recarga'"
+      :message="`¿Está seguro de <strong>${confirmAction.data.value?.action === 'approve' ? 'aprobar' : 'rechazar'}</strong> la recarga <strong>#${confirmAction.data.value?.recharge.id ?? ''}</strong> de <strong>${confirmAction.data.value?.recharge.clients?.name ?? ''}</strong>?`"
+      :confirm-label="confirmAction.data.value?.action === 'approve' ? 'Sí, aprobar' : 'Sí, rechazar'"
+      :variant="confirmAction.data.value?.action === 'approve' ? 'primary' : 'danger'"
+      :loading="processingId !== null"
+      @confirm="handleConfirmAction"
+      @cancel="confirmAction.close"
+    />
 
     <!-- Toast -->
     <Toast position="top-right" />

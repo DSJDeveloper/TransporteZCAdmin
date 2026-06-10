@@ -1,5 +1,12 @@
 import { supabase } from "./supabaseClient"
 
+export interface Debtor {
+  id: number
+  name: string
+  documentID: string
+  balance: number
+}
+
 export interface Client {
   id: number
   name: string
@@ -27,6 +34,14 @@ interface RpcResult<T> {
   success: boolean
   data?: T
   message?: string
+}
+
+export async function getDebtorsList(): Promise<Debtor[]> {
+  const { data: raw, error } = await supabase.rpc("get_debtors_list")
+  if (error) throw error
+  const result = raw as unknown as { success: boolean; data?: Debtor[]; message?: string }
+  if (!result.success) throw new Error(result.message ?? "Error al cargar deudores")
+  return result.data ?? []
 }
 
 export async function getClients(): Promise<Client[]> {

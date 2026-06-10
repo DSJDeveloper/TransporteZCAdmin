@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '@/services/supabaseClient'
 import StatCard from '@/components/dashboard/StatCard.vue'
-import ReservasTable from '@/components/dashboard/ReservasTable.vue'
+import DebtorsCard from '@/components/dashboard/DebtorsCard.vue'
 import WeeklyChart from '@/components/dashboard/WeeklyChart.vue'
 import RecentMovements from '@/components/dashboard/RecentMovements.vue'
-import ReservaDetailDialog from '@/components/dashboard/ReservaDetailDialog.vue'
+import SolicitudesReport from '@/components/dashboard/SolicitudesReport.vue'
+import TripsReport from '@/components/dashboard/TripsReport.vue'
 
 interface Kpis {
   debtors_total: number
@@ -27,13 +28,10 @@ interface WeekRow {
 const kpis = ref<Kpis | null>(null)
 const weekly = ref<WeekRow[]>([])
 const loading = ref(true)
-const reservasDate = ref(new Date().toISOString().split('T')[0])
 
 const router = useRouter()
 
-const reservasRef = ref<InstanceType<typeof ReservasTable> | null>(null)
 const movementsRef = ref<InstanceType<typeof RecentMovements> | null>(null)
-const detailDialogRef = ref<InstanceType<typeof ReservaDetailDialog> | null>(null)
 
 function formatCurrency(n: number): string {
   const sign = n < 0 ? '-' : ''
@@ -60,14 +58,8 @@ async function loadDashboard() {
   }
 }
 
-function onViewDetail(shedule: string, date: string) {
-  detailDialogRef.value?.open(shedule, date)
-}
-
 onMounted(async () => {
   await loadDashboard()
-  await nextTick()
-  reservasRef.value?.load()
   movementsRef.value?.load()
 })
 </script>
@@ -84,13 +76,10 @@ onMounted(async () => {
 
     <!-- KPI Cards -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-lg">
-      <StatCard
+      <DebtorsCard
         :loading="loading"
-        label="TOTAL DEUDORES"
-        :value="formatCurrency(kpis?.debtors_total ?? 0)"
-        :trend="kpis ? formatCount(kpis.debtors_count) + ' clientes' : undefined"
-        icon="account_balance_wallet"
-        color="error"
+        :total="kpis?.debtors_total ?? 0"
+        :count="kpis?.debtors_count ?? 0"
       />
       <StatCard
         :loading="loading"
@@ -121,12 +110,11 @@ onMounted(async () => {
       />
     </div>
 
-    <!-- Reservas Diarias -->
-    <ReservasTable
-      ref="reservasRef"
-      v-model:date="reservasDate"
-      @view-detail="onViewDetail"
-    />
+    <!-- Reporte de Reservaciones por Rango -->
+    <SolicitudesReport />
+
+    <!-- Reporte de Viajes Realizados -->
+    <TripsReport />
 
     <!-- Bottom Section: Weekly Chart + Recent Movements -->
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-lg">
@@ -139,7 +127,5 @@ onMounted(async () => {
         :limit="5"
       />
     </div>
-
-    <ReservaDetailDialog ref="detailDialogRef" />
   </div>
 </template>

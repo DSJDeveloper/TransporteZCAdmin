@@ -42,6 +42,22 @@ export async function exportTransactions(filters: TransactionFilters, sortField:
   return result.data ?? []
 }
 
+export interface TripRecord {
+  date: string
+  client_name: string
+  unit_name: string
+  route_name: string
+}
+
+export async function getTripsByDateRange(dateFrom: string, dateTo: string): Promise<TripRecord[]> {
+  const { data: raw, error } = await supabase.rpc("get_trips_by_date_range", {
+    p_date_from: dateFrom,
+    p_date_to: dateTo,
+  })
+  if (error) throw error
+  return (raw ?? []) as TripRecord[]
+}
+
 export async function getTransactions(params: {
   page: number
   perPage: number

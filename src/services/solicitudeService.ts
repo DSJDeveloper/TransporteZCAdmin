@@ -9,6 +9,13 @@ export interface Solicitude {
   status?: number
 }
 
+export interface SolicitudeWithClient extends Solicitude {
+  client_name: string
+  client_carrer: string | null
+  client_document: string | null
+  client_phone: string | null
+}
+
 export interface SolicitudeInput {
   date: string
   idclient: number
@@ -23,6 +30,21 @@ interface RpcResult<T> {
 }
 
 export const solicitudeService = {
+  /**
+   * @description Fetches solicitudes filtered by date range with client info.
+   * @param {string} dateFrom - Start date (YYYY-MM-DD).
+   * @param {string} dateTo - End date (YYYY-MM-DD).
+   * @returns {Promise<SolicitudeWithClient[]>} List of solicitudes with client details.
+   */
+  async getByDateRange(dateFrom: string, dateTo: string): Promise<SolicitudeWithClient[]> {
+    const { data, error } = await supabase.rpc('get_solicitudes_by_date_range', {
+      p_date_from: dateFrom,
+      p_date_to: dateTo,
+    })
+    if (error) throw error
+    return data ?? []
+  },
+
   async getPendingByClient(idclient: number): Promise<Solicitude[]> {
     const { data, error } = await supabase
       .rpc('get_pending_solicitude', { p_idclient: idclient })

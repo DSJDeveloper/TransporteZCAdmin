@@ -9,6 +9,13 @@
 
 ---
 
+### 🗄️ Estructura de Base de Datos y Código SQL (Supabase)
+El estado de la base de datos, los esquemas de las tablas y el código de las funciones RPC se gestionan a través de los siguientes archivos canónicos en el proyecto:
+
+* **Estructura Base (`supabase_backup_schema.sql`):** * Archivo central de referencia para el esquema de datos. Contiene todas las sentencias `CREATE TABLE`, tipos de datos, llaves primarias/foráneas y restricciones de las tablas del sistema (como `clients`, `recharge`, `transactions`, `company`, `horario`, etc.).
+* **Lógica del Servidor y Funciones (`supabase_backup_logic.sql`):** * Archivo central de referencia para la programación en el backend. Contiene todos los Procedimientos Almacenados (RPCs) escritos en PL/pgSQL, triggers, políticas RLS y funciones de control de acceso.
+
+
 ## 👥 Roles del Asistente (Skills Integrados)
 
 Cuando proceses una solicitud para este proyecto, debes actuar bajo la combinación de estos 4 perfiles:
@@ -48,6 +55,25 @@ Cuando proceses una solicitud para este proyecto, debes actuar bajo la combinaci
 * **Formatos Regionales:** Todas las transformaciones visuales de fechas y monedas deben delegarse a los formateadores de `@/utils/formatters.ts` que utilizan el locale `es-AR`.
 * **Exportación de Datos:** Para descargas CSV, utiliza siempre `downloadCSV()` de `@/utils/exportCsv`, la cual inyecta el BOM UTF-8 para garantizar la compatibilidad con Microsoft Excel.
 
+
+## 📄 Estándar de Generación de Reportes PDF
+
+Cada vez que se solicite la creación o modificación de componentes, servicios o utilidades para generar reportes y listados en PDF, el código debe maquetarse siguiendo estrictamente este manual de estilo estándar:
+
+### 1. Estructura Base & Layout
+* **Header:** Título del documento alineado a la izquierda (`align: 'left'`). Fecha de generación alineada a la derecha (`align: 'right'`).
+* **Divider:** Una línea divisoria horizontal limpia inmediatamente debajo del encabezado.
+* **Footer:** Número de página centrado en el formato estricto: `'Página X de Y'`.
+
+### 2. Formato de Tablas y Datos
+* **Bordes:** Estilo limpio con bordes delgados.
+* **Header Row:** Fondo gris claro (`#f2f2f2`) con texto en negrita (`bold`).
+* **Zebra Striping:** Filas alternas con un ligero sombreado (un fondo sutil para mejorar la legibilidad en listas largas).
+
+### 3. Tipografía y Escala de Fuentes (Helvetica / Arial)
+* **Títulos Principales:** `16pt` (Negrita / Bold).
+* **Subtítulos / Secciones:** `12pt` (Negrita / Bold).
+* **Texto Base / Datos de Tablas:** `10pt` (Regular).
 ---
 
 ## 📝 Reglas de Documentación (Ahorro de Tokens & Estándar)
