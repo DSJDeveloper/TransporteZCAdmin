@@ -13,7 +13,9 @@ export interface Recharge {
   createBy: string | null
   createAt: string | null
   updateAprobate: string | null
+  tickets: number | null
   clients: { name: string } | null
+  route: { name: string; code: string } | null
 }
 
 export interface RechargeStats {

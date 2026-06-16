@@ -55,18 +55,21 @@ BEGIN
 
         INSERT INTO auth.users (
             id, instance_id, email, encrypted_password,
-            email_confirmed_at, raw_user_meta_data,
+            email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
             created_at, updated_at, confirmation_sent_at,
-            aud, role, is_sso_user
+            aud, role, is_sso_user,
+            confirmation_token, recovery_token, email_change_token_new, email_change
         ) VALUES (
             v_auth_id,
             '00000000-0000-0000-0000-000000000000',
             p_email,
             crypt(p_password, gen_salt('bf')),
             NOW(),
-            json_build_object('sub', v_auth_id, 'user_name', p_name, 'role', p_role, 'email', p_email),
+            '{"provider":"email","providers":["email"]}'::jsonb,
+            json_build_object('sub', v_auth_id, 'user_name', p_name, 'role', p_role, 'email', p_email)::jsonb,
             NOW(), NOW(), NOW(),
-            'authenticated', 'authenticated', false
+            'authenticated', 'authenticated', false,
+            '', '', '', ''
         );
 
         INSERT INTO auth.identities (
@@ -78,7 +81,13 @@ BEGIN
             NOW(), NOW(), NOW()
         );
 
-        UPDATE public.profiles SET name = p_name WHERE id = v_auth_id;
+        INSERT INTO public.profiles (id, email, role, name, updated_at)
+        VALUES (v_auth_id, p_email, p_role, p_name, NOW())
+        ON CONFLICT (id) DO UPDATE SET
+            name = EXCLUDED.name,
+            role = EXCLUDED.role,
+            email = EXCLUDED.email,
+            updated_at = NOW();
 
         SELECT row_to_json(pp.*) INTO v_profile
         FROM public.profiles pp WHERE pp.id = v_auth_id;
@@ -108,7 +117,8 @@ BEGIN
                 'role', COALESCE(p_role::text, raw_user_meta_data->>'role'),
                 'email', COALESCE(p_email, raw_user_meta_data->>'email')
             )::jsonb,
-            email = COALESCE(p_email, email)
+            email = COALESCE(p_email, email),
+            encrypted_password = CASE WHEN p_password IS NOT NULL THEN crypt(p_password, gen_salt('bf')) ELSE encrypted_password END
         WHERE id = p_user_id;
 
         IF p_email IS NOT NULL AND p_email != v_old_email THEN

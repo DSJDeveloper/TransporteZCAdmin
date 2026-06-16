@@ -294,7 +294,7 @@ onMounted(() => horarioStore.fetchAll())
                   >Inactivo</span>
                 </td>
                 <td v-if="isAdmin" class="px-lg py-md text-right">
-                  <div class="flex justify-end gap-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div class="flex justify-end gap-xs opacity-40 group-hover:opacity-100 transition-all duration-200">
                     <button class="p-xs hover:bg-primary/10 rounded-lg text-primary transition-colors" title="Editar" @click="openEdit(h)">
                       <span class="material-symbols-outlined">edit</span>
                     </button>

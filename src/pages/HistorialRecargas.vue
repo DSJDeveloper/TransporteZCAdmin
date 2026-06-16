@@ -4,13 +4,14 @@ import { useRechargeStore } from "../stores/rechargeStore.ts"
 import { useAuthStore } from "../stores/authStore.ts"
 import { useToast } from "primevue/usetoast"
 import type { Recharge } from "../services/rechargeService.ts"
+import SupervisorBanner from "../components/SupervisorBanner.vue"
 import FiltroRango from "../components/FiltroRango.vue"
 import type { FiltroRango as FiltroRangoType } from "../components/FiltroRango.vue"
 import { formatDate, formatDateTime, formatCurrency, toStr } from "../utils/formatters.ts"
 import ConfirmDialog from "../components/ConfirmDialog.vue"
 import { useDialog } from "../composables/useDialog"
 
-const ALLOWED_SORT_FIELDS = ["id", "date", "amount", "method", "status", "client_name"] as const
+const ALLOWED_SORT_FIELDS = ["id", "date", "amount", "tickets", "method", "status", "client_name", "route_name"] as const
 type SortField = typeof ALLOWED_SORT_FIELDS[number]
 
 const store = useRechargeStore()
@@ -150,7 +151,9 @@ const columns = computed<{ key: SortField; label: string; hide?: string }[]>(() 
   { key: "id", label: "# REF" },
   { key: "date", label: "FECHA" },
   { key: "client_name", label: "CLIENTE" },
+  { key: "route_name", label: "RUTA" },
   { key: "amount", label: "MONTO" },
+  { key: "tickets", label: "TICKETS" },
   { key: "method", label: "MÉTODO" },
   { key: "status", label: "ESTADO" },
 ])
@@ -275,6 +278,8 @@ onMounted(async () => {
         </p>
       </div>
     </div>
+
+    <SupervisorBanner detailed class="mb-lg" />
 
     <!-- KPI Bento Grid -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-lg">
@@ -463,9 +468,14 @@ onMounted(async () => {
                     <span class="text-on-surface font-medium">{{ r.clients?.name ?? "—" }}</span>
                   </div>
                 </td>
+                <td class="px-lg py-md text-on-surface-variant text-[13px]">{{ r.route?.name ?? "—" }}</td>
                 <td class="px-lg py-md font-bold text-on-surface">
                   {{ formatCurrency(r.amount) }}
-                  <span v-if="r.tasa && r.tasa > 0" class="text-[11px] text-outline ml-1">@ {{ r.tasa }}</span>
+                  <span v-if="r.tasa && r.tasa > 0" class="text-[11px] text-outline ml-1"><small>Tasa</small> {{ r.tasa }}</span>
+                </td>
+                <td class="px-lg py-md text-center">
+                  <span v-if="r.tickets != null" class="font-bold text-on-surface">{{ r.tickets.toFixed(2) }}</span>
+                  <span v-else class="text-outline">—</span>
                 </td>
                 <td class="px-lg py-md text-on-surface-variant">{{ getMethodLabel(r.method) }}</td>
                 <td class="px-lg py-md">
@@ -519,6 +529,14 @@ onMounted(async () => {
             </div>
             <div class="text-on-surface-variant text-body-md">
               <span class="font-medium text-on-surface">{{ r.clients?.name ?? "—" }}</span>
+            </div>
+            <div class="flex items-center gap-sm text-[12px] text-on-surface-variant">
+              <span class="material-symbols-outlined text-[14px]">route</span>
+              <span>{{ r.route?.name ?? "Sin ruta" }}</span>
+            </div>
+            <div v-if="r.tickets != null" class="flex items-center gap-sm text-[12px] text-on-surface-variant">
+              <span class="material-symbols-outlined text-[14px]">confirmation_number</span>
+              <span>{{ r.tickets.toFixed(2) }} ticket(s)</span>
             </div>
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2 text-body-md">

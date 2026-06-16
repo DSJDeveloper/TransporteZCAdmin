@@ -43,26 +43,31 @@ const router = createRouter({
           path: "configuracion",
           name: "configuracion",
           component: () => import("../pages/Configuracion.vue"),
+          meta: { requiresAuth: true, adminOnly: true },
         },
         {
           path: "configuracion/info-bancaria",
           name: "info-bancaria",
           component: () => import("../pages/InfoBancaria.vue"),
+          meta: { requiresAuth: true, adminOnly: true },
         },
         {
           path: "configuracion/horarios",
           name: "horarios",
           component: () => import("../pages/Horarios.vue"),
+          meta: { requiresAuth: true, adminOnly: true },
         },
         {
           path: "configuracion/rutas",
           name: "rutas",
           component: () => import("../pages/Rutas.vue"),
+          meta: { requiresAuth: true, adminOnly: true },
         },
         {
           path: "configuracion/usuarios",
           name: "usuarios",
           component: () => import("../pages/Usuarios.vue"),
+          meta: { requiresAuth: true, adminOnly: true },
         },
         {
           path: "analisis-mensual",
@@ -79,6 +84,7 @@ router.beforeEach(async (to, _, next) => {
   if (!auth.initialized) await auth.initAuth();
   if (to.meta.requiresAuth && !auth.session) return next({ name: "login" });
   if (to.name === "login" && auth.session) return next({ name: "home" });
+  if (to.meta.adminOnly && auth.isSupervisor) return next({ name: "home" });
   next();
 });
 

@@ -13,6 +13,7 @@ export interface Transaction {
   newBalanceClient: number | null
   clients: { name: string } | null
   units: { name: string } | null
+  route_name: string | null
 }
 
 export interface TransactionFilters {

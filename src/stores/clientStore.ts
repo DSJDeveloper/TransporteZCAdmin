@@ -1,17 +1,20 @@
 import { defineStore } from "pinia"
 import { ref } from "vue"
-import { getClients, createClient, updateClient, deleteClient, type Client, type ClientForm } from "../services/clientService"
+import { getClientsPaginated, createClient, updateClient, deleteClient, type Client, type ClientForm, type PaginatedClientsParams } from "../services/clientService"
 
 export const useClientStore = defineStore("client", () => {
-  const list = ref<Client[]>([])
+  const records = ref<Client[]>([])
+  const total = ref(0)
   const loading = ref(false)
   const error = ref<string | null>(null)
 
-  async function fetchAll() {
+  async function fetchAll(params: PaginatedClientsParams) {
     loading.value = true
     error.value = null
     try {
-      list.value = await getClients()
+      const result = await getClientsPaginated(params)
+      records.value = result.data
+      total.value = result.total
       return true
     } catch (err) {
       error.value = "Error al cargar los clientes"
@@ -26,8 +29,7 @@ export const useClientStore = defineStore("client", () => {
     loading.value = true
     error.value = null
     try {
-      const record = await createClient(input)
-      list.value.push(record)
+      await createClient(input)
       return true
     } catch (err) {
       error.value = "Error al crear el cliente"
@@ -42,11 +44,7 @@ export const useClientStore = defineStore("client", () => {
     loading.value = true
     error.value = null
     try {
-      const record = await updateClient(id, input)
-      const idx = list.value.findIndex((c) => c.id === id)
-      if (idx !== -1) {
-        list.value[idx] = record
-      }
+      await updateClient(id, input)
       return true
     } catch (err) {
       error.value = "Error al actualizar el cliente"
@@ -62,7 +60,6 @@ export const useClientStore = defineStore("client", () => {
     error.value = null
     try {
       await deleteClient(id)
-      list.value = list.value.filter((c) => c.id !== id)
       return true
     } catch (err) {
       error.value = "Error al eliminar el cliente"
@@ -74,13 +71,15 @@ export const useClientStore = defineStore("client", () => {
   }
 
   function $reset() {
-    list.value = []
+    records.value = []
+    total.value = 0
     loading.value = false
     error.value = null
   }
 
   return {
-    list,
+    records,
+    total,
     loading,
     error,
     fetchAll,

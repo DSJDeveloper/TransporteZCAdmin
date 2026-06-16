@@ -2,14 +2,17 @@
 import { ref, computed, onMounted } from "vue"
 import DataTable from "primevue/datatable"
 import Column from "primevue/column"
+import SupervisorBanner from "../components/SupervisorBanner.vue"
 import FiltroRango from "../components/FiltroRango.vue"
 import type { FiltroRango as FiltroRangoType } from "../components/FiltroRango.vue"
 import { formatDateTime, formatCurrency, toStr } from "../utils/formatters"
 import { getTransactions, exportTransactions } from "../services/transactionService"
 import { supabase } from "../services/supabaseClient"
+import { useAuthStore } from "../stores/authStore"
 import type { Transaction } from "../services/transactionService"
 import type { DataTablePageEvent, DataTableSortEvent } from "primevue/datatable"
 import { downloadCSV } from "../utils/exportCsv"
+const authStore = useAuthStore()
 const hoy = toStr(new Date())
 const loading = ref(false)
 const refreshing = ref(false)
@@ -134,6 +137,8 @@ async function exportAllData() {
       fecha: t.created_at,
       horario: t.shedule ?? '',
       cliente: t.clients?.name ?? '',
+      unidad: t.units?.name ?? '',
+      ruta: t.route_name ?? '',
       monto: t.amount,
       nuevo_saldo: t.newBalanceClient ?? 0,
       estatus: statusLabel(t.status),
@@ -146,7 +151,9 @@ async function exportAllData() {
         { key: 'fecha', label: 'Fecha y Hora' },
         { key: 'horario', label: 'Horario' },
         { key: 'cliente', label: 'Cliente' },
-        { key: 'monto', label: 'Monto' },
+        { key: 'unidad', label: 'Unidad' },
+        { key: 'ruta', label: 'Ruta' },
+        { key: 'monto', label: 'Ticket' },
         { key: 'nuevo_saldo', label: 'Nuevo Saldo' },
         { key: 'estatus', label: 'Estatus' },
       ],
@@ -193,6 +200,8 @@ onMounted(async () => {
         </button>
       </div>
     </div>
+
+    <SupervisorBanner detailed class="mb-lg" />
 
     <!-- Bento Filter Section -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-sm mb-xl">
@@ -345,10 +354,21 @@ onMounted(async () => {
               <span class="text-on-surface">{{ (data as Transaction).units?.name ?? "—" }}</span>
             </template>
           </Column>
-          <!-- Monto — always visible -->
-          <Column field="amount" header="Monto" :sortable="true" style="width: 100px">
+          <!-- Ruta — hide on mobile -->
+          <Column field="route_name" header="Ruta" :sortable="false"
+            :pt="{
+              headerCell: { class: 'hidden md:table-cell' },
+              bodyCell: { class: 'hidden md:table-cell' },
+            }"
+          >
             <template #body="{ data }">
-              <span class="text-right block font-medium text-on-surface text-nowrap">{{ formatCurrency((data as Transaction).amount) }}</span>
+              <span class="text-on-surface">{{ (data as Transaction).route_name ?? "—" }}</span>
+            </template>
+          </Column>
+          <!-- Ticket — always visible -->
+          <Column field="amount" header="Ticket" :sortable="true" style="width: 100px">
+            <template #body="{ data }">
+              <span class="text-right block font-medium text-on-surface text-nowrap">{{ ((data as Transaction).amount) }}</span>
             </template>
           </Column>
           <!-- Nuevo Saldo — hide on mobile -->
@@ -363,7 +383,7 @@ onMounted(async () => {
                 class="text-right block font-bold text-nowrap"
                 :class="((data as Transaction).newBalanceClient ?? 0) >= 0 ? 'text-primary' : 'text-error'"
               >
-                {{ (data as Transaction).newBalanceClient != null ? formatCurrency((data as Transaction).newBalanceClient!) : "—" }}
+                {{ (data as Transaction).newBalanceClient != null ? ((data as Transaction).newBalanceClient!) : "—" }}
               </span>
             </template>
           </Column>
@@ -393,6 +413,7 @@ onMounted(async () => {
                 <div class="w-32 md:w-36 h-5 bg-surface-container-high rounded animate-pulse" />
                 <div class="w-16 h-5 bg-surface-container-high rounded animate-pulse hidden md:block" />
                 <div class="flex-1 h-5 bg-surface-container-high rounded animate-pulse" />
+                <div class="w-20 h-5 bg-surface-container-high rounded animate-pulse hidden md:block" />
                 <div class="w-20 h-5 bg-surface-container-high rounded animate-pulse hidden md:block" />
                 <div class="w-20 md:w-24 h-5 bg-surface-container-high rounded animate-pulse" />
                 <div class="w-20 h-5 bg-surface-container-high rounded animate-pulse hidden md:block" />

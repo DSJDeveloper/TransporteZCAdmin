@@ -3,7 +3,7 @@ import { supabase } from "./supabaseClient"
 export interface Usuario {
   id: string
   email: string
-  role: "admin" | "student" | "driver"
+  role: "admin" | "supervisor" | "student" | "driver"
   name: string | null
   updated_at: string
 }
@@ -17,6 +17,7 @@ export interface UsuarioCreate {
 
 export interface UsuarioUpdate {
   email?: string
+  password?: string
   role?: Usuario["role"]
   name?: string | null
 }
@@ -62,7 +63,7 @@ export async function updateUsuario(id: string, input: UsuarioUpdate): Promise<U
     p_action: "update",
     p_user_id: id,
     p_email: input.email ?? null,
-    p_password: null,
+    p_password: input.password || null,
     p_role: input.role ?? null,
     p_name: input.name ?? null,
   })

@@ -2,11 +2,14 @@
 import { ref, computed, reactive, watch, onMounted } from "vue"
 import { useUnitStore } from "../stores/unitStore"
 import { useRouteStore } from "../stores/routeStore"
+import SupervisorBanner from "../components/SupervisorBanner.vue"
+import { useAuthStore } from "../stores/authStore"
 import { uploadUnitPhoto } from "../services/unitService"
 import type { Unit, UnitForm } from "../services/unitService"
 
 const store = useUnitStore()
 const routeStore = useRouteStore()
+const auth = useAuthStore()
 
 const search = ref("")
 const page = ref(1)
@@ -245,6 +248,8 @@ onMounted(() => {
       </button>
     </div>
 
+    <SupervisorBanner detailed class="mb-lg" />
+
     <!-- Toolbar -->
     <section class="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-sm overflow-hidden">
       <div class="p-md md:p-lg border-b border-outline-variant flex flex-col md:flex-row md:items-center md:justify-between gap-md bg-surface-container-low/30">
@@ -358,7 +363,7 @@ onMounted(() => {
                   >Inactivo</span>
                 </td>
                 <td class="px-lg py-md text-right">
-                  <div class="flex justify-end gap-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div class="flex justify-end gap-xs opacity-40 group-hover:opacity-100 transition-all duration-200">
                     <button class="p-xs hover:bg-primary/10 rounded-lg text-primary transition-colors" title="Editar" @click="openEdit(u)">
                       <span class="material-symbols-outlined">edit</span>
                     </button>

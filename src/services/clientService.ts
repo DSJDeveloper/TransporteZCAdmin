@@ -18,6 +18,22 @@ export interface Client {
   status: string
   balance: number
   uid: string
+  idroute: number | null
+  route_name: string | null
+}
+
+export interface PaginatedClientsParams {
+  page: number
+  perPage: number
+  search?: string
+  status?: string
+  sortField?: string
+  sortOrder?: string
+}
+
+export interface PaginatedClientsResult {
+  data: Client[]
+  total: number
 }
 
 export type ClientForm = {
@@ -28,6 +44,7 @@ export type ClientForm = {
   carrer: string
   creditLimit: string
   status: string
+  idroute: number | null
 }
 
 interface RpcResult<T> {
@@ -52,6 +69,23 @@ export async function getClients(): Promise<Client[]> {
   return result.data ?? []
 }
 
+export async function getClientsPaginated(params: PaginatedClientsParams): Promise<PaginatedClientsResult> {
+  const { data: raw, error } = await supabase.rpc("get_clients_paginated", {
+    p_page: params.page,
+    p_per_page: params.perPage,
+    p_search: params.search ?? null,
+    p_status: params.status ?? null,
+    p_sort_field: params.sortField ?? "id",
+    p_sort_order: params.sortOrder ?? "ASC",
+  })
+  if (error) throw error
+  const result = raw as unknown as { data?: Client[]; total?: number }
+  return {
+    data: result.data ?? [],
+    total: result.total ?? 0,
+  }
+}
+
 export async function createClient(client: ClientForm): Promise<Client> {
   const { data: raw, error } = await supabase.rpc("manage_client", {
     p_action: "create",
@@ -63,6 +97,7 @@ export async function createClient(client: ClientForm): Promise<Client> {
     p_carrer: client.carrer,
     p_credit_limit: client.creditLimit,
     p_status: client.status,
+    p_idroute: client.idroute ?? null,
   })
   if (error) throw error
   const result = raw as unknown as RpcResult<Client>
@@ -81,6 +116,7 @@ export async function updateClient(id: number, client: Partial<ClientForm>): Pro
     p_carrer: client.carrer ?? null,
     p_credit_limit: client.creditLimit ?? null,
     p_status: client.status ?? null,
+    p_idroute: client.idroute ?? null,
   })
   if (error) throw error
   const result = raw as unknown as RpcResult<Client>

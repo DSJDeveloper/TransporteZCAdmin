@@ -2,8 +2,11 @@
 import { ref, computed, reactive, watch, onMounted } from "vue"
 import { useClientStore } from "../stores/clientStore"
 import { useTicketStore } from "../stores/ticketStore"
+import SupervisorBanner from "../components/SupervisorBanner.vue"
 import { useAuthStore } from "../stores/authStore"
 import type { Client, ClientForm } from "../services/clientService"
+import { getRouteNames } from "../services/routeService"
+import type { RouteName } from "../services/routeService"
 import ticketsService from "../services/ticketsService"
 import type { Movimiento } from "../services/ticketsService"
 import { formatDateTime, formatCurrency } from "../utils/formatters"
@@ -25,19 +28,82 @@ const page = ref(1)
 const perPage = ref(10)
 const sortField = ref("id")
 const sortAsc = ref(true)
+const storeParams = computed(() => ({
+  page: page.value,
+  perPage: perPage.value,
+  search: search.value || undefined,
+  sortField: sortField.value,
+  sortOrder: sortAsc.value ? "ASC" : "DESC",
+}))
+
+let fetchTimer: ReturnType<typeof setTimeout> | null = null
+function scheduleFetch() {
+  if (fetchTimer) clearTimeout(fetchTimer)
+  fetchTimer = setTimeout(() => store.fetchAll(storeParams.value), 400)
+}
 
 const dialogOpen = ref(false)
 const editing = ref<Client | null>(null)
 const saving = ref(false)
-const form = ref<ClientForm>({ name: "", documentID: "", email: "", phone: "", carrer: "", creditLimit: "", status: "0" })
+const form = ref<ClientForm>({ name: "", documentID: "", email: "", phone: "", carrer: "", creditLimit: "", status: "0", idroute: null })
 const errors = reactive<Record<string, string>>({})
+const routes = ref<RouteName[]>([])
 
 const refreshing = ref(false)
 async function refreshData() {
   refreshing.value = true
-  await store.fetchAll()
+  await store.fetchAll(storeParams.value)
   refreshing.value = false
 }
+
+const totalPages = computed(() => Math.max(1, Math.ceil(store.total / perPage.value)))
+const fromRecord = computed(() => (page.value - 1) * perPage.value + 1)
+const toRecord = computed(() => Math.min(page.value * perPage.value, store.total))
+
+function goToPage(p: number | string) {
+  if (typeof p !== "number") return
+  if (p < 1 || p > totalPages.value) return
+  page.value = p
+  scheduleFetch()
+}
+
+function sortBy(key: string) {
+  if (sortField.value === key) {
+    sortAsc.value = !sortAsc.value
+  } else {
+    sortField.value = key
+    sortAsc.value = key === "id"
+  }
+  page.value = 1
+  scheduleFetch()
+}
+
+function sortIcon(key: string): string {
+  if (sortField.value !== key) return "unfold_more"
+  return sortAsc.value ? "arrow_upward" : "arrow_downward"
+}
+
+watch(search, () => { page.value = 1; scheduleFetch() })
+watch(perPage, () => { page.value = 1; scheduleFetch() })
+watch(page, (val, old) => { if (val !== old) scheduleFetch() })
+
+const pageRange = computed(() => {
+  const total = totalPages.value
+  const current = page.value
+  const pages: (number | string)[] = []
+  if (total <= 7) {
+    for (let i = 1; i <= total; i++) pages.push(i)
+  } else {
+    pages.push(1)
+    if (current > 3) pages.push("...")
+    const start = Math.max(2, current - 1)
+    const end = Math.min(total - 1, current + 1)
+    for (let i = start; i <= end; i++) pages.push(i)
+    if (current < total - 2) pages.push("...")
+    pages.push(total)
+  }
+  return pages
+})
 
 const movementsLimit = 20
 
@@ -78,92 +144,20 @@ function movementStatusClass(status: number): string {
 const deleting = ref<Client | null>(null)
 const deletingConfirm = ref(false)
 
-const filtered = computed(() => {
-  const q = search.value.toLowerCase().trim()
-  if (!q) return store.list
-  return store.list.filter(
-    (c) =>
-      c.name.toLowerCase().includes(q) ||
-      c.phone.toLowerCase().includes(q) ||
-      c.email.toLowerCase().includes(q) ||
-      c.documentID.toLowerCase().includes(q),
-  )
-})
-
-const totalPages = computed(() => Math.max(1, Math.ceil(filtered.value.length / perPage.value)))
-
-function compare(a: Client, b: Client, field: string): number {
-  const va = (a as any)[field]
-  const vb = (b as any)[field]
-  if (typeof va === "number" && typeof vb === "number") return va - vb
-  return String(va ?? "").localeCompare(String(vb ?? ""), "es")
-}
-
-const sorted = computed(() => {
-  const list = filtered.value
-  if (!sortField.value) return list
-  return [...list].sort((a, b) => {
-    const cmp = compare(a, b, sortField.value)
-    return sortAsc.value ? cmp : -cmp
-  })
-})
-
-const paginated = computed(() => {
-  const start = (page.value - 1) * perPage.value
-  return sorted.value.slice(start, start + perPage.value)
-})
-
-const pageRange = computed(() => {
-  const total = totalPages.value
-  const current = page.value
-  const pages: (number | string)[] = []
-  if (total <= 7) {
-    for (let i = 1; i <= total; i++) pages.push(i)
-  } else {
-    pages.push(1)
-    if (current > 3) pages.push("...")
-    const start = Math.max(2, current - 1)
-    const end = Math.min(total - 1, current + 1)
-    for (let i = start; i <= end; i++) pages.push(i)
-    if (current < total - 2) pages.push("...")
-    pages.push(total)
-  }
-  return pages
-})
-
-const fromRecord = computed(() => (page.value - 1) * perPage.value + 1)
-const toRecord = computed(() => Math.min(page.value * perPage.value, filtered.value.length))
-
-function goToPage(p: number | string) {
-  if (typeof p !== "number") return
-  if (p < 1 || p > totalPages.value) return
-  page.value = p
-}
-
-watch(search, () => { page.value = 1 })
-watch(perPage, () => { page.value = 1 })
-watch([sortField, sortAsc], () => { page.value = 1 })
-
 const columns = [
   { key: "id", label: "#" },
   { key: "name", label: "CLIENTE" },
   { key: "phone", label: "TELÉFONO" },
   { key: "email", label: "CORREO" },
+  { key: "route_name", label: "RUTA" },
+  { key: "status", label: "STATUS" },
   { key: "balance", label: "SALDO" },
 ]
 
-function sortIcon(key: string): string {
-  if (sortField.value !== key) return "unfold_more"
-  return sortAsc.value ? "arrow_upward" : "arrow_downward"
-}
-
-function toggleSort(key: string) {
-  if (sortField.value === key) {
-    sortAsc.value = !sortAsc.value
-  } else {
-    sortField.value = key
-    sortAsc.value = true
-  }
+function routeName(idroute: number | null): string {
+  if (idroute == null) return "—"
+  const r = routes.value.find((r) => r.id === idroute)
+  return r ? `${r.code} - ${r.description}` : "—"
 }
 
 function initials(name: string): string {
@@ -195,7 +189,7 @@ function clearErrors() {
 
 function openCreate() {
   editing.value = null
-  form.value = { name: "", documentID: "", email: "", phone: "", carrer: "", creditLimit: "", status: "0" }
+  form.value = { name: "", documentID: "", email: "", phone: "", carrer: "", creditLimit: "", status: "0", idroute: null }
   clearErrors()
   dialogOpen.value = true
 }
@@ -210,6 +204,7 @@ function openEdit(c: Client) {
     carrer: c.carrer,
     creditLimit: c.creditLimit,
     status: c.status,
+    idroute: c.idroute,
   }
   clearErrors()
   dialogOpen.value = true
@@ -225,6 +220,7 @@ async function save() {
       : await store.create(form.value)
     if (ok) {
       dialogOpen.value = false
+      await store.fetchAll(storeParams.value)
     }
   } finally {
     saving.value = false
@@ -242,6 +238,7 @@ async function doDelete() {
   if (ok) {
     deletingConfirm.value = false
     deleting.value = null
+    await store.fetchAll(storeParams.value)
   }
 }
 
@@ -263,7 +260,7 @@ async function doDeductTickets() {
       },
     ])
     if (ok) {
-      await store.fetchAll()
+      await store.fetchAll(storeParams.value)
       confirmTicketDeduct.close()
       ticketDeductDialog.close()
     }
@@ -272,7 +269,10 @@ async function doDeductTickets() {
   }
 }
 
-onMounted(() => store.fetchAll())
+onMounted(async () => {
+  routes.value = await getRouteNames()
+  await store.fetchAll(storeParams.value)
+})
 </script>
 
 <template>
@@ -295,6 +295,8 @@ onMounted(() => store.fetchAll())
         <span>Nuevo Cliente</span>
       </button>
     </div>
+
+    <SupervisorBanner detailed class="mb-lg" />
 
     <!-- Table section -->
     <section class="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-sm overflow-hidden">
@@ -343,7 +345,7 @@ onMounted(() => store.fetchAll())
       </div>
 
       <!-- Empty state -->
-      <div v-else-if="!filtered.length" class="p-xl text-center text-on-surface-variant">
+      <div v-else-if="!store.records.length" class="p-xl text-center text-on-surface-variant">
         <span class="material-symbols-outlined text-[48px] text-outline">group</span>
         <p class="mt-2">No se encontraron clientes</p>
       </div>
@@ -357,8 +359,8 @@ onMounted(() => store.fetchAll())
               <tr>
                 <th v-for="col in columns" :key="col.key"
                   class="px-lg py-md font-bold text-on-surface-variant uppercase text-[11px] tracking-widest cursor-pointer select-none hover:text-on-surface transition-colors"
-                  :class="col.key === 'balance' ? 'text-right' : ''"
-                  @click="toggleSort(col.key)"
+                  :class="col.key === 'balance' ? 'text-right' : col.key === 'status' ? 'text-center' : ''"
+                  @click="sortBy(col.key)"
                 >
                   <span class="inline-flex items-center gap-1">
                     {{ col.label }}
@@ -370,7 +372,7 @@ onMounted(() => store.fetchAll())
               </tr>
             </thead>
             <tbody class="divide-y divide-outline-variant">
-              <tr v-for="c in paginated" :key="c.id" class="hover:bg-primary-container/5 transition-colors group">
+              <tr v-for="c in store.records" :key="c.id" class="hover:bg-primary-container/5 transition-colors group">
                 <td class="px-lg py-md text-label-md font-bold text-outline">{{ c.id }}</td>
                 <td class="px-lg py-md">
                   <div class="flex items-center gap-md">
@@ -391,11 +393,17 @@ onMounted(() => store.fetchAll())
                 </td>
                 <td class="px-lg py-md text-body-md text-on-surface-variant">{{ c.phone }}</td>
                 <td class="px-lg py-md text-body-md text-on-surface-variant">{{ c.email }}</td>
+                <td class="px-lg py-md text-body-md text-on-surface-variant">{{ c.route_name ?? routeName(c.idroute) }}</td>
+                <td class="px-lg py-md text-center">
+                  <span class="inline-block px-sm py-[2px] rounded-full text-[11px] font-bold"
+                    :class="c.status === '0' ? 'bg-tertiary-fixed text-on-tertiary-fixed' : 'bg-outline-variant text-on-surface-variant'"
+                  >{{ c.status === '0' ? 'ACTIVO' : 'INACTIVO' }}</span>
+                </td>
                 <td class="px-lg py-md text-right font-bold" :class="c.balance < 0 ? 'text-error' : 'text-primary'">
                   {{ c.balance.toFixed(2) }}
                 </td>
                 <td class="px-lg py-md text-center">
-                    <div class="flex items-center justify-center gap-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div class="flex items-center justify-center gap-xs opacity-40 group-hover:opacity-100 transition-all duration-200">
                       <button class="p-xs hover:bg-secondary/10 rounded-lg text-secondary transition-colors" title="Ver movimientos" @click="openMovements(c)">
                         <span class="material-symbols-outlined text-[20px]">receipt_long</span>
                       </button>
@@ -417,7 +425,7 @@ onMounted(() => store.fetchAll())
 
         <!-- Mobile cards -->
         <div class="md:hidden divide-y divide-outline-variant">
-          <div v-for="c in paginated" :key="c.id" class="p-md space-y-sm">
+          <div v-for="c in store.records" :key="c.id" class="p-md space-y-sm">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-md">
                 <div
@@ -443,6 +451,16 @@ onMounted(() => store.fetchAll())
               <div class="flex items-center gap-1 justify-end">
                 <span class="material-symbols-outlined text-[16px] text-outline">mail</span>
                 <span class="truncate">{{ c.email }}</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <span class="material-symbols-outlined text-[16px] text-outline">route</span>
+                <span class="truncate">{{ c.route_name ?? routeName(c.idroute) }}</span>
+              </div>
+              <div class="flex items-center gap-1 justify-end">
+                <span class="material-symbols-outlined text-[16px] text-outline">badge</span>
+                <span class="inline-block px-sm py-[1px] rounded-full text-[11px] font-bold"
+                  :class="c.status === '0' ? 'bg-tertiary-fixed text-on-tertiary-fixed' : 'bg-outline-variant text-on-surface-variant'"
+                >{{ c.status === '0' ? 'ACTIVO' : 'INACTIVO' }}</span>
               </div>
             </div>
             <div class="flex items-center justify-between">
@@ -487,7 +505,7 @@ onMounted(() => store.fetchAll())
       <!-- Pagination -->
       <div class="p-md md:p-lg border-t border-outline-variant flex flex-col md:flex-row items-center justify-between gap-md bg-surface-container-low/20">
         <p class="font-body-md text-body-md text-on-surface-variant text-center md:text-left">
-          Mostrando <span class="font-bold text-on-surface">{{ fromRecord }}-{{ toRecord }}</span> de <span class="font-bold text-on-surface">{{ filtered.length }}</span> registros
+          Mostrando <span class="font-bold text-on-surface">{{ fromRecord }}-{{ toRecord }}</span> de <span class="font-bold text-on-surface">{{ store.total }}</span> registros
         </p>
         <div class="flex items-center gap-xs">
           <button
@@ -780,6 +798,16 @@ onMounted(() => store.fetchAll())
                 >
                   <option value="0">Activo</option>
                   <option value="1">Inactivo</option>
+                </select>
+              </div>
+              <div class="space-y-base md:col-span-2">
+                <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Ruta</label>
+                <select
+                  v-model="form.idroute"
+                  class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface"
+                >
+                  <option :value="null">Sin ruta</option>
+                  <option v-for="r in routes" :key="r.id" :value="r.id">{{ r.code }} - {{ r.description }}</option>
                 </select>
               </div>
             </div>

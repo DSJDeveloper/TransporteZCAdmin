@@ -1,7 +1,9 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { supabase } from "../services/supabaseClient";
-export type UserRole = "admin" | "student" | "driver";
+import { getUserRoutes } from "../services/userRouteService";
+import type { UserRoute } from "../services/userRouteService";
+export type UserRole = "admin" | "supervisor" | "student" | "driver";
 export interface ClientProfile {
   id: number;
   idclient: number;
@@ -75,6 +77,15 @@ export const useAuthStore = defineStore("auth", () => {
   const initialized = ref(false);
 
   const idclient = computed(() => user.value?.idclient ?? 0);
+  const isSupervisor = computed(() => user.value?.role === 'supervisor');
+  const assignedRoutes = ref<UserRoute[]>([])
+  const assignedRouteCount = computed(() => assignedRoutes.value.length)
+  const assignedRouteNames = computed(() => {
+    if (!user.value?.uuid) return []
+    return assignedRoutes.value
+      .map((r) => (r as any).route_name ?? `Ruta #${r.idroute}`)
+      .filter(Boolean)
+  })
 
   async function signOutAndClear() {
     try {
@@ -85,10 +96,22 @@ export const useAuthStore = defineStore("auth", () => {
     clearSupabaseSession()
     user.value = null
     session.value = null
+    assignedRoutes.value = []
   }
 
-  async function enforceAdminOrReject() {
-    if (user.value && user.value.role !== 'admin') {
+  async function fetchAssignedRoutes() {
+    const id = user.value?.uuid
+    if (!id) return
+    try {
+      assignedRoutes.value = await getUserRoutes(id)
+    } catch (err) {
+      console.error(err)
+      assignedRoutes.value = []
+    }
+  }
+
+  async function enforceRoleOrReject(allowedRoles: UserRole[] = ['admin']) {
+    if (user.value && !allowedRoles.includes(user.value.role)) {
       await signOutAndClear()
       throw new Error('not_admin')
     }
@@ -128,9 +151,9 @@ export const useAuthStore = defineStore("auth", () => {
         });
       if (authError) throw authError;
 
-      // Fetch profile FIRST — only set session if role is admin
+      // Fetch profile FIRST — only set session if role is admin or supervisor
       await fetchProfile(authData.user.id, authData.user.email ?? "");
-      if (user.value && user.value.role === 'admin') {
+      if (user.value && ['admin', 'supervisor'].includes(user.value.role)) {
         session.value = authData.user;
       } else {
         await signOutAndClear()
@@ -176,6 +199,11 @@ export const useAuthStore = defineStore("auth", () => {
       }
 
       user.value = data as ClientProfile;
+      if (user.value?.role === 'supervisor') {
+        await fetchAssignedRoutes()
+      } else {
+        assignedRoutes.value = []
+      }
     } catch (err) {
       console.error("Error crítico en RPC get_complete_user_profile:", err);
       user.value = null;
@@ -211,10 +239,10 @@ export const useAuthStore = defineStore("auth", () => {
       } = await supabase.auth.getSession();
       if (error) throw error;
 
-      // Only restore session after verifying the user is admin
+      // Only restore session after verifying the user is admin or supervisor
       if (s?.user) {
         await fetchProfile(s.user.id, s.user.email ?? "");
-        if (user.value && user.value.role === 'admin') {
+        if (user.value && ['admin', 'supervisor'].includes(user.value.role)) {
           session.value = s.user;
         } else {
           // Non-admin or profile fetch failed — wipe everything
@@ -252,10 +280,15 @@ export const useAuthStore = defineStore("auth", () => {
     error,
     initialized,
     idclient,
+    isSupervisor,
+    assignedRouteCount,
+    assignedRouteNames,
+    fetchAssignedRoutes,
     login,
     fetchProfile,
     initAuth,
     logout,
     validateSession,
+    enforceRoleOrReject,
   };
 });

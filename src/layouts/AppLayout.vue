@@ -92,7 +92,7 @@ function toggleConfig() {
           <span class="material-symbols-outlined">swap_horiz</span>
           <span>Movimientos</span>
         </router-link>
-        <div>
+        <div v-if="!authStore.isSupervisor">
           <button
             :class="navClass('/configuracion') + ' w-full'"
             @click="toggleConfig"
@@ -158,9 +158,15 @@ function toggleConfig() {
           >
             {{ userName.charAt(0).toUpperCase() }}
           </div>
-          <div class="overflow-hidden min-w-0">
+          <div class="overflow-hidden min-w-0 flex-1">
             <p class="font-bold text-on-surface truncate">{{ userName }}</p>
             <p class="text-[10px] text-on-surface-variant truncate">{{ userEmail }}</p>
+            <div
+              v-if="authStore.isSupervisor"
+              class="mt-xs inline-flex items-center gap-xs px-sm py-0.5 bg-warning/20 text-warning rounded-full text-[10px] font-bold"
+            >
+              <span>Supervisor</span>
+            </div>
           </div>
           <button
             class="ml-auto shrink-0 text-outline hover:text-error transition-colors"

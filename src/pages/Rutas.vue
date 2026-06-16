@@ -297,7 +297,7 @@ onMounted(() => {
       </div>
 
       <template v-else>
-        <div class="hidden md:block overflow-x-auto">
+        <div class="">
           <table class="w-full text-left font-body-md text-body-md border-collapse">
             <thead class="bg-surface-container-high/20 border-b border-outline-variant">
               <tr>
@@ -334,7 +334,7 @@ onMounted(() => {
                   >Inactivo</span>
                 </td>
                 <td class="px-lg py-md text-right">
-                  <div class="flex justify-end gap-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div class="flex justify-end gap-xs opacity-40 group-hover:opacity-100 transition-all duration-200">
                     <button class="p-xs hover:bg-secondary/10 rounded-lg text-secondary transition-colors" title="Horarios" @click="openHorarios(r)">
                       <span class="material-symbols-outlined">schedule</span>
                     </button>

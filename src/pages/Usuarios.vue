@@ -2,6 +2,8 @@
 import { ref, computed, reactive, watch, onMounted } from "vue"
 import { useUsuarioStore } from "../stores/usuarioStore"
 import type { Usuario } from "../services/usuarioService"
+import { getRouteNames } from "../services/routeService"
+import { getUserRoutes, assignUserRoutes } from "../services/userRouteService"
 
 const store = useUsuarioStore()
 
@@ -14,8 +16,33 @@ const sortAsc = ref(true)
 const dialogOpen = ref(false)
 const editing = ref<Usuario | null>(null)
 const saving = ref(false)
-const form = ref({ name: "", email: "", password: "", role: "student" as "admin" | "student" | "driver" })
+const form = ref({ name: "", email: "", password: "", role: "student" as "admin" | "supervisor" | "student" | "driver" })
 const errors = reactive<Record<string, string>>({})
+
+const routeNames = ref<{ id: number; code: string }[]>([])
+const selectedRoutes = ref<number[]>([])
+const loadingRoutes = ref(false)
+
+async function loadRouteOptions() {
+  try {
+    const routes = await getRouteNames()
+    routeNames.value = routes.map((r) => ({ id: r.id, code: r.description || r.code }))
+  } catch {
+    routeNames.value = []
+  }
+}
+
+async function loadUserRoutes(userId: string) {
+  loadingRoutes.value = true
+  try {
+    const routes = await getUserRoutes(userId)
+    selectedRoutes.value = routes.map((r) => r.idroute)
+  } catch {
+    selectedRoutes.value = []
+  } finally {
+    loadingRoutes.value = false
+  }
+}
 
 const refreshing = ref(false)
 async function refreshData() {
@@ -26,6 +53,7 @@ async function refreshData() {
 
 const deleting = ref<Usuario | null>(null)
 const deletingConfirm = ref(false)
+const errorDialogMessage = ref<string | null>(null)
 
 const filtered = computed(() => {
   const q = search.value.toLowerCase().trim()
@@ -130,15 +158,22 @@ function clearErrors() {
 function openCreate() {
   editing.value = null
   form.value = { name: "", email: "", password: "", role: "student" }
+  selectedRoutes.value = []
   clearErrors()
   dialogOpen.value = true
+  loadRouteOptions()
 }
 
-function openEdit(u: Usuario) {
+async function openEdit(u: Usuario) {
   editing.value = u
   form.value = { name: u.name ?? "", email: u.email, password: "", role: u.role }
+  selectedRoutes.value = []
   clearErrors()
   dialogOpen.value = true
+  void loadRouteOptions()
+  if (u.role === 'supervisor') {
+    await loadUserRoutes(u.id)
+  }
 }
 
 async function save() {
@@ -146,12 +181,16 @@ async function save() {
   if (!validate()) return
   saving.value = true
   try {
+    let userId: string | null = null
     let ok = false
     if (editing.value) {
       ok = await store.update(editing.value.id, {
+        email: form.value.email || null,
         name: form.value.name || null,
+        password: form.value.password || undefined,
         role: form.value.role,
       })
+      if (ok) userId = editing.value.id
     } else {
       ok = await store.create({
         name: form.value.name,
@@ -159,10 +198,21 @@ async function save() {
         password: form.value.password,
         role: form.value.role,
       })
+      if (ok) {
+        const created = store.list.find((u) => u.email === form.value.email)
+        if (created) userId = created.id
+      }
+    }
+    if (ok && userId && form.value.role === 'supervisor') {
+      await assignUserRoutes(userId, selectedRoutes.value)
     }
     if (ok) {
       dialogOpen.value = false
+    } else {
+      errorDialogMessage.value = store.error || 'Error al guardar el usuario'
     }
+  } catch (err) {
+    errorDialogMessage.value = (err as Error)?.message || 'Error inesperado'
   } finally {
     saving.value = false
   }
@@ -175,10 +225,20 @@ function confirmDelete(u: Usuario) {
 
 async function doDelete() {
   if (!deleting.value) return
-  const ok = await store.remove(deleting.value.id)
-  if (ok) {
+  try {
+    const ok = await store.remove(deleting.value.id)
+    if (ok) {
+      deletingConfirm.value = false
+      deleting.value = null
+    } else {
+      deletingConfirm.value = false
+      deleting.value = null
+      errorDialogMessage.value = store.error || 'Error al eliminar el usuario'
+    }
+  } catch (err) {
     deletingConfirm.value = false
     deleting.value = null
+    errorDialogMessage.value = (err as Error)?.message || 'Error inesperado'
   }
 }
 
@@ -292,6 +352,10 @@ onMounted(() => store.fetchAll())
                     class="bg-error-container/30 text-error px-sm py-1 rounded-full text-[12px] font-bold"
                   >Admin</span>
                   <span
+                    v-else-if="u.role === 'supervisor'"
+                    class="bg-secondary-container/30 text-secondary px-sm py-1 rounded-full text-[12px] font-bold"
+                  >Supervisor</span>
+                  <span
                     v-else-if="u.role === 'driver'"
                     class="bg-tertiary-fixed text-on-tertiary-fixed px-sm py-1 rounded-full text-[12px] font-bold"
                   >Conductor</span>
@@ -301,7 +365,7 @@ onMounted(() => store.fetchAll())
                   >Estudiante</span>
                 </td>
                 <td class="px-lg py-md text-right">
-                  <div class="flex justify-end gap-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div class="flex justify-end gap-xs opacity-40 group-hover:opacity-100 transition-all duration-200">
                     <button class="p-xs hover:bg-primary/10 rounded-lg text-primary transition-colors" title="Editar" @click="openEdit(u)">
                       <span class="material-symbols-outlined">edit</span>
                     </button>
@@ -332,6 +396,10 @@ onMounted(() => store.fetchAll())
                 v-if="u.role === 'admin'"
                 class="bg-error-container/30 text-error px-2 py-0.5 rounded-full text-[11px] font-bold"
               >Admin</span>
+              <span
+                v-else-if="u.role === 'supervisor'"
+                class="bg-secondary-container/30 text-secondary px-2 py-0.5 rounded-full text-[11px] font-bold"
+              >Supervisor</span>
               <span
                 v-else-if="u.role === 'driver'"
                 class="bg-tertiary-fixed text-on-tertiary-fixed px-2 py-0.5 rounded-full text-[11px] font-bold"
@@ -460,12 +528,46 @@ onMounted(() => store.fetchAll())
                 <select
                   v-model="form.role"
                   class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface"
+                  @change="selectedRoutes = []"
                 >
                   <option value="student">Estudiante</option>
                   <option value="driver">Conductor</option>
+                  <option value="supervisor">Supervisor</option>
                   <option value="admin">Admin</option>
                 </select>
               </div>
+            </div>
+
+            <!-- Route assignment for supervisors -->
+            <div v-if="form.role === 'supervisor'" class="space-y-base">
+              <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">
+                Rutas Asignadas
+              </label>
+              <div
+                v-if="loadingRoutes"
+                class="text-body-md text-on-surface-variant"
+              >Cargando rutas...</div>
+              <div v-else class="max-h-48 overflow-y-auto border border-outline-variant rounded-xl p-sm space-y-1">
+                <label
+                  v-for="r in routeNames"
+                  :key="r.id"
+                  class="flex items-center gap-sm px-sm py-1 rounded-lg hover:bg-surface-container cursor-pointer transition-colors"
+                >
+                  <input
+                    type="checkbox"
+                    :value="r.id"
+                    v-model="selectedRoutes"
+                    class="accent-primary w-4 h-4 rounded"
+                  />
+                  <span class="text-body-md text-on-surface">{{ r.code }}</span>
+                </label>
+                <p v-if="!routeNames.length" class="text-body-md text-on-surface-variant text-center py-md">
+                  No hay rutas disponibles
+                </p>
+              </div>
+              <p class="text-body-sm text-on-surface-variant">
+                El supervisor tendrá visibilidad únicamente sobre los datos de estas rutas.
+              </p>
             </div>
             <div class="flex flex-col-reverse sm:flex-row justify-end gap-md pt-md border-t border-outline-variant">
               <button
@@ -516,6 +618,30 @@ onMounted(() => store.fetchAll())
               class="h-11 px-lg rounded-xl bg-error text-on-error font-bold hover:shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-xs"
               @click="doDelete"
             >Eliminar</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Error Dialog -->
+    <Teleport to="body">
+      <div v-if="errorDialogMessage" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" @click="errorDialogMessage = null"></div>
+        <div class="relative bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant w-full max-w-sm mx-auto p-md md:p-xl">
+          <div class="flex items-start gap-md mb-lg">
+            <div class="w-12 h-12 rounded-full bg-error-container/30 flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-error text-[28px]">error</span>
+            </div>
+            <div class="min-w-0">
+              <h3 class="font-headline-sm text-headline-sm text-on-surface">Error</h3>
+              <p class="text-body-md text-on-surface-variant mt-1 break-words">{{ errorDialogMessage }}</p>
+            </div>
+          </div>
+          <div class="flex justify-end">
+            <button
+              class="h-11 px-lg rounded-xl bg-primary text-on-primary font-bold hover:shadow-lg active:scale-[0.98] transition-all"
+              @click="errorDialogMessage = null"
+            >Cerrar</button>
           </div>
         </div>
       </div>
