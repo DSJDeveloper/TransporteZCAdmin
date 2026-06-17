@@ -185,7 +185,7 @@ async function save() {
     let ok = false
     if (editing.value) {
       ok = await store.update(editing.value.id, {
-        email: form.value.email || null,
+        email: form.value.email ,
         name: form.value.name || null,
         password: form.value.password || undefined,
         role: form.value.role,
