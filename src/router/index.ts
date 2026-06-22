@@ -63,7 +63,13 @@ const router = createRouter({
           component: () => import("../pages/Rutas.vue"),
           meta: { requiresAuth: true },
         },
-        {
+          {
+            path: "configuracion/carreras",
+            name: "carreras",
+            component: () => import("../pages/Carreras.vue"),
+            meta: { requiresAuth: true, adminOnly: true },
+          },
+          {
           path: "configuracion/usuarios",
           name: "usuarios",
           component: () => import("../pages/Usuarios.vue"),

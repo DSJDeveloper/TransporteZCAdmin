@@ -131,6 +131,14 @@ function toggleConfig() {
                 <span>Info. Bancaria</span>
               </router-link>
               <router-link
+                to="/configuracion/carreras"
+                class="flex items-center gap-md px-md py-sm rounded-lg font-bold transition-all text-on-surface-variant hover:bg-surface-container-high border-l-2 border-transparent"
+                :class="route.path === '/configuracion/carreras' ? 'text-primary border-primary bg-primary-container/10' : ''"
+              >
+                <span class="material-symbols-outlined text-[18px]">school</span>
+                <span>Carreras</span>
+              </router-link>
+              <router-link
                 to="/configuracion/usuarios"
                 class="flex items-center gap-md px-md py-sm rounded-lg font-bold transition-all text-on-surface-variant hover:bg-surface-container-high border-l-2 border-transparent"
                 :class="route.path === '/configuracion/usuarios' ? 'text-primary border-primary bg-primary-container/10' : ''"

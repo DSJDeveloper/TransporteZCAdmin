@@ -3597,6 +3597,76 @@ END;
 $function$
 ;
 
+-- Función: get_careers
+CREATE OR REPLACE FUNCTION public.get_careers()
+ RETURNS json
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+AS $function$
+BEGIN
+    IF auth.role() <> 'authenticated' THEN
+        RETURN '[]'::json;
+    END IF;
+    RETURN COALESCE((SELECT json_agg(json_build_object('id', id, 'code', code, 'description', description, 'status', status) ORDER BY code) FROM public.careers), '[]'::json);
+END;
+$function$
+;
+
+-- Función: manage_career
+CREATE OR REPLACE FUNCTION public.manage_career(p_action character varying, p_id bigint DEFAULT NULL::bigint, p_code character varying DEFAULT NULL::character varying, p_description character varying DEFAULT NULL::character varying, p_status integer DEFAULT NULL::integer)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+    v_career JSON;
+BEGIN
+    IF LOWER(p_action) = 'list' THEN
+        SELECT json_agg(row_to_json(c.*)) INTO v_career FROM (
+            SELECT * FROM public.careers ORDER BY id
+        ) c;
+        RETURN json_build_object('success', true, 'data', COALESCE(v_career, '[]'::json));
+    END IF;
+
+    IF NOT public.is_admin() THEN
+        RETURN json_build_object('success', false, 'message', 'Solo administradores pueden realizar esta accion.');
+    END IF;
+
+    IF LOWER(p_action) = 'create' THEN
+        WITH inserted AS (
+            INSERT INTO public.careers (code, description, status)
+            VALUES (p_code, p_description, COALESCE(p_status, 0))
+            RETURNING *
+        )
+        SELECT row_to_json(inserted.*) INTO v_career FROM inserted;
+        RETURN json_build_object('success', true, 'data', v_career, 'message', 'Carrera creada con exito.');
+
+    ELSIF LOWER(p_action) = 'update' THEN
+        WITH updated AS (
+            UPDATE public.careers SET
+                code        = COALESCE(p_code, code),
+                description = COALESCE(p_description, description),
+                status      = COALESCE(p_status, status)
+            WHERE id = p_id
+            RETURNING *
+        )
+        SELECT row_to_json(updated.*) INTO v_career FROM updated;
+        RETURN json_build_object('success', true, 'data', v_career, 'message', 'Carrera actualizada con exito.');
+
+    ELSIF LOWER(p_action) = 'delete' THEN
+        DELETE FROM public.careers WHERE id = p_id;
+        RETURN json_build_object('success', true, 'message', 'Carrera eliminada del sistema.');
+
+    ELSE
+        RETURN json_build_object('success', false, 'message', 'Accion no reconocida.');
+    END IF;
+
+EXCEPTION WHEN OTHERS THEN
+    RETURN json_build_object('success', false, 'message', 'Error: ' || SQLERRM);
+END;
+$function$
+;
+
 -- >>> POLÍTICAS DE SEGURIDAD (RLS) <<<
 
 -- Política para: clients

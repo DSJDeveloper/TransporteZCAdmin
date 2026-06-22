@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS public.units (id bigint, name character varying(255),
 
 CREATE TABLE IF NOT EXISTS public.recharge (id bigint, idclient integer, method character varying(255), ref character varying(255), picture character varying(1000), amount numeric, tasa numeric, date date, status integer, createBy character varying(255), createAt timestamp without time zone, updateAprobate timestamp without time zone, codigo_banco character varying(4), idroute bigint, tickets numeric, idshedule bigint);
 
+CREATE TABLE IF NOT EXISTS public.careers (id bigserial, code character varying(20), description character varying(255), status smallint);
 CREATE TABLE IF NOT EXISTS public.route_horarios (id bigint, idroute bigint, idhorario bigint);
 
 CREATE TABLE IF NOT EXISTS public.company (id bigint, name character varying(255), rif character varying(255), phone character varying(255), ticket numeric, tasa numeric, account character varying(2000), phoneAccount character varying(255), rifAccount character varying(255));
