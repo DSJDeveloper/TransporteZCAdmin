@@ -39,6 +39,17 @@ export async function getUnits(): Promise<Unit[]> {
   return result.data ?? []
 }
 
+export interface UnitName {
+  id: number
+  name: string
+}
+
+export async function getUnitNames(): Promise<UnitName[]> {
+  const { data: raw, error } = await supabase.rpc("get_unit_names")
+  if (error) throw error
+  return (raw ?? []) as UnitName[]
+}
+
 export async function createUnit(unit: UnitForm): Promise<Unit> {
   const { data: raw, error } = await supabase.rpc("manage_unit", {
     p_action: "create",

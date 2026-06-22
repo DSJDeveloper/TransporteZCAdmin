@@ -20,6 +20,7 @@ export interface Client {
   uid: string
   idroute: number | null
   route_name: string | null
+  auth_user_name: string | null
 }
 
 export interface PaginatedClientsParams {
@@ -27,6 +28,7 @@ export interface PaginatedClientsParams {
   perPage: number
   search?: string
   status?: string
+  idroute?: number | null
   sortField?: string
   sortOrder?: string
 }
@@ -77,6 +79,7 @@ export async function getClientsPaginated(params: PaginatedClientsParams): Promi
     p_status: params.status ?? null,
     p_sort_field: params.sortField ?? "id",
     p_sort_order: params.sortOrder ?? "ASC",
+    p_idroute: params.idroute ?? null,
   })
   if (error) throw error
   const result = raw as unknown as { data?: Client[]; total?: number }
@@ -124,7 +127,7 @@ export async function updateClient(id: number, client: Partial<ClientForm>): Pro
   return result.data as Client
 }
 
-export async function deleteClient(id: number): Promise<void> {
+export async function deleteClient(id: number): Promise<{ message: string; deactivated: boolean }> {
   const { data: raw, error } = await supabase.rpc("manage_client", {
     p_action: "delete",
     p_id: id,
@@ -137,6 +140,7 @@ export async function deleteClient(id: number): Promise<void> {
     p_status: null,
   })
   if (error) throw error
-  const result = raw as unknown as RpcResult<never>
+  const result = raw as unknown as RpcResult<never> & { deactivated?: boolean }
   if (!result.success) throw new Error(result.message ?? "Error al eliminar el cliente")
+  return { message: result.message ?? "", deactivated: result.deactivated ?? false }
 }

@@ -21,6 +21,9 @@ export interface TransactionFilters {
   dateTo: string | null
   idunit: number | null
   status: number | null
+  shedule: string | null
+  idroute: number | null
+  search: string | null
 }
 
 interface RpcResult<T> {
@@ -35,6 +38,9 @@ export async function exportTransactions(filters: TransactionFilters, sortField:
     p_date_to: filters.dateTo ?? null,
     p_idunit: filters.idunit ?? null,
     p_status: filters.status ?? null,
+    p_shedule: filters.shedule ?? null,
+    p_idroute: filters.idroute ?? null,
+    p_search: filters.search ?? null,
     p_sort_field: sortField,
     p_sort_order: sortAsc ? "ASC" : "DESC",
   })
@@ -50,10 +56,17 @@ export interface TripRecord {
   route_name: string
 }
 
-export async function getTripsByDateRange(dateFrom: string, dateTo: string): Promise<TripRecord[]> {
+export async function getTripsByDateRange(
+  dateFrom: string,
+  dateTo: string,
+  idroute?: number | null,
+  idunit?: number | null,
+): Promise<TripRecord[]> {
   const { data: raw, error } = await supabase.rpc("get_trips_by_date_range", {
     p_date_from: dateFrom,
     p_date_to: dateTo,
+    p_idroute: idroute ?? null,
+    p_idunit: idunit ?? null,
   })
   if (error) throw error
   return (raw ?? []) as TripRecord[]
@@ -75,6 +88,9 @@ export async function getTransactions(params: {
     p_date_to: filters.dateTo ?? null,
     p_idunit: filters.idunit ?? null,
     p_status: filters.status ?? null,
+    p_shedule: filters.shedule ?? null,
+    p_idroute: filters.idroute ?? null,
+    p_search: filters.search ?? null,
     p_sort_field: sortField,
     p_sort_order: sortAsc ? "ASC" : "DESC",
   })

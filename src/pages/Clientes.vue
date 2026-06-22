@@ -12,6 +12,7 @@ import type { Movimiento } from "../services/ticketsService"
 import { formatDateTime, formatCurrency } from "../utils/formatters"
 import { useDialog } from "../composables/useDialog"
 import ConfirmDialog from "../components/ConfirmDialog.vue"
+import Select from "primevue/select"
 
 const ticketStore = useTicketStore()
 const auth = useAuthStore()
@@ -28,10 +29,22 @@ const page = ref(1)
 const perPage = ref(10)
 const sortField = ref("id")
 const sortAsc = ref(true)
+const filterStatus = ref<string | null>(null)
+const filterRoute = ref<number | null>(null)
+
+const statusOptions = [
+  { label: "Todos los estados", value: null },
+  { label: "Activo", value: "0" },
+  { label: "Inactivo", value: "1" },
+  { label: "Pendiente", value: "2" },
+]
+
 const storeParams = computed(() => ({
   page: page.value,
   perPage: perPage.value,
   search: search.value || undefined,
+  status: filterStatus.value ?? undefined,
+  idroute: filterRoute.value,
   sortField: sortField.value,
   sortOrder: sortAsc.value ? "ASC" : "DESC",
 }))
@@ -41,6 +54,11 @@ function scheduleFetch() {
   if (fetchTimer) clearTimeout(fetchTimer)
   fetchTimer = setTimeout(() => store.fetchAll(storeParams.value), 400)
 }
+
+watch([filterStatus, filterRoute], () => {
+  page.value = 1
+  scheduleFetch()
+})
 
 const dialogOpen = ref(false)
 const editing = ref<Client | null>(null)
@@ -149,10 +167,31 @@ const columns = [
   { key: "name", label: "CLIENTE" },
   { key: "phone", label: "TELÉFONO" },
   { key: "email", label: "CORREO" },
+  { key: "auth_user_name", label: "USUARIO" },
   { key: "route_name", label: "RUTA" },
-  { key: "status", label: "STATUS" },
+  { key: "status", label: "ESTATDO" },
   { key: "balance", label: "SALDO" },
 ]
+
+function statusLabel(s: string): string {
+  if (s === '0') return 'ACTIVO'
+  if (s === '2') return 'PENDIENTE'
+  return 'INACTIVO'
+}
+function statusClass(s: string): string {
+  if (s === '0') return 'bg-tertiary-fixed text-on-tertiary-fixed'
+  if (s === '2') return 'bg-warning-container/30 text-warning'
+  return 'bg-outline-variant text-on-surface-variant'
+}
+function statusAvatarClass(s: string): string {
+  if (s === '0') return 'bg-primary-container/20 text-primary'
+  if (s === '2') return 'bg-warning-container/20 text-warning'
+  return 'bg-outline-variant text-outline'
+}
+function statusInlineLabel(s: string): string {
+  if (s === '2') return 'PENDIENTE'
+  return 'INACTIVO'
+}
 
 function routeName(idroute: number | null): string {
   if (idroute == null) return "—"
@@ -234,13 +273,20 @@ function confirmDelete(c: Client) {
 
 async function doDelete() {
   if (!deleting.value) return
-  const ok = await store.remove(deleting.value.id)
-  if (ok) {
+  const result = await store.remove(deleting.value.id)
+  if (result.success) {
     deletingConfirm.value = false
     deleting.value = null
+    if (result.deactivated) {
+      deactivationMsg.value = result.message ?? ""
+      showDeactivationDialog.value = true
+    }
     await store.fetchAll(storeParams.value)
   }
 }
+
+const showDeactivationDialog = ref(false)
+const deactivationMsg = ref("")
 
 const ticketDeductDialog = useDialog<{ client: Client }>()
 const ticketCount = ref(1)
@@ -300,41 +346,67 @@ onMounted(async () => {
 
     <!-- Table section -->
     <section class="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-sm overflow-hidden">
-      <div class="p-md md:p-lg border-b border-outline-variant flex flex-col md:flex-row md:items-center md:justify-between gap-md bg-surface-container-low/30">
-        <h4 class="font-headline-sm text-headline-sm text-on-surface">Clientes Registrados</h4>
-        <div class="flex items-center gap-md w-full md:w-auto">
-          <div class="flex items-center gap-xs text-body-md text-on-surface-variant whitespace-nowrap">
-            <span class="hidden md:inline">Mostrar</span>
-            <select
-              v-model.number="perPage"
-              class="bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md py-1 pl-2 pr-1 focus:ring-primary focus:border-primary outline-none"
+      <div class="p-md md:p-lg border-b border-outline-variant flex flex-col gap-md bg-surface-container-low/30">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-md">
+          <h4 class="font-headline-sm text-headline-sm text-on-surface">Clientes Registrados</h4>
+          <div class="flex items-center gap-md w-full md:w-auto">
+            <div class="flex items-center gap-xs text-body-md text-on-surface-variant whitespace-nowrap">
+              <span class="hidden md:inline">Mostrar</span>
+              <select
+                v-model.number="perPage"
+                class="bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md py-1 pl-2 pr-1 focus:ring-primary focus:border-primary outline-none"
+              >
+                    <option :value="10">10</option>
+              <option :value="25">25</option>
+              <option :value="50">50</option>
+              <option :value="100">100</option>
+              <option :value="150">150</option>
+              <option :value="500">500</option>
+              </select>
+              <span class="hidden md:inline">registros</span>
+            </div>
+            <button
+              class="h-7 w-7 flex items-center justify-center rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-all shrink-0 disabled:opacity-40"
+              :disabled="refreshing"
+              @click="refreshData"
+              title="Refrescar datos"
             >
-                  <option :value="10">10</option>
-            <option :value="25">25</option>
-            <option :value="50">50</option>
-            <option :value="100">100</option>
-            <option :value="150">150</option>
-            <option :value="500">500</option>
-            </select>
-            <span class="hidden md:inline">registros</span>
+              <span class="material-symbols-outlined text-[18px]" :class="{ 'animate-spin': refreshing }">sync</span>
+            </button>
+            <div class="relative flex-1 md:flex-none">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
+              <input
+                v-model="search"
+                class="w-full md:w-56 pl-9 pr-3 py-1.5 bg-surface-container-low border border-outline-variant rounded-lg text-body-md focus:border-primary outline-none transition-all"
+                placeholder="Buscar clientes..."
+                type="text"
+              />
+            </div>
           </div>
-          <button
-            class="h-7 w-7 flex items-center justify-center rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-all shrink-0 disabled:opacity-40"
-            :disabled="refreshing"
-            @click="refreshData"
-            title="Refrescar datos"
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <Select
+            v-model="filterStatus"
+            :options="statusOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Filtrar por estado"
+            class="w-48"
+            showClear
+          />
+          <Select
+            v-model="filterRoute"
+            :options="routes"
+            optionLabel="description"
+            optionValue="id"
+            placeholder="Filtrar por ruta"
+            class="w-60"
+            showClear
           >
-            <span class="material-symbols-outlined text-[18px]" :class="{ 'animate-spin': refreshing }">sync</span>
-          </button>
-          <div class="relative flex-1 md:flex-none">
-            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
-            <input
-              v-model="search"
-              class="w-full md:w-56 pl-9 pr-3 py-1.5 bg-surface-container-low border border-outline-variant rounded-lg text-body-md focus:border-primary outline-none transition-all"
-              placeholder="Buscar clientes..."
-              type="text"
-            />
-          </div>
+            <template #option="slotProps">
+              <span>{{ slotProps.option.code }} - {{ slotProps.option.description }}</span>
+            </template>
+          </Select>
         </div>
       </div>
 
@@ -378,7 +450,7 @@ onMounted(async () => {
                   <div class="flex items-center gap-md">
                     <div
                       class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0"
-                      :class="c.status === '0' ? 'bg-primary-container/20 text-primary' : 'bg-outline-variant text-outline'"
+                      :class="statusAvatarClass(c.status)"
                     >
                       {{ initials(c.name) }}
                     </div>
@@ -387,17 +459,18 @@ onMounted(async () => {
                       <span
                         v-if="c.status !== '0'"
                         class="bg-outline-variant text-on-surface-variant text-[10px] px-xs py-[2px] rounded-full font-bold"
-                      >INACTIVO</span>
+                      >{{ statusInlineLabel(c.status) }}</span>
                     </div>
                   </div>
                 </td>
                 <td class="px-lg py-md text-body-md text-on-surface-variant">{{ c.phone }}</td>
                 <td class="px-lg py-md text-body-md text-on-surface-variant">{{ c.email }}</td>
+                <td class="px-lg py-md text-body-md text-on-surface-variant">{{ c.auth_user_name ?? '-' }}</td>
                 <td class="px-lg py-md text-body-md text-on-surface-variant">{{ c.route_name ?? routeName(c.idroute) }}</td>
                 <td class="px-lg py-md text-center">
                   <span class="inline-block px-sm py-[2px] rounded-full text-[11px] font-bold"
-                    :class="c.status === '0' ? 'bg-tertiary-fixed text-on-tertiary-fixed' : 'bg-outline-variant text-on-surface-variant'"
-                  >{{ c.status === '0' ? 'ACTIVO' : 'INACTIVO' }}</span>
+                    :class="statusClass(c.status)"
+                  >{{ statusLabel(c.status) }}</span>
                 </td>
                 <td class="px-lg py-md text-right font-bold" :class="c.balance < 0 ? 'text-error' : 'text-primary'">
                   {{ c.balance.toFixed(2) }}
@@ -430,7 +503,7 @@ onMounted(async () => {
               <div class="flex items-center gap-md">
                 <div
                   class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0"
-                  :class="c.status === '0' ? 'bg-primary-container/20 text-primary' : 'bg-outline-variant text-outline'"
+                  :class="statusAvatarClass(c.status)"
                 >
                   {{ initials(c.name) }}
                 </div>
@@ -439,7 +512,7 @@ onMounted(async () => {
                   <span
                     v-if="c.status !== '0'"
                     class="ml-1 bg-outline-variant text-on-surface-variant text-[10px] px-1 py-[2px] rounded-full font-bold"
-                  >INACTIVO</span>
+                  >{{ statusInlineLabel(c.status) }}</span>
                 </div>
               </div>
             </div>
@@ -459,9 +532,13 @@ onMounted(async () => {
               <div class="flex items-center gap-1 justify-end">
                 <span class="material-symbols-outlined text-[16px] text-outline">badge</span>
                 <span class="inline-block px-sm py-[1px] rounded-full text-[11px] font-bold"
-                  :class="c.status === '0' ? 'bg-tertiary-fixed text-on-tertiary-fixed' : 'bg-outline-variant text-on-surface-variant'"
-                >{{ c.status === '0' ? 'ACTIVO' : 'INACTIVO' }}</span>
+                  :class="statusClass(c.status)"
+                >{{ statusLabel(c.status) }}</span>
               </div>
+            </div>
+            <div class="flex items-center gap-1 mt-1 text-body-md text-on-surface-variant">
+              <span class="material-symbols-outlined text-[16px] text-outline">person</span>
+              <span class="truncate">{{ c.auth_user_name ?? '-' }}</span>
             </div>
             <div class="flex items-center justify-between">
               <span class="font-bold" :class="c.balance < 0 ? 'text-error' : 'text-primary'">
@@ -798,6 +875,7 @@ onMounted(async () => {
                 >
                   <option value="0">Activo</option>
                   <option value="1">Inactivo</option>
+                  <option value="2">Pendiente</option>
                 </select>
               </div>
               <div class="space-y-base md:col-span-2">
@@ -864,7 +942,31 @@ onMounted(async () => {
         </div>
       </div>
     </Teleport>
-  </div>
+
+    <!-- Deactivation Info Dialog -->
+    <Teleport to="body">
+      <div v-if="showDeactivationDialog" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" @click="showDeactivationDialog = false"></div>
+        <div class="relative bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant w-full max-w-sm mx-auto p-md md:p-xl">
+          <div class="flex items-start gap-md mb-lg">
+            <div class="w-12 h-12 rounded-full bg-primary-container/30 flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-primary text-[28px]">info</span>
+            </div>
+            <div>
+              <h3 class="font-headline-sm text-headline-sm text-on-surface">Cliente Desactivado</h3>
+              <p class="text-body-md text-on-surface-variant mt-1">{{ deactivationMsg }}</p>
+            </div>
+          </div>
+          <div class="flex justify-end">
+            <button
+              class="h-11 px-lg rounded-xl bg-primary text-on-primary font-bold hover:shadow-lg active:scale-[0.98] transition-all"
+              @click="showDeactivationDialog = false"
+            >Entendido</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+</div>
 </template>
 
 <style scoped>

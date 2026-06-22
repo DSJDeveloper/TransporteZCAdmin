@@ -1,6 +1,6 @@
 -- =====================================================
 -- BACKUP: LÓGICA DE SERVIDOR (RPC, RLS, TRIGGERS)
--- Fecha: 2026-06-16T23:40:52.978Z
+-- Fecha: 2026-06-22T20:56:54.629Z
 -- =====================================================
 
 -- >>> FUNCIONES / RPC <<<
@@ -82,111 +82,6 @@ END;
 $function$
 ;
 
--- Función: manage_client
-CREATE OR REPLACE FUNCTION public.manage_client(p_action character varying, p_id bigint DEFAULT NULL::bigint, p_name character varying DEFAULT NULL::character varying, p_document_id character varying DEFAULT NULL::character varying, p_email character varying DEFAULT NULL::character varying, p_phone character varying DEFAULT NULL::character varying, p_carrer character varying DEFAULT NULL::character varying, p_credit_limit character varying DEFAULT NULL::character varying, p_status character varying DEFAULT NULL::character varying)
- RETURNS json
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-DECLARE
-    v_client JSON;
-BEGIN
-    IF NOT public.is_admin() THEN
-        RETURN json_build_object('success', false, 'message', 'Solo administradores pueden realizar esta accion.');
-    END IF;
-
-    IF LOWER(p_action) = 'create' THEN
-        WITH inserted AS (
-            INSERT INTO public.clients (name, "documentID", email, phone, carrer, "creditLimit", status, uid)
-            VALUES (p_name, p_document_id, p_email, p_phone, p_carrer, p_credit_limit, COALESCE(p_status, 'Activo'), gen_random_uuid()::text)
-            RETURNING *
-        )
-        SELECT row_to_json(inserted.*) INTO v_client FROM inserted;
-        RETURN json_build_object('success', true, 'data', v_client, 'message', 'Cliente creado con exito.');
-
-    ELSIF LOWER(p_action) = 'update' THEN
-        WITH updated AS (
-            UPDATE public.clients SET
-                name         = COALESCE(p_name, name),
-                "documentID" = COALESCE(p_document_id, "documentID"),
-                email        = COALESCE(p_email, email),
-                phone        = COALESCE(p_phone, phone),
-                carrer       = COALESCE(p_carrer, carrer),
-                "creditLimit" = COALESCE(p_credit_limit, "creditLimit"),
-                status       = COALESCE(p_status, status)
-            WHERE id = p_id
-            RETURNING *
-        )
-        SELECT row_to_json(updated.*) INTO v_client FROM updated;
-        RETURN json_build_object('success', true, 'data', v_client, 'message', 'Cliente actualizado con exito.');
-
-    ELSIF LOWER(p_action) = 'delete' THEN
-        DELETE FROM public.clients WHERE id = p_id;
-        RETURN json_build_object('success', true, 'message', 'Cliente eliminado del sistema.');
-
-    ELSE
-        RETURN json_build_object('success', false, 'message', 'Accion no reconocida.');
-    END IF;
-
-EXCEPTION WHEN OTHERS THEN
-    RETURN json_build_object('success', false, 'message', 'Error en el servidor: ' || SQLERRM);
-END;
-$function$
-;
-
--- Función: manage_client
-CREATE OR REPLACE FUNCTION public.manage_client(p_action character varying, p_id bigint DEFAULT NULL::bigint, p_name character varying DEFAULT NULL::character varying, p_document_id character varying DEFAULT NULL::character varying, p_email character varying DEFAULT NULL::character varying, p_phone character varying DEFAULT NULL::character varying, p_carrer character varying DEFAULT NULL::character varying, p_credit_limit character varying DEFAULT NULL::character varying, p_status character varying DEFAULT NULL::character varying, p_idroute bigint DEFAULT NULL::bigint)
- RETURNS json
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-DECLARE
-    v_client JSON;
-BEGIN
-    IF NOT public.is_admin() THEN
-        RETURN json_build_object('success', false, 'message', 'Solo administradores pueden realizar esta accion.');
-    END IF;
-
-    IF LOWER(p_action) = 'create' THEN
-        WITH inserted AS (
-            INSERT INTO public.clients (name, "documentID", email, phone, carrer, "creditLimit", status, uid, idroute)
-            VALUES (p_name, p_document_id, p_email, p_phone, p_carrer, p_credit_limit, COALESCE(p_status, 'Activo'), gen_random_uuid()::text, p_idroute)
-            RETURNING *
-        )
-        SELECT row_to_json(inserted.*) INTO v_client FROM inserted;
-        RETURN json_build_object('success', true, 'data', v_client, 'message', 'Cliente creado con exito.');
-
-    ELSIF LOWER(p_action) = 'update' THEN
-        WITH updated AS (
-            UPDATE public.clients SET
-                name         = COALESCE(p_name, name),
-                "documentID" = COALESCE(p_document_id, "documentID"),
-                email        = COALESCE(p_email, email),
-                phone        = COALESCE(p_phone, phone),
-                carrer       = COALESCE(p_carrer, carrer),
-                "creditLimit" = COALESCE(p_credit_limit, "creditLimit"),
-                status       = COALESCE(p_status, status),
-                idroute      = COALESCE(p_idroute, idroute)
-            WHERE id = p_id
-            RETURNING *
-        )
-        SELECT row_to_json(updated.*) INTO v_client FROM updated;
-        RETURN json_build_object('success', true, 'data', v_client, 'message', 'Cliente actualizado con exito.');
-
-    ELSIF LOWER(p_action) = 'delete' THEN
-        DELETE FROM public.clients WHERE id = p_id;
-        RETURN json_build_object('success', true, 'message', 'Cliente eliminado del sistema.');
-
-    ELSE
-        RETURN json_build_object('success', false, 'message', 'Accion no reconocida.');
-    END IF;
-
-EXCEPTION WHEN OTHERS THEN
-    RETURN json_build_object('success', false, 'message', 'Error en el servidor: ' || SQLERRM);
-END;
-$function$
-;
-
 -- Función: update_user_role
 CREATE OR REPLACE FUNCTION public.update_user_role(user_email text, new_role text)
  RETURNS text
@@ -219,35 +114,101 @@ END;
 $function$
 ;
 
--- Función: get_transactions_paginated
-CREATE OR REPLACE FUNCTION public.get_transactions_paginated(p_page integer DEFAULT 1, p_per_page integer DEFAULT 10, p_date_from date DEFAULT NULL::date, p_date_to date DEFAULT NULL::date, p_idunit integer DEFAULT NULL::integer, p_status integer DEFAULT NULL::integer, p_sort_field text DEFAULT 'created_at'::text, p_sort_order text DEFAULT 'DESC'::text)
+-- Función: manage_solicitude
+CREATE OR REPLACE FUNCTION public.manage_solicitude(p_action character varying, p_id integer DEFAULT NULL::integer, p_date character varying DEFAULT NULL::character varying, p_idclient integer DEFAULT NULL::integer, p_shedule character varying DEFAULT NULL::character varying, p_route character varying DEFAULT NULL::character varying, p_status integer DEFAULT NULL::integer, p_idroute bigint DEFAULT NULL::bigint)
  RETURNS json
  LANGUAGE plpgsql
  SECURITY DEFINER
 AS $function$
 DECLARE
-    v_offset INTEGER;
+    v_solicitude JSON;
+BEGIN
+    IF LOWER(p_action) = 'list' THEN
+        SELECT json_agg(row_to_json(s.*)) INTO v_solicitude FROM (
+            SELECT * FROM public.solicitude ORDER BY id DESC
+        ) s;
+        RETURN json_build_object('success', true, 'data', COALESCE(v_solicitude, '[]'::json));
+
+    ELSIF LOWER(p_action) = 'list_by_client' THEN
+        SELECT json_agg(row_to_json(s.*)) INTO v_solicitude FROM (
+            SELECT * FROM public.solicitude WHERE idclient = p_idclient ORDER BY id DESC
+        ) s;
+        RETURN json_build_object('success', true, 'data', COALESCE(v_solicitude, '[]'::json));
+
+    ELSIF LOWER(p_action) = 'get_by_id' THEN
+        SELECT row_to_json(s.*) INTO v_solicitude FROM public.solicitude s WHERE id = p_id;
+        IF v_solicitude IS NULL THEN
+            RETURN json_build_object('success', false, 'message', 'Solicitud no encontrada.');
+        END IF;
+        RETURN json_build_object('success', true, 'data', v_solicitude);
+
+    ELSIF LOWER(p_action) = 'create' THEN
+        WITH inserted AS (
+            INSERT INTO public.solicitude (date, idclient, shedule, route, status, idroute)
+            VALUES (p_date, p_idclient, p_shedule, p_route, COALESCE(p_status, 0), p_idroute)
+            RETURNING *
+        )
+        SELECT row_to_json(inserted.*) INTO v_solicitude FROM inserted;
+        RETURN json_build_object('success', true, 'data', v_solicitude, 'message', 'Solicitud creada con exito.');
+
+    ELSIF LOWER(p_action) = 'update' THEN
+        WITH updated AS (
+            UPDATE public.solicitude SET
+                date     = COALESCE(p_date, date),
+                idclient = COALESCE(p_idclient, idclient),
+                shedule  = COALESCE(p_shedule, shedule),
+                route    = COALESCE(p_route, route),
+                status   = COALESCE(p_status, status),
+                idroute  = COALESCE(p_idroute, idroute)
+            WHERE id = p_id
+            RETURNING *
+        )
+        SELECT row_to_json(updated.*) INTO v_solicitude FROM updated;
+        IF v_solicitude IS NULL THEN
+            RETURN json_build_object('success', false, 'message', 'Solicitud no encontrada.');
+        END IF;
+        RETURN json_build_object('success', true, 'data', v_solicitude, 'message', 'Solicitud actualizada con exito.');
+
+    ELSIF LOWER(p_action) = 'delete' THEN
+        DELETE FROM public.solicitude WHERE id = p_id;
+        RETURN json_build_object('success', true, 'message', 'Solicitud eliminada del sistema.');
+
+    ELSE
+        RETURN json_build_object('success', false, 'message', 'Accion no reconocida.');
+    END IF;
+
+EXCEPTION WHEN OTHERS THEN
+    RETURN json_build_object('success', false, 'message', 'Error: ' || SQLERRM);
+END;
+$function$
+;
+
+-- Función: get_transactions_export
+CREATE OR REPLACE FUNCTION public.get_transactions_export(p_date_from date DEFAULT NULL::date, p_date_to date DEFAULT NULL::date, p_idunit integer DEFAULT NULL::integer, p_status integer DEFAULT NULL::integer, p_sort_field text DEFAULT 'created_at'::text, p_sort_order text DEFAULT 'DESC'::text, p_shedule text DEFAULT NULL::text, p_idroute bigint DEFAULT NULL::bigint)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
     v_data JSON;
-    v_total BIGINT;
     v_route_ids BIGINT[];
 BEGIN
-    v_offset := (p_page - 1) * p_per_page;
     v_route_ids := public.get_current_user_route_ids();
 
-    SELECT COUNT(*) INTO v_total FROM public.transactions t
-    LEFT JOIN public.clients c ON c.id = t.idclient
-    WHERE (p_date_from IS NULL OR t.created_at >= p_date_from)
-      AND (p_date_to IS NULL OR t.created_at <= (p_date_to || 'T23:59:59')::TIMESTAMP)
-      AND (p_idunit IS NULL OR t.idunit = p_idunit)
-      AND (p_status IS NULL OR t.status = p_status)
-      AND (public.is_admin() OR t.idroute = ANY(v_route_ids));
+    -- Para conductores: si no tienen rutas via user_routes, obtener la ruta de su unidad asignada
+    IF array_length(v_route_ids, 1) IS NULL THEN
+        SELECT ARRAY_AGG(u.idroute) INTO v_route_ids
+        FROM public.units u
+        WHERE u.email = auth.jwt()->>'email';
+    END IF;
 
     SELECT json_agg(sub) INTO v_data FROM (
         SELECT
             t.id, t.uid, t.idclient, t."createBy", t.amount,
             t.status, t.created_at, t.idunit, t.shedule, t."newBalanceClient",
-            json_build_object('name', c.name) AS clients,
-            json_build_object('name', u.name) AS units,
+            c.name AS client_name,
+            c."documentID" AS client_document,
+            u.name AS unit_name,
             COALESCE(r.code || ' - ' || r.description, 'Sin ruta') AS route_name
         FROM public.transactions t
         LEFT JOIN public.clients c ON c.id = t.idclient
@@ -257,25 +218,84 @@ BEGIN
           AND (p_date_to IS NULL OR t.created_at <= (p_date_to || 'T23:59:59')::TIMESTAMP)
           AND (p_idunit IS NULL OR t.idunit = p_idunit)
           AND (p_status IS NULL OR t.status = p_status)
+          AND (p_shedule IS NULL OR t.shedule = p_shedule)
+          AND (p_idroute IS NULL OR t.idroute = p_idroute)
           AND (public.is_admin() OR t.idroute = ANY(v_route_ids))
         ORDER BY
-            CASE WHEN p_sort_field = 'newBalanceClient'     AND p_sort_order = 'ASC'  THEN t.status     END ASC NULLS LAST,
-            CASE WHEN p_sort_field = 'newBalanceClient'     AND p_sort_order = 'DESC' THEN t.status     END DESC NULLS LAST,
             CASE WHEN p_sort_field = 'created_at' AND p_sort_order = 'ASC'  THEN t.created_at END ASC NULLS LAST,
             CASE WHEN p_sort_field = 'created_at' AND p_sort_order = 'DESC' THEN t.created_at END DESC NULLS LAST,
             CASE WHEN p_sort_field = 'amount'     AND p_sort_order = 'ASC'  THEN t.amount     END ASC NULLS LAST,
             CASE WHEN p_sort_field = 'amount'     AND p_sort_order = 'DESC' THEN t.amount     END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'status'     AND p_sort_order = 'ASC'  THEN t.status     END ASC NULLS LAST,
-            CASE WHEN p_sort_field = 'status'     AND p_sort_order = 'DESC' THEN t.status     END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'id'         AND p_sort_order = 'ASC'  THEN t.id         END ASC NULLS LAST,
-            CASE WHEN p_sort_field = 'id'         AND p_sort_order = 'DESC' THEN t.id         END DESC NULLS LAST,
             t.id DESC
-        LIMIT p_per_page
-        OFFSET v_offset
     ) sub;
 
-    RETURN json_build_object('data', COALESCE(v_data, '[]'::json), 'total', v_total);
+    RETURN json_build_object('data', COALESCE(v_data, '[]'::json));
 END;
+$function$
+;
+
+-- Función: get_transactions_export
+CREATE OR REPLACE FUNCTION public.get_transactions_export(p_date_from date DEFAULT NULL::date, p_date_to date DEFAULT NULL::date, p_idunit integer DEFAULT NULL::integer, p_status integer DEFAULT NULL::integer, p_sort_field text DEFAULT 'created_at'::text, p_sort_order text DEFAULT 'DESC'::text, p_shedule text DEFAULT NULL::text, p_idroute bigint DEFAULT NULL::bigint, p_search text DEFAULT NULL::text)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+    v_data JSON;
+    v_route_ids BIGINT[];
+    v_search TEXT;
+BEGIN
+    v_route_ids := public.get_current_user_route_ids();
+    v_search := CASE WHEN p_search IS NOT NULL AND p_search <> '' THEN '%' || p_search || '%' ELSE NULL END;
+
+    -- Para conductores: si no tienen rutas via user_routes, obtener la ruta de su unidad asignada
+    IF array_length(v_route_ids, 1) IS NULL THEN
+        SELECT ARRAY_AGG(u.idroute) INTO v_route_ids
+        FROM public.units u
+        WHERE u.email = auth.jwt()->>'email';
+    END IF;
+
+    SELECT json_agg(sub) INTO v_data FROM (
+        SELECT
+            t.id, t.uid, t.idclient, t."createBy", t.amount,
+            t.status, t.created_at, t.idunit, t.shedule, t."newBalanceClient",
+            c.name AS client_name,
+            c."documentID" AS client_document,
+            u.name AS unit_name,
+            COALESCE(r.code || ' - ' || r.description, 'Sin ruta') AS route_name
+        FROM public.transactions t
+        LEFT JOIN public.clients c ON c.id = t.idclient
+        LEFT JOIN public.units u ON u.id = t.idunit
+        LEFT JOIN public.routes r ON r.id = t.idroute
+        WHERE (p_date_from IS NULL OR t.created_at >= p_date_from)
+          AND (p_date_to IS NULL OR t.created_at <= (p_date_to || 'T23:59:59')::TIMESTAMP)
+          AND (p_idunit IS NULL OR t.idunit = p_idunit)
+          AND (p_status IS NULL OR t.status = p_status)
+          AND (p_shedule IS NULL OR t.shedule = p_shedule)
+          AND (p_idroute IS NULL OR t.idroute = p_idroute)
+          AND (v_search IS NULL OR c.name ILIKE v_search OR c."documentID" ILIKE v_search OR c.phone ILIKE v_search OR c.email ILIKE v_search)
+          AND (public.is_admin() OR t.idroute = ANY(v_route_ids))
+        ORDER BY
+            CASE WHEN p_sort_field = 'created_at' AND p_sort_order = 'ASC'  THEN t.created_at END ASC NULLS LAST,
+            CASE WHEN p_sort_field = 'created_at' AND p_sort_order = 'DESC' THEN t.created_at END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'amount'     AND p_sort_order = 'ASC'  THEN t.amount     END ASC NULLS LAST,
+            CASE WHEN p_sort_field = 'amount'     AND p_sort_order = 'DESC' THEN t.amount     END DESC NULLS LAST,
+            t.id DESC
+    ) sub;
+
+    RETURN json_build_object('data', COALESCE(v_data, '[]'::json));
+END;
+$function$
+;
+
+-- Función: get_horarios
+CREATE OR REPLACE FUNCTION public.get_horarios()
+ RETURNS json
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+AS $function$
+    SELECT COALESCE(json_agg(json_build_object('id', id, 'code', code, 'shudle', shudle, 'status', status) ORDER BY code), '[]'::json)
+    FROM public.horario;
 $function$
 ;
 
@@ -716,166 +736,6 @@ END;
 $function$
 ;
 
--- Función: handle_new_user
-CREATE OR REPLACE FUNCTION public.handle_new_user()
- RETURNS trigger
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-DECLARE
-  v_raw_name TEXT;
-  v_name TEXT;
-  v_phone TEXT;
-  v_document_id TEXT;
-  v_carrer TEXT;
-  v_role TEXT;
-BEGIN
-  
-  -- 1. Definir el rol (por defecto 'student')
-  v_role := LOWER(COALESCE(NEW.raw_user_meta_data->>'role', 'student'));
-  
-  -- 2. Capturar el user_name original de los metadatos
-  v_raw_name := COALESCE(NEW.raw_user_meta_data->>'user_name', 'usuario');
-
-  -- 3. LIMPIEZA DEL NOMBRE: 
-  --    - LOWER(...) lo pasa todo a minúsculas.
-  --    - regexp_replace(..., '[^a-z0-9]', '', 'g') elimina cualquier cosa que NO sea una letra de la 'a' a la 'z' o un número. Esto quita espacios, tildes, eñes y caracteres especiales.
-  v_name := LOWER(regexp_replace(v_raw_name, '[^a-zA-Z0-9]', '', 'g'));
-
-  -- Si después de la limpieza el nombre queda vacío (ej. el usuario puso solo emojis o símbolos), asignamos un fallback con parte de su email
-  IF v_name = '' OR v_name IS NULL THEN
-    v_name := LOWER(regexp_replace(split_part(NEW.email, '@', 1), '[^a-zA-Z0-9]', '', 'g'));
-  END IF;
-
-  -- 4. Inserción en la tabla de perfiles
-  BEGIN
-    INSERT INTO public.profiles (id, email, role, name, updated_at)
-    VALUES (
-      NEW.id,
-      NEW.email,
-      v_role::user_role,
-      v_name, -- Insertamos el nombre ya limpio
-      NOW()
-    );
-  EXCEPTION WHEN OTHERS THEN
-    RAISE WARNING 'Fallo especifico en profiles: %', SQLERRM;
-  END;
-
-  -- 5. Crear el registro en la tabla de clientes SOLO si el rol es 'student'
-  IF v_role = 'student' THEN
-    
-    v_phone       := COALESCE(NEW.raw_user_meta_data->>'phone', '');
-    v_document_id := COALESCE(NEW.raw_user_meta_data->>'document_id', '');
-    v_carrer      := NEW.raw_user_meta_data->>'carrer';
-
-    BEGIN
-      INSERT INTO public.clients (
-        name,
-        phone,
-        "documentID", 
-        email,
-        "creditLimit",
-        status,
-        "createBy",
-        carrer,
-        balance,
-        uid
-      ) VALUES (
-        v_name, -- Aquí también se guardará la versión limpia en minúsculas
-        v_phone,
-        v_document_id,
-        NEW.email,
-        0,         
-        '1',       
-        'Sistema',    
-        v_carrer,
-        0,         
-        NEW.id     
-      );
-    EXCEPTION WHEN OTHERS THEN
-      RAISE WARNING 'Fallo especifico en clientes: %', SQLERRM;
-    END;
-    
-  END IF;
-
-  RETURN NEW;
-END;
-$function$
-;
-
--- Función: process_payment
-CREATE OR REPLACE FUNCTION public.process_payment(p_idclient integer, p_amount numeric, p_method character varying, p_ref character varying DEFAULT NULL::character varying, p_tasa numeric DEFAULT NULL::numeric, p_date date DEFAULT CURRENT_DATE, p_picture character varying DEFAULT NULL::character varying, p_create_by character varying DEFAULT NULL::character varying, p_codigo_banco character varying DEFAULT NULL::character varying)
- RETURNS json
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-DECLARE
-    v_current_balance NUMERIC(10,2);
-    v_recharge_id BIGINT;
-    v_amount_in_usd NUMERIC(10,2);
-    v_estimated_tickets NUMERIC(10,2);
-    v_calc JSON;
-    v_idroute BIGINT;
-BEGIN
-    IF auth.role() <> 'authenticated' THEN
-        RETURN json_build_object('success', false, 'message', 'No autorizado.');
-    END IF;
-
-    IF p_amount <= 0 THEN
-        RETURN json_build_object('success', false, 'message', 'El monto de la recarga debe ser mayor a cero.');
-    END IF;
-
-    SELECT balance, idroute INTO v_current_balance, v_idroute FROM public.clients WHERE id = p_idclient;
-    IF v_current_balance IS NULL THEN
-        RETURN json_build_object('success', false, 'message', 'El cliente especificado no existe.');
-    END IF;
-
-    v_calc := public.calculate_tickets(p_amount, p_method, p_tasa);
-    v_amount_in_usd := (v_calc->>'usd_amount')::NUMERIC;
-    v_estimated_tickets := (v_calc->>'estimated_tickets')::NUMERIC;
-
-    INSERT INTO public.recharge (
-        idclient, method, ref, picture, amount, tasa, date, status, "createBy", "createAt", codigo_banco, idroute, tickets
-    )
-    VALUES (
-        p_idclient,
-        p_method,
-        NULLIF(p_ref, ''),
-        NULLIF(p_picture, ''),
-        v_amount_in_usd,
-        p_tasa,
-        p_date,
-        0,
-        p_create_by,
-        NOW(),
-        NULLIF(p_codigo_banco, ''),
-        v_idroute,
-        v_estimated_tickets
-    )
-    RETURNING id INTO v_recharge_id;
-
-    RETURN json_build_object(
-        'success', true,
-        'message', 'Pago registrado exitosamente. En espera por verificación administrativa.',
-        'recharge_id', v_recharge_id,
-        'estimated_tickets', v_estimated_tickets,
-        'current_balance', v_current_balance
-    );
-EXCEPTION
-    WHEN SQLSTATE '23505' THEN
-        RETURN json_build_object(
-            'success', false,
-            'message', 'Esta combinación de banco y referencia ya fue procesada. Verifique los datos e intente de nuevo.'
-        );
-    WHEN OTHERS THEN
-        RETURN json_build_object(
-            'success', false,
-            'message', 'Error en transacción: ' || SQLERRM
-        );
-END;
-$function$
-;
-
 -- Función: get_clients_paginated
 CREATE OR REPLACE FUNCTION public.get_clients_paginated(p_page integer DEFAULT 1, p_per_page integer DEFAULT 10, p_search text DEFAULT NULL::text, p_status text DEFAULT NULL::text, p_sort_field text DEFAULT 'id'::text, p_sort_order text DEFAULT 'ASC'::text)
  RETURNS json
@@ -947,6 +807,149 @@ END;
 $function$
 ;
 
+-- Función: get_clients_paginated
+CREATE OR REPLACE FUNCTION public.get_clients_paginated(p_page integer DEFAULT 1, p_per_page integer DEFAULT 10, p_search text DEFAULT NULL::text, p_status text DEFAULT NULL::text, p_sort_field text DEFAULT 'id'::text, p_sort_order text DEFAULT 'ASC'::text, p_idroute bigint DEFAULT NULL::bigint)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+    v_offset INTEGER;
+    v_data JSON;
+    v_total BIGINT;
+    v_route_ids BIGINT[];
+    v_search TEXT;
+BEGIN
+    v_offset := (p_page - 1) * p_per_page;
+    v_route_ids := public.get_current_user_route_ids();
+    v_search := CASE WHEN p_search IS NOT NULL AND p_search <> '' THEN '%' || p_search || '%' ELSE NULL END;
+
+    SELECT COUNT(*) INTO v_total FROM public.clients c
+    WHERE (v_search IS NULL OR c.name ILIKE v_search OR c.phone ILIKE v_search OR c.email ILIKE v_search OR c."documentID" ILIKE v_search)
+      AND (p_status IS NULL OR c.status = p_status)
+      AND (p_idroute IS NULL OR c.idroute = p_idroute)
+      AND (public.is_admin() OR c.idroute = ANY(v_route_ids));
+
+    SELECT json_agg(t) INTO v_data FROM (
+        SELECT
+            c.id,
+            c.name,
+            c."documentID",
+            c.email,
+            c.phone,
+            c.carrer,
+            c."creditLimit",
+            c.status,
+            c.balance,
+            c.uid,
+            c.idroute,
+            c."createAt",
+            c."createBy",
+            COALESCE(rt.description, rt.code) AS route_name,
+            au.raw_user_meta_data->>'user_name' AS auth_user_name
+        FROM public.clients c
+        LEFT JOIN public.routes rt ON rt.id = c.idroute
+        LEFT JOIN auth.users au ON au.id = c.uid::uuid
+        WHERE (v_search IS NULL OR c.name ILIKE v_search OR c.phone ILIKE v_search OR c.email ILIKE v_search OR c."documentID" ILIKE v_search)
+          AND (p_status IS NULL OR c.status = p_status)
+          AND (p_idroute IS NULL OR c.idroute = p_idroute)
+          AND (public.is_admin() OR c.idroute = ANY(v_route_ids))
+        ORDER BY
+            CASE WHEN p_sort_field = 'id'         AND p_sort_order = 'ASC'  THEN c.id                 END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'id'         AND p_sort_order = 'DESC' THEN c.id                 END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'name'       AND p_sort_order = 'ASC'  THEN c.name               END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'name'       AND p_sort_order = 'DESC' THEN c.name               END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'phone'      AND p_sort_order = 'ASC'  THEN c.phone              END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'phone'      AND p_sort_order = 'DESC' THEN c.phone              END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'email'      AND p_sort_order = 'ASC'  THEN c.email              END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'email'      AND p_sort_order = 'DESC' THEN c.email              END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'route_name' AND p_sort_order = 'ASC'  THEN rt.description       END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'route_name' AND p_sort_order = 'DESC' THEN rt.description       END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'balance'    AND p_sort_order = 'ASC'  THEN c.balance            END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'balance'    AND p_sort_order = 'DESC' THEN c.balance            END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'status'     AND p_sort_order = 'ASC'  THEN c.status             END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'status'     AND p_sort_order = 'DESC' THEN c.status             END DESC NULLS LAST,
+            c.id ASC
+        LIMIT p_per_page
+        OFFSET v_offset
+    ) t;
+
+    RETURN json_build_object(
+        'data', COALESCE(v_data, '[]'::json),
+        'total', v_total
+    );
+END;
+$function$
+;
+
+-- Función: manage_client
+CREATE OR REPLACE FUNCTION public.manage_client(p_action character varying, p_id bigint DEFAULT NULL::bigint, p_name character varying DEFAULT NULL::character varying, p_document_id character varying DEFAULT NULL::character varying, p_email character varying DEFAULT NULL::character varying, p_phone character varying DEFAULT NULL::character varying, p_carrer character varying DEFAULT NULL::character varying, p_credit_limit character varying DEFAULT NULL::character varying, p_status character varying DEFAULT NULL::character varying, p_idroute bigint DEFAULT NULL::bigint)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+    v_client JSON;
+BEGIN
+    IF NOT public.is_admin() THEN
+        RETURN json_build_object('success', false, 'message', 'Solo administradores pueden realizar esta accion.');
+    END IF;
+
+    IF LOWER(p_action) = 'create' THEN
+        WITH inserted AS (
+            INSERT INTO public.clients (name, "documentID", email, phone, carrer, "creditLimit", status, uid, idroute)
+            VALUES (p_name, p_document_id, p_email, p_phone, p_carrer, p_credit_limit, COALESCE(p_status, 'Activo'), gen_random_uuid()::text, p_idroute)
+            RETURNING *
+        )
+        SELECT row_to_json(inserted.*) INTO v_client FROM inserted;
+        RETURN json_build_object('success', true, 'data', v_client, 'message', 'Cliente creado con exito.');
+
+    ELSIF LOWER(p_action) = 'update' THEN
+        WITH updated AS (
+            UPDATE public.clients SET
+                name         = COALESCE(p_name, name),
+                "documentID" = COALESCE(p_document_id, "documentID"),
+                email        = COALESCE(p_email, email),
+                phone        = COALESCE(p_phone, phone),
+                carrer       = COALESCE(p_carrer, carrer),
+                "creditLimit" = COALESCE(p_credit_limit, "creditLimit"),
+                status       = COALESCE(p_status, status),
+                idroute      = COALESCE(p_idroute, idroute)
+            WHERE id = p_id
+            RETURNING *
+        )
+        SELECT row_to_json(updated.*) INTO v_client FROM updated;
+        RETURN json_build_object('success', true, 'data', v_client, 'message', 'Cliente actualizado con exito.');
+
+    ELSIF LOWER(p_action) = 'delete' THEN
+        IF EXISTS (SELECT 1 FROM public.recharge WHERE idclient = p_id LIMIT 1)
+           OR EXISTS (SELECT 1 FROM public.transactions WHERE idclient = p_id LIMIT 1)
+        THEN
+            WITH deactivated AS (
+                UPDATE public.clients SET status = '1' WHERE id = p_id RETURNING *
+            )
+            SELECT row_to_json(deactivated.*) INTO v_client FROM deactivated;
+            RETURN json_build_object(
+                'success', true,
+                'data', v_client,
+                'message', 'El cliente no puede ser eliminado porque tiene recargas o movimientos asociados. Se ha desactivado en su lugar.',
+                'deactivated', true
+            );
+        ELSE
+            DELETE FROM public.clients WHERE id = p_id;
+            RETURN json_build_object('success', true, 'message', 'Cliente eliminado del sistema.');
+        END IF;
+
+    ELSE
+        RETURN json_build_object('success', false, 'message', 'Accion no reconocida.');
+    END IF;
+
+EXCEPTION WHEN OTHERS THEN
+    RETURN json_build_object('success', false, 'message', 'Error en el servidor: ' || SQLERRM);
+END;
+$function$
+;
+
 -- Función: get_recharge_stats
 CREATE OR REPLACE FUNCTION public.get_recharge_stats()
  RETURNS json
@@ -983,101 +986,6 @@ BEGIN
     'approved', v_approved,
     'total_amount', v_total_amount
   );
-END;
-$function$
-;
-
--- Función: get_complete_user_profile
-CREATE OR REPLACE FUNCTION public.get_complete_user_profile(p_uuid text, p_email text)
- RETURNS json
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-DECLARE
-    v_result JSON;
-    v_role TEXT;
-BEGIN
-    SELECT role::text INTO v_role FROM public.profiles WHERE id = p_uuid::uuid;
-
-    IF v_role = 'driver' THEN
-        SELECT row_to_json(driver_row) INTO v_result
-        FROM (
-            SELECT
-                u.id AS idclient,
-                p.id AS uuid,
-                COALESCE(u.driver, u.name) AS name,
-                p.email,
-                ''::character varying AS phone,
-                0 AS saldo,
-                NOW()::timestamp without time zone AS created_at,
-                p.role,
-                u.id AS unit_id,
-                u.name AS unit_name,
-                u.number AS unit_number,
-                u.plate AS unit_plate,
-                u.status AS unit_status,
-                r.id AS route_id,
-                r.code AS route_code,
-                r.description AS route_description
-            FROM public.units u
-            INNER JOIN public.profiles p ON LOWER(p.email) = LOWER(u.email)
-            LEFT JOIN public.routes r ON r.id = u.idroute
-            WHERE p.id = p_uuid::uuid AND LOWER(u.email) = LOWER(p_email)
-            LIMIT 1
-        ) driver_row;
-    ELSE
-        SELECT row_to_json(profile_row) INTO v_result
-        FROM (
-            SELECT
-                COALESCE(c.id, 0) AS idclient,
-                p.id AS uuid,
-                COALESCE(c.name, SPLIT_PART(p.email, '@', 1)) AS name,
-                COALESCE(c.email, p.email) AS email,
-                c.phone,
-                c."documentID",
-                c."creditLimit",
-                c.status,
-                c.carrer,
-                c.balance AS saldo,
-                COALESCE(c."createAt", NOW()) AS created_at,
-                p.role
-            FROM public.profiles p
-            LEFT JOIN public.clients c ON p.id = c.uid::uuid AND c.email = p_email
-            WHERE p.id = p_uuid::uuid
-            LIMIT 1
-        ) profile_row;
-    END IF;
-
-    RETURN COALESCE(v_result, '{}'::json);
-END;
-$function$
-;
-
--- Función: get_solicitudes_by_date_range
-CREATE OR REPLACE FUNCTION public.get_solicitudes_by_date_range(p_date_from date DEFAULT CURRENT_DATE, p_date_to date DEFAULT CURRENT_DATE)
- RETURNS TABLE(id integer, client_name text, client_carrer text, client_document text, client_phone text, date character varying, shedule character varying, route character varying, status smallint)
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-BEGIN
-  IF NOT public.is_admin() THEN
-    RAISE EXCEPTION 'Acceso denegado: se requieren permisos de administrador';
-  END IF;
-  RETURN QUERY
-  SELECT
-    s.id,
-    c.name::TEXT,
-    c.carrer::TEXT,
-    c."documentID"::TEXT,
-    c.phone::TEXT,
-    s.date,
-    s.shedule,
-    s.route,
-    s.status
-  FROM public.solicitude s
-  LEFT JOIN public.clients c ON c.id = s.idclient
-  WHERE s.date::date >= p_date_from AND s.date::date <= p_date_to
-  ORDER BY s.date DESC, s.shedule;
 END;
 $function$
 ;
@@ -1181,6 +1089,167 @@ END;
 $function$
 ;
 
+-- Función: handle_new_user
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+  v_raw_name TEXT;
+  v_name TEXT;
+  v_phone TEXT;
+  v_document_id TEXT;
+  v_carrer TEXT;
+  v_role TEXT;
+  v_role_enum public.user_role;
+BEGIN
+  
+  -- 1. Definir el rol (por defecto 'student')
+  v_role := LOWER(COALESCE(NEW.raw_user_meta_data->>'role', 'student'));
+  
+  v_role_enum := CASE v_role
+    WHEN 'admin' THEN 'admin'::public.user_role
+    WHEN 'student' THEN 'student'::public.user_role
+    WHEN 'driver' THEN 'driver'::public.user_role
+    WHEN 'supervisor' THEN 'supervisor'::public.user_role
+    ELSE 'student'::public.user_role -- Fallback si mandan algo inválido
+  END;
+  -- 2. Capturar el user_name original de los metadatos
+  v_raw_name := COALESCE(NEW.raw_user_meta_data->>'user_name', 'usuario');
+
+  -- 3. LIMPIEZA DEL NOMBRE: 
+  --    - LOWER(...) lo pasa todo a minúsculas.
+  --    - regexp_replace(..., '[^a-z0-9]', '', 'g') elimina cualquier cosa que NO sea una letra de la 'a' a la 'z' o un número. Esto quita espacios, tildes, eñes y caracteres especiales.
+  v_name := LOWER(regexp_replace(v_raw_name, '[^a-zA-Z0-9]', '', 'g'));
+
+  -- Si después de la limpieza el nombre queda vacío (ej. el usuario puso solo emojis o símbolos), asignamos un fallback con parte de su email
+  IF v_name = '' OR v_name IS NULL THEN
+    v_name := LOWER(regexp_replace(split_part(NEW.email, '@', 1), '[^a-zA-Z0-9]', '', 'g'));
+  END IF;
+
+  -- 4. Inserción en la tabla de perfiles
+--  BEGIN
+    INSERT INTO public.profiles (id, email, role, name, updated_at)
+    VALUES (
+      NEW.id,
+      NEW.email,
+      v_role_enum,
+      v_name, -- Insertamos el nombre ya limpio
+      NOW()
+    );
+--  EXCEPTION WHEN OTHERS THEN
+--    RAISE WARNING 'Fallo especifico en profiles: %', SQLERRM;
+--  END;
+
+  -- 5. Crear el registro en la tabla de clientes SOLO si el rol es 'student'
+  IF v_role = 'student' THEN
+    
+    v_phone       := COALESCE(NEW.raw_user_meta_data->>'phone', '');
+    v_document_id := COALESCE(NEW.raw_user_meta_data->>'document_id', '');
+    v_carrer      := NEW.raw_user_meta_data->>'carrer';
+
+    BEGIN
+      INSERT INTO public.clients (
+        name,
+        phone,
+        "documentID", 
+        email,
+        "creditLimit",
+        status,
+        "createBy",
+        carrer,
+        balance,
+        uid
+      ) VALUES (
+        v_name, -- Aquí también se guardará la versión limpia en minúsculas
+        v_phone,
+        v_document_id,
+        NEW.email,
+        0,         
+        '2',       
+        'App',    
+        v_carrer,
+        0,         
+        NEW.id     
+      );
+    EXCEPTION WHEN OTHERS THEN
+      RAISE WARNING 'Fallo especifico en clientes: %', SQLERRM;
+    END;
+    
+  END IF;
+
+  RETURN NEW;
+END;
+$function$
+;
+
+-- Función: get_complete_user_profile
+CREATE OR REPLACE FUNCTION public.get_complete_user_profile(p_uuid text, p_email text)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+    v_result JSON;
+    v_role TEXT;
+BEGIN
+    SELECT role::text INTO v_role FROM public.profiles WHERE id = p_uuid::uuid;
+
+    IF v_role = 'driver' THEN
+        SELECT row_to_json(driver_row) INTO v_result
+        FROM (
+            SELECT
+                u.id AS idclient,
+                p.id AS uuid,
+                COALESCE(u.driver, u.name) AS name,
+                p.email,
+                ''::character varying AS phone,
+                0 AS saldo,
+                NOW()::timestamp without time zone AS created_at,
+                p.role,
+                u.id AS unit_id,
+                u.name AS unit_name,
+                u.number AS unit_number,
+                u.plate AS unit_plate,
+                u.status AS unit_status,
+                r.id AS route_id,
+                r.code AS route_code,
+                r.description AS route_description
+            FROM public.units u
+            INNER JOIN public.profiles p ON LOWER(p.email) = LOWER(u.email)
+            LEFT JOIN public.routes r ON r.id = u.idroute
+            WHERE p.id = p_uuid::uuid AND LOWER(u.email) = LOWER(p_email)
+            LIMIT 1
+        ) driver_row;
+    ELSE
+        SELECT row_to_json(profile_row) INTO v_result
+        FROM (
+            SELECT
+                COALESCE(c.id, 0) AS idclient,
+                p.id AS uuid,
+                COALESCE(c.name, SPLIT_PART(p.email, '@', 1)) AS name,
+                COALESCE(c.email, p.email) AS email,
+                c.phone,
+                c."documentID",
+                c."creditLimit",
+                c.status,
+                c.carrer,
+                c.balance AS saldo,
+                COALESCE(c."createAt", NOW()) AS created_at,
+                p.role
+            FROM public.profiles p
+            LEFT JOIN public.clients c ON p.id = c.uid::uuid AND c.email = p_email
+            WHERE p.id = p_uuid::uuid
+            LIMIT 1
+        ) profile_row;
+    END IF;
+
+    RETURN COALESCE(v_result, '{}'::json);
+END;
+$function$
+;
+
 -- Función: get_my_client_id
 CREATE OR REPLACE FUNCTION public.get_my_client_id()
  RETURNS integer
@@ -1230,6 +1299,31 @@ AS $function$SELECT EXISTS (
 );$function$
 ;
 
+-- Función: get_debtors_list
+CREATE OR REPLACE FUNCTION public.get_debtors_list()
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+    v_data JSON;
+BEGIN
+    IF NOT public.is_admin() THEN
+        RETURN json_build_object('success', false, 'message', 'Solo administradores pueden ver esta información.');
+    END IF;
+
+    SELECT json_agg(row_to_json(d.*)) INTO v_data FROM (
+        SELECT id, name, "documentID", balance
+        FROM public.clients
+        WHERE balance < 0
+        ORDER BY balance ASC
+    ) d;
+
+    RETURN json_build_object('success', true, 'data', COALESCE(v_data, '[]'::json));
+END;
+$function$
+;
+
 -- Función: get_client_history
 CREATE OR REPLACE FUNCTION public.get_client_history(p_client_id integer, p_from timestamp without time zone, p_to timestamp without time zone, p_status integer DEFAULT NULL::integer)
  RETURNS json
@@ -1255,6 +1349,7 @@ begin
       tasa, 
       date, 
       status, 
+      tickets,
       "createBy", 
       "createAt" AS created_at_formatted -- Le damos un alias plano sin comillas para el frontend
     from public.recharge 
@@ -1299,31 +1394,6 @@ begin
     'total_transactions_amount', v_total_transactions
   );
 end;
-$function$
-;
-
--- Función: get_debtors_list
-CREATE OR REPLACE FUNCTION public.get_debtors_list()
- RETURNS json
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-DECLARE
-    v_data JSON;
-BEGIN
-    IF NOT public.is_admin() THEN
-        RETURN json_build_object('success', false, 'message', 'Solo administradores pueden ver esta información.');
-    END IF;
-
-    SELECT json_agg(row_to_json(d.*)) INTO v_data FROM (
-        SELECT id, name, "documentID", balance
-        FROM public.clients
-        WHERE balance < 0
-        ORDER BY balance ASC
-    ) d;
-
-    RETURN json_build_object('success', true, 'data', COALESCE(v_data, '[]'::json));
-END;
 $function$
 ;
 
@@ -1504,6 +1574,8 @@ DECLARE
     v_client_id BIGINT;
     v_name VARCHAR(255);
     v_balance NUMERIC(10,2);
+    v_document_id VARCHAR(255);
+    v_photo_url VARCHAR(1000);
 BEGIN
     -- 1. 🏢 Obtener el precio actual del ticket desde la empresa
     SELECT ticket INTO v_ticket_price FROM public.company LIMIT 1;
@@ -1517,8 +1589,8 @@ BEGIN
     END IF;
 
     -- 2. 🔍 Buscar los datos base del cliente por su UID
-    SELECT id, name, balance
-    INTO v_client_id, v_name, v_balance
+    SELECT id, name, balance, "documentID", photo_url
+    INTO v_client_id, v_name, v_balance, v_document_id, v_photo_url
     FROM public.clients
     WHERE uid = p_uid
     LIMIT 1;
@@ -1537,6 +1609,8 @@ BEGIN
         'data', json_build_object(
             'id', v_client_id,
             'name', v_name,
+            'documentID', v_document_id,
+            'photo_url', v_photo_url,
             'balance', v_balance, -- Saldo en dinero (Ej: 10.00)
             'tickets_balance', TRUNC(v_balance / v_ticket_price, 2) -- 👈 Saldo convertido a tickets (Ej: 5.00 si el ticket vale 2)
         )
@@ -1949,111 +2023,6 @@ END;
 $function$
 ;
 
--- Función: manage_client
-CREATE OR REPLACE FUNCTION public.manage_client(p_action character varying, p_id bigint DEFAULT NULL::bigint, p_name character varying DEFAULT NULL::character varying, p_document_id character varying DEFAULT NULL::character varying, p_email character varying DEFAULT NULL::character varying, p_phone character varying DEFAULT NULL::character varying, p_carrer character varying DEFAULT NULL::character varying, p_credit_limit character varying DEFAULT NULL::character varying, p_status character varying DEFAULT NULL::character varying)
- RETURNS json
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-DECLARE
-    v_client JSON;
-BEGIN
-    IF NOT public.is_admin() THEN
-        RETURN json_build_object('success', false, 'message', 'Solo administradores pueden realizar esta accion.');
-    END IF;
-
-    IF LOWER(p_action) = 'create' THEN
-        WITH inserted AS (
-            INSERT INTO public.clients (name, "documentID", email, phone, carrer, "creditLimit", status, uid)
-            VALUES (p_name, p_document_id, p_email, p_phone, p_carrer, p_credit_limit, COALESCE(p_status, 'Activo'), gen_random_uuid()::text)
-            RETURNING *
-        )
-        SELECT row_to_json(inserted.*) INTO v_client FROM inserted;
-        RETURN json_build_object('success', true, 'data', v_client, 'message', 'Cliente creado con exito.');
-
-    ELSIF LOWER(p_action) = 'update' THEN
-        WITH updated AS (
-            UPDATE public.clients SET
-                name         = COALESCE(p_name, name),
-                "documentID" = COALESCE(p_document_id, "documentID"),
-                email        = COALESCE(p_email, email),
-                phone        = COALESCE(p_phone, phone),
-                carrer       = COALESCE(p_carrer, carrer),
-                "creditLimit" = COALESCE(p_credit_limit, "creditLimit"),
-                status       = COALESCE(p_status, status)
-            WHERE id = p_id
-            RETURNING *
-        )
-        SELECT row_to_json(updated.*) INTO v_client FROM updated;
-        RETURN json_build_object('success', true, 'data', v_client, 'message', 'Cliente actualizado con exito.');
-
-    ELSIF LOWER(p_action) = 'delete' THEN
-        DELETE FROM public.clients WHERE id = p_id;
-        RETURN json_build_object('success', true, 'message', 'Cliente eliminado del sistema.');
-
-    ELSE
-        RETURN json_build_object('success', false, 'message', 'Accion no reconocida.');
-    END IF;
-
-EXCEPTION WHEN OTHERS THEN
-    RETURN json_build_object('success', false, 'message', 'Error en el servidor: ' || SQLERRM);
-END;
-$function$
-;
-
--- Función: manage_client
-CREATE OR REPLACE FUNCTION public.manage_client(p_action character varying, p_id bigint DEFAULT NULL::bigint, p_name character varying DEFAULT NULL::character varying, p_document_id character varying DEFAULT NULL::character varying, p_email character varying DEFAULT NULL::character varying, p_phone character varying DEFAULT NULL::character varying, p_carrer character varying DEFAULT NULL::character varying, p_credit_limit character varying DEFAULT NULL::character varying, p_status character varying DEFAULT NULL::character varying, p_idroute bigint DEFAULT NULL::bigint)
- RETURNS json
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-DECLARE
-    v_client JSON;
-BEGIN
-    IF NOT public.is_admin() THEN
-        RETURN json_build_object('success', false, 'message', 'Solo administradores pueden realizar esta accion.');
-    END IF;
-
-    IF LOWER(p_action) = 'create' THEN
-        WITH inserted AS (
-            INSERT INTO public.clients (name, "documentID", email, phone, carrer, "creditLimit", status, uid, idroute)
-            VALUES (p_name, p_document_id, p_email, p_phone, p_carrer, p_credit_limit, COALESCE(p_status, 'Activo'), gen_random_uuid()::text, p_idroute)
-            RETURNING *
-        )
-        SELECT row_to_json(inserted.*) INTO v_client FROM inserted;
-        RETURN json_build_object('success', true, 'data', v_client, 'message', 'Cliente creado con exito.');
-
-    ELSIF LOWER(p_action) = 'update' THEN
-        WITH updated AS (
-            UPDATE public.clients SET
-                name         = COALESCE(p_name, name),
-                "documentID" = COALESCE(p_document_id, "documentID"),
-                email        = COALESCE(p_email, email),
-                phone        = COALESCE(p_phone, phone),
-                carrer       = COALESCE(p_carrer, carrer),
-                "creditLimit" = COALESCE(p_credit_limit, "creditLimit"),
-                status       = COALESCE(p_status, status),
-                idroute      = COALESCE(p_idroute, idroute)
-            WHERE id = p_id
-            RETURNING *
-        )
-        SELECT row_to_json(updated.*) INTO v_client FROM updated;
-        RETURN json_build_object('success', true, 'data', v_client, 'message', 'Cliente actualizado con exito.');
-
-    ELSIF LOWER(p_action) = 'delete' THEN
-        DELETE FROM public.clients WHERE id = p_id;
-        RETURN json_build_object('success', true, 'message', 'Cliente eliminado del sistema.');
-
-    ELSE
-        RETURN json_build_object('success', false, 'message', 'Accion no reconocida.');
-    END IF;
-
-EXCEPTION WHEN OTHERS THEN
-    RETURN json_build_object('success', false, 'message', 'Error en el servidor: ' || SQLERRM);
-END;
-$function$
-;
-
 -- Función: get_client_names
 CREATE OR REPLACE FUNCTION public.get_client_names()
  RETURNS json
@@ -2062,32 +2031,6 @@ CREATE OR REPLACE FUNCTION public.get_client_names()
 AS $function$
     SELECT COALESCE(json_agg(json_build_object('id', id, 'name', name)), '[]'::json)
     FROM public.clients;
-$function$
-;
-
--- Función: get_trips_by_date_range
-CREATE OR REPLACE FUNCTION public.get_trips_by_date_range(p_date_from date DEFAULT CURRENT_DATE, p_date_to date DEFAULT CURRENT_DATE)
- RETURNS TABLE(date text, client_name text, unit_name text, route_name text)
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-BEGIN
-  IF NOT public.is_admin() THEN
-    RAISE EXCEPTION 'Acceso denegado: se requieren permisos de administrador';
-  END IF;
-  RETURN QUERY
-  SELECT
-    t.created_at::TEXT,
-    c.name::TEXT,
-    u.name::TEXT,
-    r.description::TEXT
-  FROM public.transactions t
-  LEFT JOIN public.clients c ON c.id = t.idclient
-  LEFT JOIN public.units u ON u.id = t.idunit
-  LEFT JOIN public.routes r ON r.id = u.idroute
-  WHERE t.created_at::date >= p_date_from AND t.created_at::date <= p_date_to
-  ORDER BY t.created_at DESC, c.name;
-END;
 $function$
 ;
 
@@ -2198,74 +2141,6 @@ BEGIN
   WHERE t.created_at::date = p_date
   GROUP BY t.shedule
   ORDER BY t.shedule;
-END;
-$function$
-;
-
--- Función: manage_solicitude
-CREATE OR REPLACE FUNCTION public.manage_solicitude(p_action character varying, p_id integer DEFAULT NULL::integer, p_date character varying DEFAULT NULL::character varying, p_idclient integer DEFAULT NULL::integer, p_shedule character varying DEFAULT NULL::character varying, p_route character varying DEFAULT NULL::character varying, p_status integer DEFAULT NULL::integer)
- RETURNS json
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-DECLARE
-    v_solicitude JSON;
-BEGIN
-    IF LOWER(p_action) = 'list' THEN
-        SELECT json_agg(row_to_json(s.*)) INTO v_solicitude FROM (
-            SELECT * FROM public.solicitude ORDER BY id DESC
-        ) s;
-        RETURN json_build_object('success', true, 'data', COALESCE(v_solicitude, '[]'::json));
-
-    ELSIF LOWER(p_action) = 'list_by_client' THEN
-        SELECT json_agg(row_to_json(s.*)) INTO v_solicitude FROM (
-            SELECT * FROM public.solicitude WHERE idclient = p_idclient ORDER BY id DESC
-        ) s;
-        RETURN json_build_object('success', true, 'data', COALESCE(v_solicitude, '[]'::json));
-
-    ELSIF LOWER(p_action) = 'get_by_id' THEN
-        SELECT row_to_json(s.*) INTO v_solicitude FROM public.solicitude s WHERE id = p_id;
-        IF v_solicitude IS NULL THEN
-            RETURN json_build_object('success', false, 'message', 'Solicitud no encontrada.');
-        END IF;
-        RETURN json_build_object('success', true, 'data', v_solicitude);
-
-    ELSIF LOWER(p_action) = 'create' THEN
-        WITH inserted AS (
-            INSERT INTO public.solicitude (date, idclient, shedule, route, status)
-            VALUES (p_date, p_idclient, p_shedule, p_route, COALESCE(p_status, 0))
-            RETURNING *
-        )
-        SELECT row_to_json(inserted.*) INTO v_solicitude FROM inserted;
-        RETURN json_build_object('success', true, 'data', v_solicitude, 'message', 'Solicitud creada con exito.');
-
-    ELSIF LOWER(p_action) = 'update' THEN
-        WITH updated AS (
-            UPDATE public.solicitude SET
-                date     = COALESCE(p_date, date),
-                idclient = COALESCE(p_idclient, idclient),
-                shedule  = COALESCE(p_shedule, shedule),
-                route    = COALESCE(p_route, route),
-                status   = COALESCE(p_status, status)
-            WHERE id = p_id
-            RETURNING *
-        )
-        SELECT row_to_json(updated.*) INTO v_solicitude FROM updated;
-        IF v_solicitude IS NULL THEN
-            RETURN json_build_object('success', false, 'message', 'Solicitud no encontrada.');
-        END IF;
-        RETURN json_build_object('success', true, 'data', v_solicitude, 'message', 'Solicitud actualizada con exito.');
-
-    ELSIF LOWER(p_action) = 'delete' THEN
-        DELETE FROM public.solicitude WHERE id = p_id;
-        RETURN json_build_object('success', true, 'message', 'Solicitud eliminada del sistema.');
-
-    ELSE
-        RETURN json_build_object('success', false, 'message', 'Accion no reconocida.');
-    END IF;
-
-EXCEPTION WHEN OTHERS THEN
-    RETURN json_build_object('success', false, 'message', 'Error: ' || SQLERRM);
 END;
 $function$
 ;
@@ -2920,47 +2795,6 @@ END;
 $function$
 ;
 
--- Función: get_transactions_export
-CREATE OR REPLACE FUNCTION public.get_transactions_export(p_date_from date DEFAULT NULL::date, p_date_to date DEFAULT NULL::date, p_idunit integer DEFAULT NULL::integer, p_status integer DEFAULT NULL::integer, p_sort_field text DEFAULT 'created_at'::text, p_sort_order text DEFAULT 'DESC'::text)
- RETURNS json
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-DECLARE
-    v_data JSON;
-    v_route_ids BIGINT[];
-BEGIN
-    v_route_ids := public.get_current_user_route_ids();
-
-    SELECT json_agg(sub) INTO v_data FROM (
-        SELECT
-            t.id, t.uid, t.idclient, t."createBy", t.amount,
-            t.status, t.created_at, t.idunit, t.shedule, t."newBalanceClient",
-            c.name AS client_name,
-            u.name AS unit_name,
-            COALESCE(r.code || ' - ' || r.description, 'Sin ruta') AS route_name
-        FROM public.transactions t
-        LEFT JOIN public.clients c ON c.id = t.idclient
-        LEFT JOIN public.units u ON u.id = t.idunit
-        LEFT JOIN public.routes r ON r.id = t.idroute
-        WHERE (p_date_from IS NULL OR t.created_at >= p_date_from)
-          AND (p_date_to IS NULL OR t.created_at <= (p_date_to || 'T23:59:59')::TIMESTAMP)
-          AND (p_idunit IS NULL OR t.idunit = p_idunit)
-          AND (p_status IS NULL OR t.status = p_status)
-          AND (public.is_admin() OR t.idroute = ANY(v_route_ids))
-        ORDER BY
-            CASE WHEN p_sort_field = 'created_at' AND p_sort_order = 'ASC'  THEN t.created_at END ASC NULLS LAST,
-            CASE WHEN p_sort_field = 'created_at' AND p_sort_order = 'DESC' THEN t.created_at END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'amount'     AND p_sort_order = 'ASC'  THEN t.amount     END ASC NULLS LAST,
-            CASE WHEN p_sort_field = 'amount'     AND p_sort_order = 'DESC' THEN t.amount     END DESC NULLS LAST,
-            t.id DESC
-    ) sub;
-
-    RETURN json_build_object('data', COALESCE(v_data, '[]'::json));
-END;
-$function$
-;
-
 -- Función: calculate_tickets
 CREATE OR REPLACE FUNCTION public.calculate_tickets(p_amount numeric, p_method character varying, p_tasa numeric)
  RETURNS json
@@ -3016,6 +2850,749 @@ BEGIN
   END IF;
 
   RETURN json_build_object('success', true, 'message', 'Rutas actualizadas con exito.');
+END;
+$function$
+;
+
+-- Función: get_trips_by_date_range
+CREATE OR REPLACE FUNCTION public.get_trips_by_date_range(p_date_from date DEFAULT CURRENT_DATE, p_date_to date DEFAULT CURRENT_DATE, p_idroute bigint DEFAULT NULL::bigint, p_idunit bigint DEFAULT NULL::bigint)
+ RETURNS TABLE(date text, client_name text, unit_name text, route_name text)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+    v_route_ids BIGINT[];
+BEGIN
+    v_route_ids := public.get_current_user_route_ids();
+    IF NOT public.is_admin_or_supervisor() THEN
+        RAISE EXCEPTION 'Acceso denegado: se requieren permisos de administrador o supervisor';
+    END IF;
+    RETURN QUERY
+    SELECT
+        t.created_at::TEXT,
+        c.name::TEXT,
+        u.name::TEXT,
+        r.description::TEXT
+    FROM public.transactions t
+    LEFT JOIN public.clients c ON c.id = t.idclient
+    LEFT JOIN public.units u ON u.id = t.idunit
+    LEFT JOIN public.routes r ON r.id = u.idroute
+    WHERE t.created_at::date >= p_date_from
+      AND t.created_at::date <= p_date_to
+      AND (p_idroute IS NULL OR u.idroute = p_idroute)
+      AND (p_idunit IS NULL OR t.idunit = p_idunit)
+      AND (public.is_admin() OR u.idroute = ANY(v_route_ids))
+    ORDER BY t.created_at DESC, c.name;
+END;
+$function$
+;
+
+-- Función: get_clients_paginated
+CREATE OR REPLACE FUNCTION public.get_clients_paginated(p_page integer DEFAULT 1, p_per_page integer DEFAULT 10, p_search text DEFAULT NULL::text, p_status text DEFAULT NULL::text, p_sort_field text DEFAULT 'id'::text, p_sort_order text DEFAULT 'ASC'::text)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+    v_offset INTEGER;
+    v_data JSON;
+    v_total BIGINT;
+    v_route_ids BIGINT[];
+    v_search TEXT;
+BEGIN
+    v_offset := (p_page - 1) * p_per_page;
+    v_route_ids := public.get_current_user_route_ids();
+    v_search := CASE WHEN p_search IS NOT NULL AND p_search <> '' THEN '%' || p_search || '%' ELSE NULL END;
+
+    SELECT COUNT(*) INTO v_total FROM public.clients c
+    WHERE (v_search IS NULL OR c.name ILIKE v_search OR c.phone ILIKE v_search OR c.email ILIKE v_search OR c."documentID" ILIKE v_search)
+      AND (p_status IS NULL OR c.status = p_status)
+      AND (public.is_admin() OR c.idroute = ANY(v_route_ids));
+
+    SELECT json_agg(t) INTO v_data FROM (
+        SELECT
+            c.id,
+            c.name,
+            c."documentID",
+            c.email,
+            c.phone,
+            c.carrer,
+            c."creditLimit",
+            c.status,
+            c.balance,
+            c.uid,
+            c.idroute,
+            c."createAt",
+            c."createBy",
+            COALESCE(rt.description, rt.code) AS route_name
+        FROM public.clients c
+        LEFT JOIN public.routes rt ON rt.id = c.idroute
+        WHERE (v_search IS NULL OR c.name ILIKE v_search OR c.phone ILIKE v_search OR c.email ILIKE v_search OR c."documentID" ILIKE v_search)
+          AND (p_status IS NULL OR c.status = p_status)
+          AND (public.is_admin() OR c.idroute = ANY(v_route_ids))
+        ORDER BY
+            CASE WHEN p_sort_field = 'id'         AND p_sort_order = 'ASC'  THEN c.id                 END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'id'         AND p_sort_order = 'DESC' THEN c.id                 END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'name'       AND p_sort_order = 'ASC'  THEN c.name               END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'name'       AND p_sort_order = 'DESC' THEN c.name               END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'phone'      AND p_sort_order = 'ASC'  THEN c.phone              END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'phone'      AND p_sort_order = 'DESC' THEN c.phone              END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'email'      AND p_sort_order = 'ASC'  THEN c.email              END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'email'      AND p_sort_order = 'DESC' THEN c.email              END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'route_name' AND p_sort_order = 'ASC'  THEN rt.description       END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'route_name' AND p_sort_order = 'DESC' THEN rt.description       END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'balance'    AND p_sort_order = 'ASC'  THEN c.balance            END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'balance'    AND p_sort_order = 'DESC' THEN c.balance            END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'status'     AND p_sort_order = 'ASC'  THEN c.status             END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'status'     AND p_sort_order = 'DESC' THEN c.status             END DESC NULLS LAST,
+            c.id ASC
+        LIMIT p_per_page
+        OFFSET v_offset
+    ) t;
+
+    RETURN json_build_object(
+        'data', COALESCE(v_data, '[]'::json),
+        'total', v_total
+    );
+END;
+$function$
+;
+
+-- Función: get_clients_paginated
+CREATE OR REPLACE FUNCTION public.get_clients_paginated(p_page integer DEFAULT 1, p_per_page integer DEFAULT 10, p_search text DEFAULT NULL::text, p_status text DEFAULT NULL::text, p_sort_field text DEFAULT 'id'::text, p_sort_order text DEFAULT 'ASC'::text, p_idroute bigint DEFAULT NULL::bigint)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+    v_offset INTEGER;
+    v_data JSON;
+    v_total BIGINT;
+    v_route_ids BIGINT[];
+    v_search TEXT;
+BEGIN
+    v_offset := (p_page - 1) * p_per_page;
+    v_route_ids := public.get_current_user_route_ids();
+    v_search := CASE WHEN p_search IS NOT NULL AND p_search <> '' THEN '%' || p_search || '%' ELSE NULL END;
+
+    SELECT COUNT(*) INTO v_total FROM public.clients c
+    WHERE (v_search IS NULL OR c.name ILIKE v_search OR c.phone ILIKE v_search OR c.email ILIKE v_search OR c."documentID" ILIKE v_search)
+      AND (p_status IS NULL OR c.status = p_status)
+      AND (p_idroute IS NULL OR c.idroute = p_idroute)
+      AND (public.is_admin() OR c.idroute = ANY(v_route_ids));
+
+    SELECT json_agg(t) INTO v_data FROM (
+        SELECT
+            c.id,
+            c.name,
+            c."documentID",
+            c.email,
+            c.phone,
+            c.carrer,
+            c."creditLimit",
+            c.status,
+            c.balance,
+            c.uid,
+            c.idroute,
+            c."createAt",
+            c."createBy",
+            COALESCE(rt.description, rt.code) AS route_name,
+            au.raw_user_meta_data->>'user_name' AS auth_user_name
+        FROM public.clients c
+        LEFT JOIN public.routes rt ON rt.id = c.idroute
+        LEFT JOIN auth.users au ON au.id = c.uid::uuid
+        WHERE (v_search IS NULL OR c.name ILIKE v_search OR c.phone ILIKE v_search OR c.email ILIKE v_search OR c."documentID" ILIKE v_search)
+          AND (p_status IS NULL OR c.status = p_status)
+          AND (p_idroute IS NULL OR c.idroute = p_idroute)
+          AND (public.is_admin() OR c.idroute = ANY(v_route_ids))
+        ORDER BY
+            CASE WHEN p_sort_field = 'id'         AND p_sort_order = 'ASC'  THEN c.id                 END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'id'         AND p_sort_order = 'DESC' THEN c.id                 END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'name'       AND p_sort_order = 'ASC'  THEN c.name               END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'name'       AND p_sort_order = 'DESC' THEN c.name               END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'phone'      AND p_sort_order = 'ASC'  THEN c.phone              END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'phone'      AND p_sort_order = 'DESC' THEN c.phone              END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'email'      AND p_sort_order = 'ASC'  THEN c.email              END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'email'      AND p_sort_order = 'DESC' THEN c.email              END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'route_name' AND p_sort_order = 'ASC'  THEN rt.description       END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'route_name' AND p_sort_order = 'DESC' THEN rt.description       END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'balance'    AND p_sort_order = 'ASC'  THEN c.balance            END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'balance'    AND p_sort_order = 'DESC' THEN c.balance            END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'status'     AND p_sort_order = 'ASC'  THEN c.status             END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'status'     AND p_sort_order = 'DESC' THEN c.status             END DESC NULLS LAST,
+            c.id ASC
+        LIMIT p_per_page
+        OFFSET v_offset
+    ) t;
+
+    RETURN json_build_object(
+        'data', COALESCE(v_data, '[]'::json),
+        'total', v_total
+    );
+END;
+$function$
+;
+
+-- Función: get_transactions_paginated
+CREATE OR REPLACE FUNCTION public.get_transactions_paginated(p_page integer DEFAULT 1, p_per_page integer DEFAULT 10, p_date_from date DEFAULT NULL::date, p_date_to date DEFAULT NULL::date, p_idunit integer DEFAULT NULL::integer, p_status integer DEFAULT NULL::integer, p_sort_field text DEFAULT 'created_at'::text, p_sort_order text DEFAULT 'DESC'::text, p_shedule text DEFAULT NULL::text, p_idroute bigint DEFAULT NULL::bigint, p_search text DEFAULT NULL::text)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+    v_offset INTEGER;
+    v_data JSON;
+    v_total BIGINT;
+    v_route_ids BIGINT[];
+    v_search TEXT;
+BEGIN
+    v_offset := (p_page - 1) * p_per_page;
+    v_route_ids := public.get_current_user_route_ids();
+    v_search := CASE WHEN p_search IS NOT NULL AND p_search <> '' THEN '%' || p_search || '%' ELSE NULL END;
+
+    SELECT COUNT(*) INTO v_total FROM public.transactions t
+    LEFT JOIN public.clients c ON c.id = t.idclient
+    WHERE (p_date_from IS NULL OR t.created_at >= p_date_from)
+      AND (p_date_to IS NULL OR t.created_at <= (p_date_to || 'T23:59:59')::TIMESTAMP)
+      AND (p_idunit IS NULL OR t.idunit = p_idunit)
+      AND (p_status IS NULL OR t.status = p_status)
+      AND (p_shedule IS NULL OR t.shedule = p_shedule)
+      AND (p_idroute IS NULL OR t.idroute = p_idroute)
+      AND (v_search IS NULL OR c.name ILIKE v_search OR c."documentID" ILIKE v_search OR c.phone ILIKE v_search OR c.email ILIKE v_search)
+      AND (public.is_admin() OR t.idroute = ANY(v_route_ids));
+
+    SELECT json_agg(sub) INTO v_data FROM (
+        SELECT
+            t.id, t.uid, t.idclient, t."createBy", t.amount,
+            t.status, t.created_at, t.idunit, t.shedule, t."newBalanceClient",
+            json_build_object('name', c.name) AS clients,
+            json_build_object('name', u.name) AS units,
+            COALESCE(r.code || ' - ' || r.description, 'Sin ruta') AS route_name
+        FROM public.transactions t
+        LEFT JOIN public.clients c ON c.id = t.idclient
+        LEFT JOIN public.units u ON u.id = t.idunit
+        LEFT JOIN public.routes r ON r.id = t.idroute
+        WHERE (p_date_from IS NULL OR t.created_at >= p_date_from)
+          AND (p_date_to IS NULL OR t.created_at <= (p_date_to || 'T23:59:59')::TIMESTAMP)
+          AND (p_idunit IS NULL OR t.idunit = p_idunit)
+          AND (p_status IS NULL OR t.status = p_status)
+          AND (p_shedule IS NULL OR t.shedule = p_shedule)
+          AND (p_idroute IS NULL OR t.idroute = p_idroute)
+          AND (v_search IS NULL OR c.name ILIKE v_search OR c."documentID" ILIKE v_search OR c.phone ILIKE v_search OR c.email ILIKE v_search)
+          AND (public.is_admin() OR t.idroute = ANY(v_route_ids))
+        ORDER BY
+            CASE WHEN p_sort_field = 'newBalanceClient'     AND p_sort_order = 'ASC'  THEN t.status     END ASC NULLS LAST,
+            CASE WHEN p_sort_field = 'newBalanceClient'     AND p_sort_order = 'DESC' THEN t.status     END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'created_at' AND p_sort_order = 'ASC'  THEN t.created_at END ASC NULLS LAST,
+            CASE WHEN p_sort_field = 'created_at' AND p_sort_order = 'DESC' THEN t.created_at END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'amount'     AND p_sort_order = 'ASC'  THEN t.amount     END ASC NULLS LAST,
+            CASE WHEN p_sort_field = 'amount'     AND p_sort_order = 'DESC' THEN t.amount     END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'status'     AND p_sort_order = 'ASC'  THEN t.status     END ASC NULLS LAST,
+            CASE WHEN p_sort_field = 'status'     AND p_sort_order = 'DESC' THEN t.status     END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'id'         AND p_sort_order = 'ASC'  THEN t.id         END ASC NULLS LAST,
+            CASE WHEN p_sort_field = 'id'         AND p_sort_order = 'DESC' THEN t.id         END DESC NULLS LAST,
+            t.id DESC
+        LIMIT p_per_page
+        OFFSET v_offset
+    ) sub;
+
+    RETURN json_build_object('data', COALESCE(v_data, '[]'::json), 'total', v_total);
+END;
+$function$
+;
+
+-- Función: get_transactions_export
+CREATE OR REPLACE FUNCTION public.get_transactions_export(p_date_from date DEFAULT NULL::date, p_date_to date DEFAULT NULL::date, p_idunit integer DEFAULT NULL::integer, p_status integer DEFAULT NULL::integer, p_sort_field text DEFAULT 'created_at'::text, p_sort_order text DEFAULT 'DESC'::text, p_shedule text DEFAULT NULL::text, p_idroute bigint DEFAULT NULL::bigint)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+    v_data JSON;
+    v_route_ids BIGINT[];
+BEGIN
+    v_route_ids := public.get_current_user_route_ids();
+
+    -- Para conductores: si no tienen rutas via user_routes, obtener la ruta de su unidad asignada
+    IF array_length(v_route_ids, 1) IS NULL THEN
+        SELECT ARRAY_AGG(u.idroute) INTO v_route_ids
+        FROM public.units u
+        WHERE u.email = auth.jwt()->>'email';
+    END IF;
+
+    SELECT json_agg(sub) INTO v_data FROM (
+        SELECT
+            t.id, t.uid, t.idclient, t."createBy", t.amount,
+            t.status, t.created_at, t.idunit, t.shedule, t."newBalanceClient",
+            c.name AS client_name,
+            c."documentID" AS client_document,
+            u.name AS unit_name,
+            COALESCE(r.code || ' - ' || r.description, 'Sin ruta') AS route_name
+        FROM public.transactions t
+        LEFT JOIN public.clients c ON c.id = t.idclient
+        LEFT JOIN public.units u ON u.id = t.idunit
+        LEFT JOIN public.routes r ON r.id = t.idroute
+        WHERE (p_date_from IS NULL OR t.created_at >= p_date_from)
+          AND (p_date_to IS NULL OR t.created_at <= (p_date_to || 'T23:59:59')::TIMESTAMP)
+          AND (p_idunit IS NULL OR t.idunit = p_idunit)
+          AND (p_status IS NULL OR t.status = p_status)
+          AND (p_shedule IS NULL OR t.shedule = p_shedule)
+          AND (p_idroute IS NULL OR t.idroute = p_idroute)
+          AND (public.is_admin() OR t.idroute = ANY(v_route_ids))
+        ORDER BY
+            CASE WHEN p_sort_field = 'created_at' AND p_sort_order = 'ASC'  THEN t.created_at END ASC NULLS LAST,
+            CASE WHEN p_sort_field = 'created_at' AND p_sort_order = 'DESC' THEN t.created_at END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'amount'     AND p_sort_order = 'ASC'  THEN t.amount     END ASC NULLS LAST,
+            CASE WHEN p_sort_field = 'amount'     AND p_sort_order = 'DESC' THEN t.amount     END DESC NULLS LAST,
+            t.id DESC
+    ) sub;
+
+    RETURN json_build_object('data', COALESCE(v_data, '[]'::json));
+END;
+$function$
+;
+
+-- Función: get_transactions_export
+CREATE OR REPLACE FUNCTION public.get_transactions_export(p_date_from date DEFAULT NULL::date, p_date_to date DEFAULT NULL::date, p_idunit integer DEFAULT NULL::integer, p_status integer DEFAULT NULL::integer, p_sort_field text DEFAULT 'created_at'::text, p_sort_order text DEFAULT 'DESC'::text, p_shedule text DEFAULT NULL::text, p_idroute bigint DEFAULT NULL::bigint, p_search text DEFAULT NULL::text)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+    v_data JSON;
+    v_route_ids BIGINT[];
+    v_search TEXT;
+BEGIN
+    v_route_ids := public.get_current_user_route_ids();
+    v_search := CASE WHEN p_search IS NOT NULL AND p_search <> '' THEN '%' || p_search || '%' ELSE NULL END;
+
+    -- Para conductores: si no tienen rutas via user_routes, obtener la ruta de su unidad asignada
+    IF array_length(v_route_ids, 1) IS NULL THEN
+        SELECT ARRAY_AGG(u.idroute) INTO v_route_ids
+        FROM public.units u
+        WHERE u.email = auth.jwt()->>'email';
+    END IF;
+
+    SELECT json_agg(sub) INTO v_data FROM (
+        SELECT
+            t.id, t.uid, t.idclient, t."createBy", t.amount,
+            t.status, t.created_at, t.idunit, t.shedule, t."newBalanceClient",
+            c.name AS client_name,
+            c."documentID" AS client_document,
+            u.name AS unit_name,
+            COALESCE(r.code || ' - ' || r.description, 'Sin ruta') AS route_name
+        FROM public.transactions t
+        LEFT JOIN public.clients c ON c.id = t.idclient
+        LEFT JOIN public.units u ON u.id = t.idunit
+        LEFT JOIN public.routes r ON r.id = t.idroute
+        WHERE (p_date_from IS NULL OR t.created_at >= p_date_from)
+          AND (p_date_to IS NULL OR t.created_at <= (p_date_to || 'T23:59:59')::TIMESTAMP)
+          AND (p_idunit IS NULL OR t.idunit = p_idunit)
+          AND (p_status IS NULL OR t.status = p_status)
+          AND (p_shedule IS NULL OR t.shedule = p_shedule)
+          AND (p_idroute IS NULL OR t.idroute = p_idroute)
+          AND (v_search IS NULL OR c.name ILIKE v_search OR c."documentID" ILIKE v_search OR c.phone ILIKE v_search OR c.email ILIKE v_search)
+          AND (public.is_admin() OR t.idroute = ANY(v_route_ids))
+        ORDER BY
+            CASE WHEN p_sort_field = 'created_at' AND p_sort_order = 'ASC'  THEN t.created_at END ASC NULLS LAST,
+            CASE WHEN p_sort_field = 'created_at' AND p_sort_order = 'DESC' THEN t.created_at END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'amount'     AND p_sort_order = 'ASC'  THEN t.amount     END ASC NULLS LAST,
+            CASE WHEN p_sort_field = 'amount'     AND p_sort_order = 'DESC' THEN t.amount     END DESC NULLS LAST,
+            t.id DESC
+    ) sub;
+
+    RETURN json_build_object('data', COALESCE(v_data, '[]'::json));
+END;
+$function$
+;
+
+-- Función: process_payment
+CREATE OR REPLACE FUNCTION public.process_payment(p_idclient integer, p_amount numeric, p_method character varying, p_ref character varying DEFAULT NULL::character varying, p_tasa numeric DEFAULT NULL::numeric, p_date date DEFAULT CURRENT_DATE, p_picture character varying DEFAULT NULL::character varying, p_create_by character varying DEFAULT NULL::character varying, p_codigo_banco character varying DEFAULT NULL::character varying, p_idroute bigint DEFAULT NULL::bigint, p_idshedule bigint DEFAULT NULL::bigint)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+    v_current_balance NUMERIC(10,2);
+    v_recharge_id BIGINT;
+    v_amount_in_usd NUMERIC(10,2);
+    v_estimated_tickets NUMERIC(10,2);
+    v_calc JSON;
+    v_idroute BIGINT;
+BEGIN
+    -- Validar autenticación
+    IF auth.role() <> 'authenticated' THEN
+        RETURN json_build_object('success', false, 'message', 'No autorizado.');
+    END IF;
+
+    -- Validar monto
+    IF p_amount <= 0 THEN
+        RETURN json_build_object('success', false, 'message', 'El monto de la recarga debe ser mayor a cero.');
+    END IF;
+
+    -- Validar que el cliente exista
+    SELECT balance, idroute INTO v_current_balance, v_idroute FROM public.clients WHERE id = p_idclient;
+    IF v_current_balance IS NULL THEN
+        RETURN json_build_object('success', false, 'message', 'El cliente especificado no existe.');
+    END IF;
+
+    -- Si se proporcionó p_idroute, usarlo; si no, usar el del cliente
+    IF p_idroute IS NOT NULL THEN
+        v_idroute := p_idroute;
+    END IF;
+
+    -- Unificar conversión y estimación
+    v_calc := public.calculate_tickets(p_amount, p_method, p_tasa);
+    v_amount_in_usd := (v_calc->>'usd_amount')::NUMERIC;
+    v_estimated_tickets := (v_calc->>'estimated_tickets')::NUMERIC;
+
+    -- Insertar registro (Status 0 = Pendiente)
+    INSERT INTO public.recharge (
+        idclient, method, ref, picture, amount, tasa, date, status, "createBy", "createAt", codigo_banco, idroute, tickets, idshedule
+    )
+    VALUES (
+        p_idclient,
+        p_method,
+        NULLIF(p_ref, ''),
+        NULLIF(p_picture, ''),
+        v_amount_in_usd,
+        p_tasa,
+        p_date,
+        0,
+        p_create_by,
+        NOW(),
+        NULLIF(p_codigo_banco, ''),
+        v_idroute,
+        v_estimated_tickets,
+        p_idshedule
+    )
+    RETURNING id INTO v_recharge_id;
+
+    RETURN json_build_object(
+        'success', true,
+        'message', 'Pago registrado exitosamente. En espera por verificación administrativa.',
+        'recharge_id', v_recharge_id,
+        'estimated_tickets', v_estimated_tickets,
+        'current_balance', v_current_balance
+    );
+EXCEPTION
+    WHEN SQLSTATE '23505' THEN
+        RETURN json_build_object(
+            'success', false,
+            'message', 'Esta combinación de banco y referencia ya fue procesada. Verifique los datos e intente de nuevo.'
+        );
+    WHEN OTHERS THEN
+        RETURN json_build_object(
+            'success', false,
+            'message', 'Error en transacción: ' || SQLERRM
+        );
+END;
+$function$
+;
+
+-- Función: process_payment
+CREATE OR REPLACE FUNCTION public.process_payment(p_idclient integer, p_amount numeric, p_method character varying, p_ref character varying DEFAULT NULL::character varying, p_tasa numeric DEFAULT NULL::numeric, p_date date DEFAULT CURRENT_DATE, p_picture character varying DEFAULT NULL::character varying, p_create_by character varying DEFAULT NULL::character varying, p_codigo_banco character varying DEFAULT NULL::character varying, p_idroute bigint DEFAULT NULL::bigint, p_shedule character varying DEFAULT NULL::character varying)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+    v_current_balance NUMERIC(10,2);
+    v_recharge_id BIGINT;
+    v_amount_in_usd NUMERIC(10,2);
+    v_estimated_tickets NUMERIC(10,2);
+    v_calc JSON;
+    v_idroute BIGINT;
+BEGIN
+    -- Validar autenticación
+    IF auth.role() <> 'authenticated' THEN
+        RETURN json_build_object('success', false, 'message', 'No autorizado.');
+    END IF;
+
+    -- Validar monto
+    IF p_amount <= 0 THEN
+        RETURN json_build_object('success', false, 'message', 'El monto de la recarga debe ser mayor a cero.');
+    END IF;
+
+    -- Validar que el cliente exista
+    SELECT balance, idroute INTO v_current_balance, v_idroute FROM public.clients WHERE id = p_idclient;
+    IF v_current_balance IS NULL THEN
+        RETURN json_build_object('success', false, 'message', 'El cliente especificado no existe.');
+    END IF;
+
+    -- Si se proporcionó p_idroute, usarlo; si no, usar el del cliente
+    IF p_idroute IS NOT NULL THEN
+        v_idroute := p_idroute;
+    END IF;
+
+    -- Unificar conversión y estimación
+    v_calc := public.calculate_tickets(p_amount, p_method, p_tasa);
+    v_amount_in_usd := (v_calc->>'usd_amount')::NUMERIC;
+    v_estimated_tickets := (v_calc->>'estimated_tickets')::NUMERIC;
+
+    -- Insertar registro (Status 0 = Pendiente)
+    INSERT INTO public.recharge (
+        idclient, method, ref, picture, amount, tasa, date, status, "createBy", "createAt", codigo_banco, idroute, shedule
+    )
+    VALUES (
+        p_idclient,
+        p_method,
+        NULLIF(p_ref, ''),
+        NULLIF(p_picture, ''),
+        v_amount_in_usd,
+        p_tasa,
+        p_date,
+        0,
+        p_create_by,
+        NOW(),
+        NULLIF(p_codigo_banco, ''),
+        v_idroute,
+        NULLIF(p_shedule, '')
+    )
+    RETURNING id INTO v_recharge_id;
+
+    RETURN json_build_object(
+        'success', true,
+        'message', 'Pago registrado exitosamente. En espera por verificación administrativa.',
+        'recharge_id', v_recharge_id,
+        'estimated_tickets', v_estimated_tickets,
+        'current_balance', v_current_balance
+    );
+EXCEPTION
+    WHEN SQLSTATE '23505' THEN
+        RETURN json_build_object(
+            'success', false,
+            'message', 'Esta combinación de banco y referencia ya fue procesada. Verifique los datos e intente de nuevo.'
+        );
+    WHEN OTHERS THEN
+        RETURN json_build_object(
+            'success', false,
+            'message', 'Error en transacción: ' || SQLERRM
+        );
+END;
+$function$
+;
+
+-- Función: process_payment
+CREATE OR REPLACE FUNCTION public.process_payment(p_idclient integer, p_amount numeric, p_method character varying, p_ref character varying DEFAULT NULL::character varying, p_tasa numeric DEFAULT NULL::numeric, p_date date DEFAULT CURRENT_DATE, p_picture character varying DEFAULT NULL::character varying, p_create_by character varying DEFAULT NULL::character varying, p_codigo_banco character varying DEFAULT NULL::character varying, p_idroute bigint DEFAULT NULL::bigint, p_idshedule bigint DEFAULT NULL::bigint)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+    v_current_balance NUMERIC(10,2);
+    v_recharge_id BIGINT;
+    v_amount_in_usd NUMERIC(10,2);
+    v_estimated_tickets NUMERIC(10,2);
+    v_calc JSON;
+    v_idroute BIGINT;
+BEGIN
+    -- Validar autenticación
+    IF auth.role() <> 'authenticated' THEN
+        RETURN json_build_object('success', false, 'message', 'No autorizado.');
+    END IF;
+
+    -- Validar monto
+    IF p_amount <= 0 THEN
+        RETURN json_build_object('success', false, 'message', 'El monto de la recarga debe ser mayor a cero.');
+    END IF;
+
+    -- Validar que el cliente exista
+    SELECT balance, idroute INTO v_current_balance, v_idroute FROM public.clients WHERE id = p_idclient;
+    IF v_current_balance IS NULL THEN
+        RETURN json_build_object('success', false, 'message', 'El cliente especificado no existe.');
+    END IF;
+
+    -- Si se proporcionó p_idroute, usarlo; si no, usar el del cliente
+    IF p_idroute IS NOT NULL THEN
+        v_idroute := p_idroute;
+    END IF;
+
+    -- Unificar conversión y estimación
+    v_calc := public.calculate_tickets(p_amount, p_method, p_tasa);
+    v_amount_in_usd := (v_calc->>'usd_amount')::NUMERIC;
+    v_estimated_tickets := (v_calc->>'estimated_tickets')::NUMERIC;
+
+    -- Insertar registro (Status 0 = Pendiente)
+    INSERT INTO public.recharge (
+        idclient, method, ref, picture, amount, tasa, date, status, "createBy", "createAt", codigo_banco, idroute, tickets, idshedule
+    )
+    VALUES (
+        p_idclient,
+        p_method,
+        NULLIF(p_ref, ''),
+        NULLIF(p_picture, ''),
+        v_amount_in_usd,
+        p_tasa,
+        p_date,
+        0,
+        p_create_by,
+        NOW(),
+        NULLIF(p_codigo_banco, ''),
+        v_idroute,
+        v_estimated_tickets,
+        p_idshedule
+    )
+    RETURNING id INTO v_recharge_id;
+
+    RETURN json_build_object(
+        'success', true,
+        'message', 'Pago registrado exitosamente. En espera por verificación administrativa.',
+        'recharge_id', v_recharge_id,
+        'estimated_tickets', v_estimated_tickets,
+        'current_balance', v_current_balance
+    );
+EXCEPTION
+    WHEN SQLSTATE '23505' THEN
+        RETURN json_build_object(
+            'success', false,
+            'message', 'Esta combinación de banco y referencia ya fue procesada. Verifique los datos e intente de nuevo.'
+        );
+    WHEN OTHERS THEN
+        RETURN json_build_object(
+            'success', false,
+            'message', 'Error en transacción: ' || SQLERRM
+        );
+END;
+$function$
+;
+
+-- Función: process_payment
+CREATE OR REPLACE FUNCTION public.process_payment(p_idclient integer, p_amount numeric, p_method character varying, p_ref character varying DEFAULT NULL::character varying, p_tasa numeric DEFAULT NULL::numeric, p_date date DEFAULT CURRENT_DATE, p_picture character varying DEFAULT NULL::character varying, p_create_by character varying DEFAULT NULL::character varying, p_codigo_banco character varying DEFAULT NULL::character varying, p_idroute bigint DEFAULT NULL::bigint, p_shedule character varying DEFAULT NULL::character varying)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+    v_current_balance NUMERIC(10,2);
+    v_recharge_id BIGINT;
+    v_amount_in_usd NUMERIC(10,2);
+    v_estimated_tickets NUMERIC(10,2);
+    v_calc JSON;
+    v_idroute BIGINT;
+BEGIN
+    -- Validar autenticación
+    IF auth.role() <> 'authenticated' THEN
+        RETURN json_build_object('success', false, 'message', 'No autorizado.');
+    END IF;
+
+    -- Validar monto
+    IF p_amount <= 0 THEN
+        RETURN json_build_object('success', false, 'message', 'El monto de la recarga debe ser mayor a cero.');
+    END IF;
+
+    -- Validar que el cliente exista
+    SELECT balance, idroute INTO v_current_balance, v_idroute FROM public.clients WHERE id = p_idclient;
+    IF v_current_balance IS NULL THEN
+        RETURN json_build_object('success', false, 'message', 'El cliente especificado no existe.');
+    END IF;
+
+    -- Si se proporcionó p_idroute, usarlo; si no, usar el del cliente
+    IF p_idroute IS NOT NULL THEN
+        v_idroute := p_idroute;
+    END IF;
+
+    -- Unificar conversión y estimación
+    v_calc := public.calculate_tickets(p_amount, p_method, p_tasa);
+    v_amount_in_usd := (v_calc->>'usd_amount')::NUMERIC;
+    v_estimated_tickets := (v_calc->>'estimated_tickets')::NUMERIC;
+
+    -- Insertar registro (Status 0 = Pendiente)
+    INSERT INTO public.recharge (
+        idclient, method, ref, picture, amount, tasa, date, status, "createBy", "createAt", codigo_banco, idroute, shedule
+    )
+    VALUES (
+        p_idclient,
+        p_method,
+        NULLIF(p_ref, ''),
+        NULLIF(p_picture, ''),
+        v_amount_in_usd,
+        p_tasa,
+        p_date,
+        0,
+        p_create_by,
+        NOW(),
+        NULLIF(p_codigo_banco, ''),
+        v_idroute,
+        NULLIF(p_shedule, '')
+    )
+    RETURNING id INTO v_recharge_id;
+
+    RETURN json_build_object(
+        'success', true,
+        'message', 'Pago registrado exitosamente. En espera por verificación administrativa.',
+        'recharge_id', v_recharge_id,
+        'estimated_tickets', v_estimated_tickets,
+        'current_balance', v_current_balance
+    );
+EXCEPTION
+    WHEN SQLSTATE '23505' THEN
+        RETURN json_build_object(
+            'success', false,
+            'message', 'Esta combinación de banco y referencia ya fue procesada. Verifique los datos e intente de nuevo.'
+        );
+    WHEN OTHERS THEN
+        RETURN json_build_object(
+            'success', false,
+            'message', 'Error en transacción: ' || SQLERRM
+        );
+END;
+$function$
+;
+
+-- Función: get_solicitudes_by_date_range
+CREATE OR REPLACE FUNCTION public.get_solicitudes_by_date_range(p_date_from date DEFAULT CURRENT_DATE, p_date_to date DEFAULT CURRENT_DATE, p_idroute bigint[] DEFAULT NULL::bigint[], p_idhorario bigint[] DEFAULT NULL::bigint[])
+ RETURNS TABLE(id integer, client_name text, client_carrer text, client_document text, client_phone text, date character varying, shedule character varying, route character varying, status smallint)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+    v_route_ids BIGINT[];
+BEGIN
+    IF auth.role() <> 'authenticated' THEN
+        RAISE EXCEPTION 'No autorizado.';
+    END IF;
+
+    -- Solo admin, supervisor y driver pueden ver este reporte
+    IF NOT EXISTS (
+        SELECT 1 FROM public.profiles
+        WHERE email = auth.jwt()->>'email'
+          AND role IN ('admin'::user_role, 'supervisor'::user_role, 'driver'::user_role)
+    ) THEN
+        RAISE EXCEPTION 'Acceso denegado: solo administradores, supervisores y conductores.';
+    END IF;
+
+    v_route_ids := public.get_current_user_route_ids();
+
+    -- Para conductores: si no tienen rutas via user_routes, obtener la ruta de su unidad asignada
+    IF array_length(v_route_ids, 1) IS NULL THEN
+        SELECT ARRAY_AGG(u.idroute) INTO v_route_ids
+        FROM public.units u
+        WHERE u.email = auth.jwt()->>'email';
+    END IF;
+
+    RETURN QUERY
+    SELECT
+        s.id,
+        c.name::TEXT,
+        c.carrer::TEXT,
+        c."documentID"::TEXT,
+        c.phone::TEXT,
+        s.date,
+        s.shedule,
+        COALESCE(r.code || ' - ' || r.description, s.route)::character varying AS route,
+        s.status
+    FROM public.solicitude s
+    LEFT JOIN public.clients c ON c.id = s.idclient
+    LEFT JOIN public.routes r ON r.id = s.idroute
+    WHERE s.date::date >= p_date_from
+      AND s.date::date <= p_date_to
+      AND (p_idroute IS NULL OR s.idroute = ANY(p_idroute))
+      AND (p_idhorario IS NULL OR s.shedule IN (
+          SELECT h.shudle FROM public.horario h WHERE h.id = ANY(p_idhorario)
+      ))
+      AND (public.is_admin() OR s.idroute = ANY(v_route_ids))
+    ORDER BY s.date DESC, s.shedule;
 END;
 $function$
 ;

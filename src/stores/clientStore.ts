@@ -55,16 +55,16 @@ export const useClientStore = defineStore("client", () => {
     }
   }
 
-  async function remove(id: number) {
+  async function remove(id: number): Promise<{ success: boolean; message?: string; deactivated?: boolean }> {
     loading.value = true
     error.value = null
     try {
-      await deleteClient(id)
-      return true
+      const result = await deleteClient(id)
+      return { success: true, message: result.message, deactivated: result.deactivated }
     } catch (err) {
       error.value = "Error al eliminar el cliente"
       console.error(err)
-      return false
+      return { success: false }
     } finally {
       loading.value = false
     }

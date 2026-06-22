@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue"
+import { ref, computed, onMounted, watch } from "vue"
 import DataTable from "primevue/datatable"
 import Column from "primevue/column"
 import SupervisorBanner from "../components/SupervisorBanner.vue"
@@ -7,7 +7,9 @@ import FiltroRango from "../components/FiltroRango.vue"
 import type { FiltroRango as FiltroRangoType } from "../components/FiltroRango.vue"
 import { formatDateTime, formatCurrency, toStr } from "../utils/formatters"
 import { getTransactions, exportTransactions } from "../services/transactionService"
-import { supabase } from "../services/supabaseClient"
+import { getRouteNames } from "../services/routeService"
+import { getHorariosRpc } from "../services/horarioService"
+import { getUnitNames } from "../services/unitService"
 import { useAuthStore } from "../stores/authStore"
 import type { Transaction } from "../services/transactionService"
 import type { DataTablePageEvent, DataTableSortEvent } from "primevue/datatable"
@@ -32,7 +34,21 @@ const dateTo = ref<string>(hoy)
 
 const unitFilter = ref<number | null>(null)
 const statusFilter = ref<number | null>(null)
+const sheduleFilter = ref<string | null>(null)
+const routeFilter = ref<number | null>(null)
+const search = ref("")
 const units = ref<{ id: number; name: string }[]>([])
+const schedules = ref<{ shudle: string }[]>([])
+const routesOptions = ref<{ id: number; name: string }[]>([])
+
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+watch(search, () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    first.value = 0
+    loadData()
+  }, 400)
+})
 
 const page = computed(() => Math.floor(first.value / perPage.value) + 1)
 const fromRecord = computed(() => first.value + 1)
@@ -53,6 +69,9 @@ async function loadData() {
         dateTo: dateTo.value || null,
         idunit: unitFilter.value,
         status: statusFilter.value,
+        shedule: sheduleFilter.value,
+        idroute: routeFilter.value,
+        search: search.value || null,
       },
       sortField: sortField.value,
       sortAsc: sortOrder.value !== -1,
@@ -128,7 +147,7 @@ function goToPage(p: number | string) {
 async function exportAllData() {
   try {
     const all = await exportTransactions(
-      { dateFrom: dateFrom.value || null, dateTo: dateTo.value || null, idunit: unitFilter.value, status: statusFilter.value },
+      { dateFrom: dateFrom.value || null, dateTo: dateTo.value || null, idunit: unitFilter.value, status: statusFilter.value, shedule: sheduleFilter.value, idroute: routeFilter.value, search: search.value || null },
       sortField.value,
       sortOrder.value !== -1,
     )
@@ -164,11 +183,17 @@ async function exportAllData() {
 }
 
 onMounted(async () => {
-  const { data: unitData } = await supabase
-    .from("units")
-    .select("id, name")
-    .order("name")
-  if (unitData) units.value = unitData as { id: number; name: string }[]
+  units.value = await getUnitNames()
+
+  const horarios = await getHorariosRpc()
+  schedules.value = horarios.map(h => ({ shudle: h.shudle }))
+
+  const routeNames = await getRouteNames()
+  routesOptions.value = routeNames.map(r => ({
+    id: r.id,
+    name: `${r.code} - ${r.description}`,
+  }))
+
   await loadData()
 })
 </script>
@@ -205,7 +230,19 @@ onMounted(async () => {
 
     <!-- Bento Filter Section -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-sm mb-xl">
-      <div class="md:col-span-2 bg-white p-md rounded-xl border border-outline-variant shadow-sm flex flex-col gap-xs">
+      <div class="md:col-span-4 bg-white p-md rounded-xl border border-outline-variant shadow-sm flex flex-col gap-xs">
+        <label class="text-label-md text-secondary uppercase tracking-wider">Buscar Cliente</label>
+        <div class="relative">
+          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
+          <input
+            v-model="search"
+            class="w-full pl-9 pr-3 py-2 bg-surface-container-low border border-outline-variant rounded-lg text-body-md focus:border-primary outline-none transition-all"
+            placeholder="Buscar por nombre, cédula, teléfono o correo..."
+            type="text"
+          />
+        </div>
+      </div>
+      <div class="md:col-span-4 bg-white p-md rounded-xl border border-outline-variant shadow-sm flex flex-col gap-xs">
         <label class="text-label-md text-secondary uppercase tracking-wider">Rango de Fecha</label>
         <FiltroRango @filtrar="onFiltrarRango" :model-value="filtroinicial"/>
       </div>
@@ -228,9 +265,30 @@ onMounted(async () => {
           @change="first = 0; loadData()"
         >
           <option :value="null">Todos los estatus</option>
-          
           <option :value="0">Aprobada</option>
           <option :value="1">Rechazada</option>
+        </select>
+      </div>
+      <div class="bg-white p-md rounded-xl border border-outline-variant shadow-sm flex flex-col gap-xs">
+        <label class="text-label-md text-secondary uppercase tracking-wider">Horario</label>
+        <select
+          v-model="sheduleFilter"
+          class="bg-surface-container-low border-outline-variant rounded-lg font-body-md text-body-md focus:ring-primary focus:border-primary w-full h-10 px-sm"
+          @change="first = 0; loadData()"
+        >
+          <option :value="null">Todos los horarios</option>
+          <option v-for="s in schedules" :key="s.shudle" :value="s.shudle">{{ s.shudle }}</option>
+        </select>
+      </div>
+      <div class="bg-white p-md rounded-xl border border-outline-variant shadow-sm flex flex-col gap-xs">
+        <label class="text-label-md text-secondary uppercase tracking-wider">Ruta</label>
+        <select
+          v-model="routeFilter"
+          class="bg-surface-container-low border-outline-variant rounded-lg font-body-md text-body-md focus:ring-primary focus:border-primary w-full h-10 px-sm"
+          @change="first = 0; loadData()"
+        >
+          <option :value="null">Todas las rutas</option>
+          <option v-for="r in routesOptions" :key="r.id" :value="r.id">{{ r.name }}</option>
         </select>
       </div>
     </div>

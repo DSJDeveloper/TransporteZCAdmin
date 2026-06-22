@@ -24,7 +24,11 @@ const currencyFormatters = createCache<string, Intl.NumberFormat>()
 function _toDate(value: string | number | Date | null | undefined): Date | null {
   if (value == null) return null
   if (value instanceof Date) return isNaN(value.getTime()) ? null : value
-  const d = typeof value === 'string' ? new Date(value) : new Date(value)
+  let v = value
+  if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+    v = v + 'T00:00:00'
+  }
+  const d = typeof v === 'string' ? new Date(v) : new Date(v)
   return isNaN(d.getTime()) ? null : d
 }
 

@@ -55,13 +55,13 @@ const router = createRouter({
           path: "configuracion/horarios",
           name: "horarios",
           component: () => import("../pages/Horarios.vue"),
-          meta: { requiresAuth: true, adminOnly: true },
+          meta: { requiresAuth: true },
         },
         {
           path: "configuracion/rutas",
           name: "rutas",
           component: () => import("../pages/Rutas.vue"),
-          meta: { requiresAuth: true, adminOnly: true },
+          meta: { requiresAuth: true },
         },
         {
           path: "configuracion/usuarios",

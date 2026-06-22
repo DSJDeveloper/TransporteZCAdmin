@@ -1,29 +1,48 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { getTripsByDateRange } from '@/services/transactionService'
 import { formatDate } from '@/utils/formatters'
-import html2pdf from 'html2pdf.js'
+import { getRouteNames } from '@/services/routeService'
+import type { RouteName } from '@/services/routeService'
+import { getUnitNames } from '@/services/unitService'
+import type { UnitName } from '@/services/unitService'
+import Select from 'primevue/select'
+import { generatePdf } from '@/utils/reports'
 
 const dateFrom = ref<Date>(new Date())
 const dateTo = ref<Date>(new Date())
 const exporting = ref(false)
+const selectedRoute = ref<number | null>(null)
+const selectedUnit = ref<number | null>(null)
+const routes = ref<RouteName[]>([])
+const units = ref<UnitName[]>([])
+
+onMounted(async () => {
+  try {
+    routes.value = await getRouteNames()
+    units.value = await getUnitNames()
+  } catch (err) {
+    console.error('Error loading filters:', err)
+  }
+})
 
 async function exportPdf() {
   exporting.value = true
   try {
     const fromStr = dateFrom.value.toISOString().split('T')[0] ?? ''
     const toStr = dateTo.value.toISOString().split('T')[0] ?? ''
-    const rows = await getTripsByDateRange(fromStr, toStr)
+    const rows = await getTripsByDateRange(fromStr, toStr, selectedRoute.value, selectedUnit.value)
     const dateLabel = `${fmtDate(dateFrom.value)} — ${fmtDate(dateTo.value)}`
 
     const container = document.createElement('div')
-    container.style.cssText = 'padding:40px 30px;font-family:Inter,Arial,Helvetica,sans-serif;width:680px;'
+    //container.style.cssText = 'padding:40px 30px;font-family:Inter,Arial,Helvetica,sans-serif;width:680px;'
+    //     <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:6px;">
+    //   <h1 style="font-size:16pt;font-weight:700;margin:0;color:#1e293b;">Listado de Estudiantes que viajaron</h1>
+    //   <span style="font-size:10pt;color:#64748b;">${dateLabel}</span>
+    // </div>
+    // <hr style="border:none;border-top:1px solid #cbd5e1;margin:0 0 16px;">
     container.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:6px;">
-        <h1 style="font-size:16pt;font-weight:700;margin:0;color:#1e293b;">Listado de Estudiantes que viajaron</h1>
-        <span style="font-size:10pt;color:#64748b;">${dateLabel}</span>
-      </div>
-      <hr style="border:none;border-top:1px solid #cbd5e1;margin:0 0 16px;">
+
       <table style="width:100%;border-collapse:collapse;font-size:10pt;">
         <thead>
           <tr style="background:#f2f2f2;">
@@ -50,25 +69,8 @@ async function exportPdf() {
       </div>
     `
 
-    document.body.appendChild(container)
-    const worker = html2pdf().set({
-      margin: [15, 10, 15, 10],
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, letterRendering: true },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    }).from(container)
-    await worker.toPdf()
-    const pdf = await worker.get('pdf') as any
-    const totalPages = pdf.internal.getNumberOfPages()
-    for (let i = 1; i <= totalPages; i++) {
-      pdf.setPage(i)
-      pdf.setFontSize(8)
-      const width = pdf.internal.pageSize.getWidth()
-      pdf.text(`Página ${i} de ${totalPages}`, width / 2, 5, { align: 'center' })
-    }
-    const blobUrl = pdf.output('bloburl')
-    window.open(blobUrl, '_blank')
-    document.body.removeChild(container)
+
+    await generatePdf(container, 'Listado de Estudiantes que viajaron', dateLabel)
   } catch (err) {
     console.error('Error exporting PDF:', err)
   } finally {
@@ -91,31 +93,23 @@ function fmtDate(d: Date): string {
         <span class="material-symbols-outlined text-primary">directions_bus</span>
         <h3 class="font-headline-sm text-headline-sm text-on-surface">Reporte de Viajes Realizados</h3>
       </div>
-      <div class="flex gap-xs items-center">
-        <DatePicker
-          v-model="dateFrom"
-          dateFormat="dd/mm/yy"
-          mask="99/99/9999"
-          placeholder="Desde"
-          showIcon
-          iconDisplay="input"
-          class="!w-40"
-        />
+      <div class="flex gap-xs items-center flex-wrap">
+        <Select v-model="selectedRoute" :options="routes" optionLabel="description" optionValue="id"
+          placeholder="Todas las rutas" class="w-56" showClear>
+          <template #option="slotProps">
+            <span>{{ slotProps.option.code }} - {{ slotProps.option.description }}</span>
+          </template>
+        </Select>
+        <Select v-model="selectedUnit" :options="units" optionLabel="name" optionValue="id"
+          placeholder="Todas las unidades" class="w-56" showClear />
+        <DatePicker v-model="dateFrom" dateFormat="dd/mm/yy" mask="99/99/9999" placeholder="Desde" showIcon
+          iconDisplay="input" class="!w-40" />
         <span class="text-outline text-body-md">al</span>
-        <DatePicker
-          v-model="dateTo"
-          dateFormat="dd/mm/yy"
-          mask="99/99/9999"
-          placeholder="Hasta"
-          showIcon
-          iconDisplay="input"
-          class="!w-40"
-        />
+        <DatePicker v-model="dateTo" dateFormat="dd/mm/yy" mask="99/99/9999" placeholder="Hasta" showIcon
+          iconDisplay="input" class="!w-40" />
         <button
           class="bg-primary text-white px-md py-1 rounded-lg text-label-md font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-1"
-          :disabled="exporting"
-          @click="exportPdf"
-        >
+          :disabled="exporting" @click="exportPdf">
           <span v-if="exporting" class="material-symbols-outlined !text-sm animate-spin">refresh</span>
           <span v-else class="material-symbols-outlined !text-sm">picture_as_pdf</span>
           Generar PDF

@@ -7,6 +7,7 @@ export interface Solicitude {
   shedule: string
   route: string | null
   status?: number
+  idroute: number | null
 }
 
 export interface SolicitudeWithClient extends Solicitude {
@@ -21,6 +22,7 @@ export interface SolicitudeInput {
   idclient: number
   shedule: string
   route: string | null
+  idroute: number | null
 }
 
 interface RpcResult<T> {
@@ -34,12 +36,21 @@ export const solicitudeService = {
    * @description Fetches solicitudes filtered by date range with client info.
    * @param {string} dateFrom - Start date (YYYY-MM-DD).
    * @param {string} dateTo - End date (YYYY-MM-DD).
+   * @param {(number | null)[] | null} idroute - Filter by route IDs.
+   * @param {(number | null)[] | null} idhorario - Filter by horario IDs.
    * @returns {Promise<SolicitudeWithClient[]>} List of solicitudes with client details.
    */
-  async getByDateRange(dateFrom: string, dateTo: string): Promise<SolicitudeWithClient[]> {
+  async getByDateRange(
+    dateFrom: string,
+    dateTo: string,
+    idroute?: (number | null)[] | null,
+    idhorario?: (number | null)[] | null,
+  ): Promise<SolicitudeWithClient[]> {
     const { data, error } = await supabase.rpc('get_solicitudes_by_date_range', {
       p_date_from: dateFrom,
       p_date_to: dateTo,
+      p_idroute: idroute?.length ? idroute.filter((x): x is number => x !== null) : null,
+      p_idhorario: idhorario?.length ? idhorario.filter((x): x is number => x !== null) : null,
     })
     if (error) throw error
     return data ?? []
@@ -61,6 +72,7 @@ export const solicitudeService = {
       p_shedule: null,
       p_route: null,
       p_status: null,
+      p_idroute: null,
     })
     if (error) throw error
     const result = raw as unknown as RpcResult<Solicitude[]>
@@ -77,6 +89,7 @@ export const solicitudeService = {
       p_shedule: null,
       p_route: null,
       p_status: null,
+      p_idroute: null,
     })
     if (error) throw error
     const result = raw as unknown as RpcResult<Solicitude[]>
@@ -93,6 +106,7 @@ export const solicitudeService = {
       p_shedule: null,
       p_route: null,
       p_status: null,
+      p_idroute: null,
     })
     if (error) throw error
     const result = raw as unknown as RpcResult<Solicitude>
@@ -109,6 +123,7 @@ export const solicitudeService = {
       p_shedule: input.shedule,
       p_route: input.route,
       p_status: null,
+      p_idroute: input.idroute,
     })
     if (error) throw error
     const result = raw as unknown as RpcResult<Solicitude>
@@ -125,6 +140,7 @@ export const solicitudeService = {
       p_shedule: input.shedule ?? null,
       p_route: input.route ?? null,
       p_status: null,
+      p_idroute: input.idroute ?? null,
     })
     if (error) throw error
     const result = raw as unknown as RpcResult<Solicitude>
@@ -149,6 +165,7 @@ export const solicitudeService = {
       p_shedule: null,
       p_route: null,
       p_status: null,
+      p_idroute: null,
     })
     if (error) throw error
     const result = raw as unknown as RpcResult<never>

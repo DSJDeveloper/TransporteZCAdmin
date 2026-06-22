@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { getDebtorsList, type Debtor } from '@/services/clientService'
-import html2pdf from 'html2pdf.js'
+import { generatePdf, getHeaderReports } from '@/utils/reports';
 
 const props = defineProps<{
   total: number
@@ -30,13 +30,10 @@ async function exportPdf() {
     const dateLabel = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' })
 
     const container = document.createElement('div')
-    container.style.cssText = 'padding:40px 30px;font-family:Inter,Arial,Helvetica,sans-serif;width:680px;'
+    container.style.cssText = 'font-family:Inter,Arial,Helvetica,sans-serif;width:680px;'
+    
     container.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:6px;">
-        <h1 style="font-size:16pt;font-weight:700;margin:0;color:#1e293b;">Reporte de Cuentas por Cobrar</h1>
-        <span style="font-size:10pt;color:#64748b;">${dateLabel}</span>
-      </div>
-      <hr style="border:none;border-top:1px solid #cbd5e1;margin:0 0 16px;">
+          
       <table style="width:100%;border-collapse:collapse;font-size:10pt;">
         <thead>
           <tr style="background:#f2f2f2;">
@@ -61,25 +58,9 @@ async function exportPdf() {
       </div>
     `
 
-    document.body.appendChild(container)
-    const worker = html2pdf().set({
-      margin: [15, 10, 15, 10],
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, letterRendering: true },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    }).from(container)
-    await worker.toPdf()
-    const pdf = await worker.get('pdf') as any
-    const totalPages = pdf.internal.getNumberOfPages()
-    for (let i = 1; i <= totalPages; i++) {
-      pdf.setPage(i)
-      pdf.setFontSize(8)
-      const width = pdf.internal.pageSize.getWidth()
-      pdf.text(`Página ${i} de ${totalPages}`, width / 2, 5, { align: 'center' })
-    }
-    const blobUrl = pdf.output('bloburl')
-    window.open(blobUrl, '_blank')
-    document.body.removeChild(container)
+    
+    await generatePdf(container,'Reporte de Cuentas por Cobrar',dateLabel)
+    
   } catch (err) {
     console.error('Error exporting debtors PDF:', err)
   } finally {

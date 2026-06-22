@@ -7,6 +7,12 @@ export interface Horario {
   status: number
 }
 
+export interface HorarioName {
+  id: number
+  code: string
+  shudle: string
+}
+
 export type HorarioForm = Omit<Horario, "id">
 
 interface RpcResult<T> {
@@ -27,6 +33,12 @@ export async function getHorarios(): Promise<Horario[]> {
   const result = raw as unknown as { success: boolean; data?: Horario[]; message?: string }
   if (!result.success) throw new Error(result.message ?? "Error al cargar los horarios")
   return result.data ?? []
+}
+
+export async function getHorariosRpc(): Promise<HorarioName[]> {
+  const { data: raw, error } = await supabase.rpc("get_horarios")
+  if (error) throw error
+  return (raw ?? []) as HorarioName[]
 }
 
 export async function createHorario(input: HorarioForm): Promise<Horario> {
