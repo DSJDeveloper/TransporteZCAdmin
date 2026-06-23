@@ -24,7 +24,7 @@ CONF_REMOTE="$NGINX_SITES/$CONF_NAME.conf"
 # Leave empty to generate an HTTP-only config (no SSL).
 # Example: SSL_CERT_DIR="/etc/letsencrypt/live/$DOMAIN"
 #SSL_CERT_DIR="/etc/letsencrypt/live/$DOMAIN"
-SSL_CERT_DIR=""
+SSL_CERT_DIR="/root/ssl/cloudflare/transportezc.com"
 # ─────────────────────────────────────────────────────────────────
 
 # ── SSH setup ──────────────────────────────────────────────────
@@ -130,10 +130,10 @@ BUILTIN="
 SSL_BLOCK="
     ssl_certificate     $SSL_CERT_DIR/fullchain.pem;
     ssl_certificate_key $SSL_CERT_DIR/privkey.pem;
-    ssl_trusted_certificate $SSL_CERT_DIR/chain.pem;
+    #ssl_trusted_certificate $SSL_CERT_DIR/chain.pem;
 
     ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
+    #ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
     ssl_prefer_server_ciphers off;
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 1d;
