@@ -14,7 +14,7 @@ export const useUnitStore = defineStore("unit", () => {
       list.value = await getUnits()
       return true
     } catch (err) {
-      error.value = "Error al cargar las unidades"
+      error.value = (err as Error).message || "Error al cargar las unidades"
       console.error(err)
       return false
     } finally {
@@ -30,7 +30,7 @@ export const useUnitStore = defineStore("unit", () => {
       await fetchAll()
       return true
     } catch (err) {
-      error.value = "Error al crear la unidad"
+      error.value = (err as Error).message || "Error al crear la unidad"
       console.error(err)
       return false
     } finally {
@@ -46,7 +46,7 @@ export const useUnitStore = defineStore("unit", () => {
       await fetchAll()
       return true
     } catch (err) {
-      error.value = "Error al actualizar la unidad"
+      error.value = (err as Error).message || "Error al actualizar la unidad"
       console.error(err)
       return false
     } finally {
@@ -62,7 +62,7 @@ export const useUnitStore = defineStore("unit", () => {
       list.value = list.value.filter((u) => u.id !== id)
       return true
     } catch (err) {
-      error.value = "Error al eliminar la unidad"
+      error.value = (err as Error).message || "Error al eliminar la unidad"
       console.error(err)
       return false
     } finally {

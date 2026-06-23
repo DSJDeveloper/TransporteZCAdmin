@@ -1,9 +1,123 @@
 -- =====================================================
 -- BACKUP: LÓGICA DE SERVIDOR (RPC, RLS, TRIGGERS)
--- Fecha: 2026-06-22T20:56:54.629Z
+-- Fecha: 2026-06-23T11:36:39.762Z
 -- =====================================================
 
 -- >>> FUNCIONES / RPC <<<
+
+-- Función: get_public_routes
+CREATE OR REPLACE FUNCTION public.get_public_routes()
+ RETURNS json
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+DECLARE
+    v_data JSON;
+BEGIN
+    SELECT COALESCE(json_agg(json_build_object('id', id, 'code', code, 'description', description) ORDER BY code), '[]'::json)
+    INTO v_data
+    FROM public.routes WHERE status = 0;
+    RETURN json_build_object('success', true, 'data', v_data);
+END;
+$function$
+;
+
+-- Función: manage_client
+CREATE OR REPLACE FUNCTION public.manage_client(p_action character varying, p_id bigint DEFAULT NULL::bigint, p_name character varying DEFAULT NULL::character varying, p_document_id character varying DEFAULT NULL::character varying, p_email character varying DEFAULT NULL::character varying, p_phone character varying DEFAULT NULL::character varying, p_carrer character varying DEFAULT NULL::character varying, p_credit_limit character varying DEFAULT NULL::character varying, p_status character varying DEFAULT NULL::character varying, p_idroute bigint DEFAULT NULL::bigint, p_photo_url character varying DEFAULT NULL::character varying)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+    v_client JSON;
+    v_current_email TEXT;
+    v_uid TEXT;
+    v_new_email TEXT;
+BEGIN
+    IF NOT public.is_admin() THEN
+        RETURN json_build_object('success', false, 'message', 'Solo administradores pueden realizar esta accion.');
+    END IF;
+
+    IF LOWER(p_action) = 'create' THEN
+        WITH inserted AS (
+            INSERT INTO public.clients (name, "documentID", email, phone, carrer, "creditLimit", status, uid, idroute, photo_url)
+            VALUES (p_name, p_document_id, p_email, p_phone, p_carrer, p_credit_limit, COALESCE(p_status, 'Activo'), gen_random_uuid()::text, p_idroute, NULLIF(p_photo_url, ''))
+            RETURNING *
+        )
+        SELECT row_to_json(inserted.*) INTO v_client FROM inserted;
+        RETURN json_build_object('success', true, 'data', v_client, 'message', 'Cliente creado con exito.');
+
+    ELSIF LOWER(p_action) = 'update' THEN
+        SELECT email, uid INTO v_current_email, v_uid FROM public.clients WHERE id = p_id;
+        v_new_email := COALESCE(p_email, v_current_email);
+
+        IF v_new_email IS DISTINCT FROM v_current_email THEN
+            IF EXISTS (SELECT 1 FROM public.clients WHERE LOWER(email) = LOWER(v_new_email) AND id != p_id) THEN
+                RETURN json_build_object('success', false, 'message', 'El correo ya esta registrado en otro cliente.');
+            END IF;
+            IF EXISTS (SELECT 1 FROM auth.users WHERE LOWER(email) = LOWER(v_new_email)) THEN
+                RETURN json_build_object('success', false, 'message', 'El correo ya esta registrado en el sistema.');
+            END IF;
+            IF EXISTS (SELECT 1 FROM public.profiles WHERE LOWER(email) = LOWER(v_new_email)) THEN
+                RETURN json_build_object('success', false, 'message', 'El correo ya esta registrado en el sistema.');
+            END IF;
+        END IF;
+
+        WITH updated AS (
+            UPDATE public.clients SET
+                name         = COALESCE(p_name, name),
+                "documentID" = COALESCE(p_document_id, "documentID"),
+                email        = v_new_email,
+                phone        = COALESCE(p_phone, phone),
+                carrer       = COALESCE(p_carrer, carrer),
+                "creditLimit" = COALESCE(p_credit_limit, "creditLimit"),
+                status       = COALESCE(p_status, status),
+                idroute      = COALESCE(p_idroute, idroute),
+                photo_url    = COALESCE(NULLIF(p_photo_url, ''), photo_url)
+            WHERE id = p_id
+            RETURNING *
+        )
+        SELECT row_to_json(updated.*) INTO v_client FROM updated;
+
+        IF v_uid IS NOT NULL AND v_new_email IS DISTINCT FROM v_current_email THEN
+            UPDATE public.profiles SET email = v_new_email WHERE id = v_uid::uuid;
+            UPDATE auth.users SET
+                email = v_new_email,
+                raw_user_meta_data = raw_user_meta_data || jsonb_build_object('email', v_new_email)
+            WHERE id = v_uid::uuid;
+        END IF;
+
+        RETURN json_build_object('success', true, 'data', v_client, 'message', 'Cliente actualizado con exito.');
+
+    ELSIF LOWER(p_action) = 'delete' THEN
+        IF EXISTS (SELECT 1 FROM public.recharge WHERE idclient = p_id LIMIT 1)
+           OR EXISTS (SELECT 1 FROM public.transactions WHERE idclient = p_id LIMIT 1)
+        THEN
+            WITH deactivated AS (
+                UPDATE public.clients SET status = '1' WHERE id = p_id RETURNING *
+            )
+            SELECT row_to_json(deactivated.*) INTO v_client FROM deactivated;
+            RETURN json_build_object(
+                'success', true,
+                'data', v_client,
+                'message', 'El cliente no puede ser eliminado porque tiene recargas o movimientos asociados. Se ha desactivado en su lugar.',
+                'deactivated', true
+            );
+        ELSE
+            DELETE FROM public.clients WHERE id = p_id;
+            RETURN json_build_object('success', true, 'message', 'Cliente eliminado del sistema.');
+        END IF;
+
+    ELSE
+        RETURN json_build_object('success', false, 'message', 'Accion no reconocida.');
+    END IF;
+
+EXCEPTION WHEN OTHERS THEN
+    RETURN json_build_object('success', false, 'message', 'Error en el servidor: ' || SQLERRM);
+END;
+$function$
+;
 
 -- Función: process_recharge_status
 CREATE OR REPLACE FUNCTION public.process_recharge_status(p_recharge_id bigint, p_action character varying, p_approved_by character varying DEFAULT NULL::character varying)
@@ -736,220 +850,6 @@ END;
 $function$
 ;
 
--- Función: get_clients_paginated
-CREATE OR REPLACE FUNCTION public.get_clients_paginated(p_page integer DEFAULT 1, p_per_page integer DEFAULT 10, p_search text DEFAULT NULL::text, p_status text DEFAULT NULL::text, p_sort_field text DEFAULT 'id'::text, p_sort_order text DEFAULT 'ASC'::text)
- RETURNS json
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-DECLARE
-    v_offset INTEGER;
-    v_data JSON;
-    v_total BIGINT;
-    v_route_ids BIGINT[];
-    v_search TEXT;
-BEGIN
-    v_offset := (p_page - 1) * p_per_page;
-    v_route_ids := public.get_current_user_route_ids();
-    v_search := CASE WHEN p_search IS NOT NULL AND p_search <> '' THEN '%' || p_search || '%' ELSE NULL END;
-
-    SELECT COUNT(*) INTO v_total FROM public.clients c
-    WHERE (v_search IS NULL OR c.name ILIKE v_search OR c.phone ILIKE v_search OR c.email ILIKE v_search OR c."documentID" ILIKE v_search)
-      AND (p_status IS NULL OR c.status = p_status)
-      AND (public.is_admin() OR c.idroute = ANY(v_route_ids));
-
-    SELECT json_agg(t) INTO v_data FROM (
-        SELECT
-            c.id,
-            c.name,
-            c."documentID",
-            c.email,
-            c.phone,
-            c.carrer,
-            c."creditLimit",
-            c.status,
-            c.balance,
-            c.uid,
-            c.idroute,
-            c."createAt",
-            c."createBy",
-            COALESCE(rt.description, rt.code) AS route_name
-        FROM public.clients c
-        LEFT JOIN public.routes rt ON rt.id = c.idroute
-        WHERE (v_search IS NULL OR c.name ILIKE v_search OR c.phone ILIKE v_search OR c.email ILIKE v_search OR c."documentID" ILIKE v_search)
-          AND (p_status IS NULL OR c.status = p_status)
-          AND (public.is_admin() OR c.idroute = ANY(v_route_ids))
-        ORDER BY
-            CASE WHEN p_sort_field = 'id'         AND p_sort_order = 'ASC'  THEN c.id                 END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'id'         AND p_sort_order = 'DESC' THEN c.id                 END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'name'       AND p_sort_order = 'ASC'  THEN c.name               END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'name'       AND p_sort_order = 'DESC' THEN c.name               END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'phone'      AND p_sort_order = 'ASC'  THEN c.phone              END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'phone'      AND p_sort_order = 'DESC' THEN c.phone              END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'email'      AND p_sort_order = 'ASC'  THEN c.email              END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'email'      AND p_sort_order = 'DESC' THEN c.email              END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'route_name' AND p_sort_order = 'ASC'  THEN rt.description       END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'route_name' AND p_sort_order = 'DESC' THEN rt.description       END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'balance'    AND p_sort_order = 'ASC'  THEN c.balance            END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'balance'    AND p_sort_order = 'DESC' THEN c.balance            END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'status'     AND p_sort_order = 'ASC'  THEN c.status             END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'status'     AND p_sort_order = 'DESC' THEN c.status             END DESC NULLS LAST,
-            c.id ASC
-        LIMIT p_per_page
-        OFFSET v_offset
-    ) t;
-
-    RETURN json_build_object(
-        'data', COALESCE(v_data, '[]'::json),
-        'total', v_total
-    );
-END;
-$function$
-;
-
--- Función: get_clients_paginated
-CREATE OR REPLACE FUNCTION public.get_clients_paginated(p_page integer DEFAULT 1, p_per_page integer DEFAULT 10, p_search text DEFAULT NULL::text, p_status text DEFAULT NULL::text, p_sort_field text DEFAULT 'id'::text, p_sort_order text DEFAULT 'ASC'::text, p_idroute bigint DEFAULT NULL::bigint)
- RETURNS json
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-DECLARE
-    v_offset INTEGER;
-    v_data JSON;
-    v_total BIGINT;
-    v_route_ids BIGINT[];
-    v_search TEXT;
-BEGIN
-    v_offset := (p_page - 1) * p_per_page;
-    v_route_ids := public.get_current_user_route_ids();
-    v_search := CASE WHEN p_search IS NOT NULL AND p_search <> '' THEN '%' || p_search || '%' ELSE NULL END;
-
-    SELECT COUNT(*) INTO v_total FROM public.clients c
-    WHERE (v_search IS NULL OR c.name ILIKE v_search OR c.phone ILIKE v_search OR c.email ILIKE v_search OR c."documentID" ILIKE v_search)
-      AND (p_status IS NULL OR c.status = p_status)
-      AND (p_idroute IS NULL OR c.idroute = p_idroute)
-      AND (public.is_admin() OR c.idroute = ANY(v_route_ids));
-
-    SELECT json_agg(t) INTO v_data FROM (
-        SELECT
-            c.id,
-            c.name,
-            c."documentID",
-            c.email,
-            c.phone,
-            c.carrer,
-            c."creditLimit",
-            c.status,
-            c.balance,
-            c.uid,
-            c.idroute,
-            c."createAt",
-            c."createBy",
-            COALESCE(rt.description, rt.code) AS route_name,
-            au.raw_user_meta_data->>'user_name' AS auth_user_name
-        FROM public.clients c
-        LEFT JOIN public.routes rt ON rt.id = c.idroute
-        LEFT JOIN auth.users au ON au.id = c.uid::uuid
-        WHERE (v_search IS NULL OR c.name ILIKE v_search OR c.phone ILIKE v_search OR c.email ILIKE v_search OR c."documentID" ILIKE v_search)
-          AND (p_status IS NULL OR c.status = p_status)
-          AND (p_idroute IS NULL OR c.idroute = p_idroute)
-          AND (public.is_admin() OR c.idroute = ANY(v_route_ids))
-        ORDER BY
-            CASE WHEN p_sort_field = 'id'         AND p_sort_order = 'ASC'  THEN c.id                 END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'id'         AND p_sort_order = 'DESC' THEN c.id                 END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'name'       AND p_sort_order = 'ASC'  THEN c.name               END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'name'       AND p_sort_order = 'DESC' THEN c.name               END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'phone'      AND p_sort_order = 'ASC'  THEN c.phone              END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'phone'      AND p_sort_order = 'DESC' THEN c.phone              END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'email'      AND p_sort_order = 'ASC'  THEN c.email              END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'email'      AND p_sort_order = 'DESC' THEN c.email              END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'route_name' AND p_sort_order = 'ASC'  THEN rt.description       END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'route_name' AND p_sort_order = 'DESC' THEN rt.description       END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'balance'    AND p_sort_order = 'ASC'  THEN c.balance            END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'balance'    AND p_sort_order = 'DESC' THEN c.balance            END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'status'     AND p_sort_order = 'ASC'  THEN c.status             END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'status'     AND p_sort_order = 'DESC' THEN c.status             END DESC NULLS LAST,
-            c.id ASC
-        LIMIT p_per_page
-        OFFSET v_offset
-    ) t;
-
-    RETURN json_build_object(
-        'data', COALESCE(v_data, '[]'::json),
-        'total', v_total
-    );
-END;
-$function$
-;
-
--- Función: manage_client
-CREATE OR REPLACE FUNCTION public.manage_client(p_action character varying, p_id bigint DEFAULT NULL::bigint, p_name character varying DEFAULT NULL::character varying, p_document_id character varying DEFAULT NULL::character varying, p_email character varying DEFAULT NULL::character varying, p_phone character varying DEFAULT NULL::character varying, p_carrer character varying DEFAULT NULL::character varying, p_credit_limit character varying DEFAULT NULL::character varying, p_status character varying DEFAULT NULL::character varying, p_idroute bigint DEFAULT NULL::bigint)
- RETURNS json
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-DECLARE
-    v_client JSON;
-BEGIN
-    IF NOT public.is_admin() THEN
-        RETURN json_build_object('success', false, 'message', 'Solo administradores pueden realizar esta accion.');
-    END IF;
-
-    IF LOWER(p_action) = 'create' THEN
-        WITH inserted AS (
-            INSERT INTO public.clients (name, "documentID", email, phone, carrer, "creditLimit", status, uid, idroute)
-            VALUES (p_name, p_document_id, p_email, p_phone, p_carrer, p_credit_limit, COALESCE(p_status, 'Activo'), gen_random_uuid()::text, p_idroute)
-            RETURNING *
-        )
-        SELECT row_to_json(inserted.*) INTO v_client FROM inserted;
-        RETURN json_build_object('success', true, 'data', v_client, 'message', 'Cliente creado con exito.');
-
-    ELSIF LOWER(p_action) = 'update' THEN
-        WITH updated AS (
-            UPDATE public.clients SET
-                name         = COALESCE(p_name, name),
-                "documentID" = COALESCE(p_document_id, "documentID"),
-                email        = COALESCE(p_email, email),
-                phone        = COALESCE(p_phone, phone),
-                carrer       = COALESCE(p_carrer, carrer),
-                "creditLimit" = COALESCE(p_credit_limit, "creditLimit"),
-                status       = COALESCE(p_status, status),
-                idroute      = COALESCE(p_idroute, idroute)
-            WHERE id = p_id
-            RETURNING *
-        )
-        SELECT row_to_json(updated.*) INTO v_client FROM updated;
-        RETURN json_build_object('success', true, 'data', v_client, 'message', 'Cliente actualizado con exito.');
-
-    ELSIF LOWER(p_action) = 'delete' THEN
-        IF EXISTS (SELECT 1 FROM public.recharge WHERE idclient = p_id LIMIT 1)
-           OR EXISTS (SELECT 1 FROM public.transactions WHERE idclient = p_id LIMIT 1)
-        THEN
-            WITH deactivated AS (
-                UPDATE public.clients SET status = '1' WHERE id = p_id RETURNING *
-            )
-            SELECT row_to_json(deactivated.*) INTO v_client FROM deactivated;
-            RETURN json_build_object(
-                'success', true,
-                'data', v_client,
-                'message', 'El cliente no puede ser eliminado porque tiene recargas o movimientos asociados. Se ha desactivado en su lugar.',
-                'deactivated', true
-            );
-        ELSE
-            DELETE FROM public.clients WHERE id = p_id;
-            RETURN json_build_object('success', true, 'message', 'Cliente eliminado del sistema.');
-        END IF;
-
-    ELSE
-        RETURN json_build_object('success', false, 'message', 'Accion no reconocida.');
-    END IF;
-
-EXCEPTION WHEN OTHERS THEN
-    RETURN json_build_object('success', false, 'message', 'Error en el servidor: ' || SQLERRM);
-END;
-$function$
-;
-
 -- Función: get_recharge_stats
 CREATE OR REPLACE FUNCTION public.get_recharge_stats()
  RETURNS json
@@ -1089,101 +989,6 @@ END;
 $function$
 ;
 
--- Función: handle_new_user
-CREATE OR REPLACE FUNCTION public.handle_new_user()
- RETURNS trigger
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-DECLARE
-  v_raw_name TEXT;
-  v_name TEXT;
-  v_phone TEXT;
-  v_document_id TEXT;
-  v_carrer TEXT;
-  v_role TEXT;
-  v_role_enum public.user_role;
-BEGIN
-  
-  -- 1. Definir el rol (por defecto 'student')
-  v_role := LOWER(COALESCE(NEW.raw_user_meta_data->>'role', 'student'));
-  
-  v_role_enum := CASE v_role
-    WHEN 'admin' THEN 'admin'::public.user_role
-    WHEN 'student' THEN 'student'::public.user_role
-    WHEN 'driver' THEN 'driver'::public.user_role
-    WHEN 'supervisor' THEN 'supervisor'::public.user_role
-    ELSE 'student'::public.user_role -- Fallback si mandan algo inválido
-  END;
-  -- 2. Capturar el user_name original de los metadatos
-  v_raw_name := COALESCE(NEW.raw_user_meta_data->>'user_name', 'usuario');
-
-  -- 3. LIMPIEZA DEL NOMBRE: 
-  --    - LOWER(...) lo pasa todo a minúsculas.
-  --    - regexp_replace(..., '[^a-z0-9]', '', 'g') elimina cualquier cosa que NO sea una letra de la 'a' a la 'z' o un número. Esto quita espacios, tildes, eñes y caracteres especiales.
-  v_name := LOWER(regexp_replace(v_raw_name, '[^a-zA-Z0-9]', '', 'g'));
-
-  -- Si después de la limpieza el nombre queda vacío (ej. el usuario puso solo emojis o símbolos), asignamos un fallback con parte de su email
-  IF v_name = '' OR v_name IS NULL THEN
-    v_name := LOWER(regexp_replace(split_part(NEW.email, '@', 1), '[^a-zA-Z0-9]', '', 'g'));
-  END IF;
-
-  -- 4. Inserción en la tabla de perfiles
---  BEGIN
-    INSERT INTO public.profiles (id, email, role, name, updated_at)
-    VALUES (
-      NEW.id,
-      NEW.email,
-      v_role_enum,
-      v_name, -- Insertamos el nombre ya limpio
-      NOW()
-    );
---  EXCEPTION WHEN OTHERS THEN
---    RAISE WARNING 'Fallo especifico en profiles: %', SQLERRM;
---  END;
-
-  -- 5. Crear el registro en la tabla de clientes SOLO si el rol es 'student'
-  IF v_role = 'student' THEN
-    
-    v_phone       := COALESCE(NEW.raw_user_meta_data->>'phone', '');
-    v_document_id := COALESCE(NEW.raw_user_meta_data->>'document_id', '');
-    v_carrer      := NEW.raw_user_meta_data->>'carrer';
-
-    BEGIN
-      INSERT INTO public.clients (
-        name,
-        phone,
-        "documentID", 
-        email,
-        "creditLimit",
-        status,
-        "createBy",
-        carrer,
-        balance,
-        uid
-      ) VALUES (
-        v_name, -- Aquí también se guardará la versión limpia en minúsculas
-        v_phone,
-        v_document_id,
-        NEW.email,
-        0,         
-        '2',       
-        'App',    
-        v_carrer,
-        0,         
-        NEW.id     
-      );
-    EXCEPTION WHEN OTHERS THEN
-      RAISE WARNING 'Fallo especifico en clientes: %', SQLERRM;
-    END;
-    
-  END IF;
-
-  RETURN NEW;
-END;
-$function$
-;
-
 -- Función: get_complete_user_profile
 CREATE OR REPLACE FUNCTION public.get_complete_user_profile(p_uuid text, p_email text)
  RETURNS json
@@ -1208,6 +1013,7 @@ BEGIN
                 0 AS saldo,
                 NOW()::timestamp without time zone AS created_at,
                 p.role,
+                u.photo_url,
                 u.id AS unit_id,
                 u.name AS unit_name,
                 u.number AS unit_number,
@@ -1237,7 +1043,8 @@ BEGIN
                 c.carrer,
                 c.balance AS saldo,
                 COALESCE(c."createAt", NOW()) AS created_at,
-                p.role
+                p.role,
+                c.photo_url
             FROM public.profiles p
             LEFT JOIN public.clients c ON p.id = c.uid::uuid AND c.email = p_email
             WHERE p.id = p_uuid::uuid
@@ -1297,6 +1104,19 @@ AS $function$SELECT EXISTS (
   WHERE email = auth.jwt()->>'email' -- 👈 Extrae el email del usuario logueado en la sesión actual
     AND role = 'admin'::user_role    -- 👈 Casteo al ENUM para evitar conflictos de tipo
 );$function$
+;
+
+-- Función: get_careers
+CREATE OR REPLACE FUNCTION public.get_careers()
+ RETURNS json
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+AS $function$
+BEGIN
+    
+    RETURN COALESCE((SELECT json_agg(json_build_object('id', id, 'code', code, 'description', description, 'status', status) ORDER BY code) FROM public.careers), '[]'::json);
+END;
+$function$
 ;
 
 -- Función: get_debtors_list
@@ -1394,6 +1214,61 @@ begin
     'total_transactions_amount', v_total_transactions
   );
 end;
+$function$
+;
+
+-- Función: manage_career
+CREATE OR REPLACE FUNCTION public.manage_career(p_action character varying, p_id bigint DEFAULT NULL::bigint, p_code character varying DEFAULT NULL::character varying, p_description character varying DEFAULT NULL::character varying, p_status integer DEFAULT NULL::integer)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+    v_career JSON;
+BEGIN
+    IF LOWER(p_action) = 'list' THEN
+        SELECT json_agg(row_to_json(c.*)) INTO v_career FROM (
+            SELECT * FROM public.careers ORDER BY id
+        ) c;
+        RETURN json_build_object('success', true, 'data', COALESCE(v_career, '[]'::json));
+    END IF;
+
+    IF NOT public.is_admin() THEN
+        RETURN json_build_object('success', false, 'message', 'Solo administradores pueden realizar esta accion.');
+    END IF;
+
+    IF LOWER(p_action) = 'create' THEN
+        WITH inserted AS (
+            INSERT INTO public.careers (code, description, status)
+            VALUES (p_code, p_description, COALESCE(p_status, 0))
+            RETURNING *
+        )
+        SELECT row_to_json(inserted.*) INTO v_career FROM inserted;
+        RETURN json_build_object('success', true, 'data', v_career, 'message', 'Carrera creada con exito.');
+
+    ELSIF LOWER(p_action) = 'update' THEN
+        WITH updated AS (
+            UPDATE public.careers SET
+                code        = COALESCE(p_code, code),
+                description = COALESCE(p_description, description),
+                status      = COALESCE(p_status, status)
+            WHERE id = p_id
+            RETURNING *
+        )
+        SELECT row_to_json(updated.*) INTO v_career FROM updated;
+        RETURN json_build_object('success', true, 'data', v_career, 'message', 'Carrera actualizada con exito.');
+
+    ELSIF LOWER(p_action) = 'delete' THEN
+        DELETE FROM public.careers WHERE id = p_id;
+        RETURN json_build_object('success', true, 'message', 'Carrera eliminada del sistema.');
+
+    ELSE
+        RETURN json_build_object('success', false, 'message', 'Accion no reconocida.');
+    END IF;
+
+EXCEPTION WHEN OTHERS THEN
+    RETURN json_build_object('success', false, 'message', 'Error: ' || SQLERRM);
+END;
 $function$
 ;
 
@@ -1821,6 +1696,28 @@ BEGIN
 
 EXCEPTION WHEN OTHERS THEN
     RETURN json_build_object('success', false, 'message', 'Error: ' || SQLERRM);
+END;
+$function$
+;
+
+-- Función: update_client_photo
+CREATE OR REPLACE FUNCTION public.update_client_photo(p_photo_url text)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+  v_client_id BIGINT;
+BEGIN
+  SELECT id INTO v_client_id FROM public.clients WHERE uid = auth.uid()::text;
+  
+  IF v_client_id IS NULL THEN
+    RETURN json_build_object('success', false, 'message', 'Cliente no encontrado');
+  END IF;
+
+  UPDATE public.clients SET photo_url = p_photo_url WHERE id = v_client_id;
+  
+  RETURN json_build_object('success', true, 'message', 'Foto actualizada');
 END;
 $function$
 ;
@@ -2605,156 +2502,6 @@ END;
 $function$
 ;
 
--- Función: manage_unit
-CREATE OR REPLACE FUNCTION public.manage_unit(p_action character varying, p_unit_id integer DEFAULT NULL::integer, p_name character varying DEFAULT NULL::character varying, p_number character varying DEFAULT NULL::character varying, p_plate character varying DEFAULT NULL::character varying, p_status integer DEFAULT NULL::integer, p_driver character varying DEFAULT NULL::character varying, p_idroute bigint DEFAULT NULL::bigint, p_email character varying DEFAULT NULL::character varying, p_password character varying DEFAULT NULL::character varying, p_photo_url character varying DEFAULT NULL::character varying)
- RETURNS json
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-DECLARE
-    v_unit JSON;
-    v_old_email VARCHAR;
-    v_profile_res JSON;
-    v_auth_id UUID;
-    v_clean_username VARCHAR;
-BEGIN
-    -- 1. Control de acceso
-    IF NOT public.is_admin() THEN
-        RETURN json_build_object('success', false, 'message', 'Solo administradores pueden realizar esta accion.');
-    END IF;
-
-    -- Preparamos el nombre de usuario limpio: todo a minúsculas, quitando espacios y caracteres especiales
-    -- Si p_driver viene nulo, usamos p_name como respaldo seguro
-    v_clean_username := LOWER(REGEXP_REPLACE(COALESCE(p_driver, p_name, ''), '[^a-zA-Z0-9]', '', 'g'));
-
-    -- ==========================================
-    -- ACCION: CREATE
-    -- ==========================================
-    IF LOWER(p_action) = 'create' THEN
-        -- Si de entrada trae email y contraseña, creamos el usuario en Auth primero
-        IF p_email IS NOT NULL AND p_password IS NOT NULL THEN
-            SELECT public.manage_profile(
-                p_action,                  -- 'create'
-                NULL::uuid,                
-                p_email,                   
-                p_password,                
-                'driver'::public.user_role,
-                v_clean_username           -- ¡Enviamos el nombre limpio!
-            ) INTO v_profile_res;
-
-            IF NOT (v_profile_res->>'success')::BOOLEAN THEN
-                RETURN json_build_object('success', false, 'message', 'Error al crear credenciales del chofer: ' || (v_profile_res->>'message'));
-            END IF;
-        END IF;
-
-        WITH inserted AS (
-            INSERT INTO public.units (name, number, plate, status, driver, idroute, email, photo_url)
-            VALUES (p_name, p_number, p_plate, COALESCE(p_status, 1), p_driver, p_idroute, p_email, p_photo_url)
-            RETURNING *
-        )
-        SELECT row_to_json(inserted.*) INTO v_unit FROM inserted;
-
-        RETURN json_build_object('success', true, 'data', v_unit, 'message', 'Unidad creada con exito.');
-
-    -- ==========================================
-    -- ACCION: UPDATE
-    -- ==========================================
-    ELSIF LOWER(p_action) = 'update' THEN
-        -- 1. Obtener el email actual de la unidad antes de actualizar
-        SELECT email INTO v_old_email FROM public.units WHERE id = p_unit_id;
-
-        -- 2. Actualizar la tabla de unidades con los nuevos datos
-        WITH updated AS (
-            UPDATE public.units SET
-                name      = COALESCE(p_name, name),
-                number    = COALESCE(p_number, number),
-                plate     = COALESCE(p_plate, plate),
-                status    = COALESCE(p_status, status),
-                driver    = COALESCE(p_driver, driver),
-                idroute   = COALESCE(p_idroute, idroute),
-                email     = COALESCE(p_email, email),
-                photo_url = COALESCE(p_photo_url, photo_url)
-            WHERE id = p_unit_id
-            RETURNING *
-        )
-        SELECT row_to_json(updated.*) INTO v_unit FROM updated;
-
-        -- 3. Buscar si el email (ya sea el nuevo o el viejo) ya cuenta con un perfil de autenticación
-        v_auth_id := NULL;
-        IF p_email IS NOT NULL THEN
-            SELECT id INTO v_auth_id FROM public.profiles WHERE LOWER(email) = LOWER(p_email);
-        ELSIF v_old_email IS NOT NULL THEN
-            SELECT id INTO v_auth_id FROM public.profiles WHERE LOWER(email) = LOWER(v_old_email);
-        END IF;
-
-        -- Re-evaluamos el nombre limpio en caso de que se haya modificado el chofer en el UPDATE
-        v_clean_username := LOWER(REGEXP_REPLACE(COALESCE(p_driver, p_name, (v_unit->>'driver'), ''), '[^a-zA-Z0-9]', '', 'g'));
-
-        -- 4. FLUJO LOGICO DE SINCRO:
-        IF v_auth_id IS NOT NULL THEN
-            -- CASO A: El usuario YA EXISTE en auth, hacemos un UPDATE normal
-            SELECT public.manage_profile(
-                'update'::character varying,
-                v_auth_id,                 
-                COALESCE(p_email, v_old_email),
-                p_password,                
-                'driver'::public.user_role,
-                v_clean_username           -- ¡Enviamos el nombre limpio!
-            ) INTO v_profile_res;
-            
-        ELSIF v_auth_id IS NULL AND p_password IS NOT NULL AND COALESCE(p_email, v_old_email) IS NOT NULL THEN
-            -- CASO B: NO EXISTE usuario en auth pero mandaron contraseña -> ¡LO CREAMOS DESDE CERO!
-            SELECT public.manage_profile(
-                'create'::character varying, 
-                NULL::uuid,                
-                COALESCE(p_email, v_old_email), 
-                p_password,                
-                'driver'::public.user_role, 
-                v_clean_username           -- ¡Enviamos el nombre limpio!
-            ) INTO v_profile_res;
-
-            IF NOT (v_profile_res->>'success')::BOOLEAN THEN
-                RETURN json_build_object('success', false, 'message', 'Error al registrar credenciales nuevas al chofer: ' || (v_profile_res->>'message'));
-            END IF;
-        END IF;
-
-        RETURN json_build_object('success', true, 'data', v_unit, 'message', 'Unidad actualizada y credenciales sincronizadas.');
-
-    -- ==========================================
-    -- ACCION: DELETE
-    -- ==========================================
-    ELSIF LOWER(p_action) = 'delete' THEN
-        SELECT email INTO v_old_email FROM public.units WHERE id = p_unit_id;
-
-        DELETE FROM public.units WHERE id = p_unit_id;
-
-        IF v_old_email IS NOT NULL THEN
-            SELECT id INTO v_auth_id FROM public.profiles WHERE LOWER(email) = LOWER(v_old_email);
-            
-            IF v_auth_id IS NOT NULL THEN
-                PERFORM public.manage_profile(
-                    'delete'::character varying,
-                    v_auth_id,             
-                    NULL::character varying,
-                    NULL::character varying,
-                    'driver'::public.user_role,
-                    NULL::character varying
-                );
-            END IF;
-        END IF;
-
-        RETURN json_build_object('success', true, 'message', 'Unidad eliminada del sistema.');
-
-    ELSE
-        RETURN json_build_object('success', false, 'message', 'Accion no reconocida.');
-    END IF;
-
-EXCEPTION WHEN OTHERS THEN
-    RETURN json_build_object('success', false, 'message', 'Error en manage_unit: ' || SQLERRM);
-END;
-$function$
-;
-
 -- Función: get_driver_profile
 CREATE OR REPLACE FUNCTION public.get_driver_profile(p_email text)
  RETURNS json
@@ -2883,152 +2630,6 @@ BEGIN
       AND (p_idunit IS NULL OR t.idunit = p_idunit)
       AND (public.is_admin() OR u.idroute = ANY(v_route_ids))
     ORDER BY t.created_at DESC, c.name;
-END;
-$function$
-;
-
--- Función: get_clients_paginated
-CREATE OR REPLACE FUNCTION public.get_clients_paginated(p_page integer DEFAULT 1, p_per_page integer DEFAULT 10, p_search text DEFAULT NULL::text, p_status text DEFAULT NULL::text, p_sort_field text DEFAULT 'id'::text, p_sort_order text DEFAULT 'ASC'::text)
- RETURNS json
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-DECLARE
-    v_offset INTEGER;
-    v_data JSON;
-    v_total BIGINT;
-    v_route_ids BIGINT[];
-    v_search TEXT;
-BEGIN
-    v_offset := (p_page - 1) * p_per_page;
-    v_route_ids := public.get_current_user_route_ids();
-    v_search := CASE WHEN p_search IS NOT NULL AND p_search <> '' THEN '%' || p_search || '%' ELSE NULL END;
-
-    SELECT COUNT(*) INTO v_total FROM public.clients c
-    WHERE (v_search IS NULL OR c.name ILIKE v_search OR c.phone ILIKE v_search OR c.email ILIKE v_search OR c."documentID" ILIKE v_search)
-      AND (p_status IS NULL OR c.status = p_status)
-      AND (public.is_admin() OR c.idroute = ANY(v_route_ids));
-
-    SELECT json_agg(t) INTO v_data FROM (
-        SELECT
-            c.id,
-            c.name,
-            c."documentID",
-            c.email,
-            c.phone,
-            c.carrer,
-            c."creditLimit",
-            c.status,
-            c.balance,
-            c.uid,
-            c.idroute,
-            c."createAt",
-            c."createBy",
-            COALESCE(rt.description, rt.code) AS route_name
-        FROM public.clients c
-        LEFT JOIN public.routes rt ON rt.id = c.idroute
-        WHERE (v_search IS NULL OR c.name ILIKE v_search OR c.phone ILIKE v_search OR c.email ILIKE v_search OR c."documentID" ILIKE v_search)
-          AND (p_status IS NULL OR c.status = p_status)
-          AND (public.is_admin() OR c.idroute = ANY(v_route_ids))
-        ORDER BY
-            CASE WHEN p_sort_field = 'id'         AND p_sort_order = 'ASC'  THEN c.id                 END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'id'         AND p_sort_order = 'DESC' THEN c.id                 END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'name'       AND p_sort_order = 'ASC'  THEN c.name               END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'name'       AND p_sort_order = 'DESC' THEN c.name               END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'phone'      AND p_sort_order = 'ASC'  THEN c.phone              END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'phone'      AND p_sort_order = 'DESC' THEN c.phone              END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'email'      AND p_sort_order = 'ASC'  THEN c.email              END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'email'      AND p_sort_order = 'DESC' THEN c.email              END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'route_name' AND p_sort_order = 'ASC'  THEN rt.description       END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'route_name' AND p_sort_order = 'DESC' THEN rt.description       END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'balance'    AND p_sort_order = 'ASC'  THEN c.balance            END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'balance'    AND p_sort_order = 'DESC' THEN c.balance            END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'status'     AND p_sort_order = 'ASC'  THEN c.status             END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'status'     AND p_sort_order = 'DESC' THEN c.status             END DESC NULLS LAST,
-            c.id ASC
-        LIMIT p_per_page
-        OFFSET v_offset
-    ) t;
-
-    RETURN json_build_object(
-        'data', COALESCE(v_data, '[]'::json),
-        'total', v_total
-    );
-END;
-$function$
-;
-
--- Función: get_clients_paginated
-CREATE OR REPLACE FUNCTION public.get_clients_paginated(p_page integer DEFAULT 1, p_per_page integer DEFAULT 10, p_search text DEFAULT NULL::text, p_status text DEFAULT NULL::text, p_sort_field text DEFAULT 'id'::text, p_sort_order text DEFAULT 'ASC'::text, p_idroute bigint DEFAULT NULL::bigint)
- RETURNS json
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-DECLARE
-    v_offset INTEGER;
-    v_data JSON;
-    v_total BIGINT;
-    v_route_ids BIGINT[];
-    v_search TEXT;
-BEGIN
-    v_offset := (p_page - 1) * p_per_page;
-    v_route_ids := public.get_current_user_route_ids();
-    v_search := CASE WHEN p_search IS NOT NULL AND p_search <> '' THEN '%' || p_search || '%' ELSE NULL END;
-
-    SELECT COUNT(*) INTO v_total FROM public.clients c
-    WHERE (v_search IS NULL OR c.name ILIKE v_search OR c.phone ILIKE v_search OR c.email ILIKE v_search OR c."documentID" ILIKE v_search)
-      AND (p_status IS NULL OR c.status = p_status)
-      AND (p_idroute IS NULL OR c.idroute = p_idroute)
-      AND (public.is_admin() OR c.idroute = ANY(v_route_ids));
-
-    SELECT json_agg(t) INTO v_data FROM (
-        SELECT
-            c.id,
-            c.name,
-            c."documentID",
-            c.email,
-            c.phone,
-            c.carrer,
-            c."creditLimit",
-            c.status,
-            c.balance,
-            c.uid,
-            c.idroute,
-            c."createAt",
-            c."createBy",
-            COALESCE(rt.description, rt.code) AS route_name,
-            au.raw_user_meta_data->>'user_name' AS auth_user_name
-        FROM public.clients c
-        LEFT JOIN public.routes rt ON rt.id = c.idroute
-        LEFT JOIN auth.users au ON au.id = c.uid::uuid
-        WHERE (v_search IS NULL OR c.name ILIKE v_search OR c.phone ILIKE v_search OR c.email ILIKE v_search OR c."documentID" ILIKE v_search)
-          AND (p_status IS NULL OR c.status = p_status)
-          AND (p_idroute IS NULL OR c.idroute = p_idroute)
-          AND (public.is_admin() OR c.idroute = ANY(v_route_ids))
-        ORDER BY
-            CASE WHEN p_sort_field = 'id'         AND p_sort_order = 'ASC'  THEN c.id                 END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'id'         AND p_sort_order = 'DESC' THEN c.id                 END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'name'       AND p_sort_order = 'ASC'  THEN c.name               END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'name'       AND p_sort_order = 'DESC' THEN c.name               END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'phone'      AND p_sort_order = 'ASC'  THEN c.phone              END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'phone'      AND p_sort_order = 'DESC' THEN c.phone              END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'email'      AND p_sort_order = 'ASC'  THEN c.email              END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'email'      AND p_sort_order = 'DESC' THEN c.email              END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'route_name' AND p_sort_order = 'ASC'  THEN rt.description       END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'route_name' AND p_sort_order = 'DESC' THEN rt.description       END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'balance'    AND p_sort_order = 'ASC'  THEN c.balance            END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'balance'    AND p_sort_order = 'DESC' THEN c.balance            END DESC NULLS LAST,
-            CASE WHEN p_sort_field = 'status'     AND p_sort_order = 'ASC'  THEN c.status             END ASC  NULLS LAST,
-            CASE WHEN p_sort_field = 'status'     AND p_sort_order = 'DESC' THEN c.status             END DESC NULLS LAST,
-            c.id ASC
-        LIMIT p_per_page
-        OFFSET v_offset
-    ) t;
-
-    RETURN json_build_object(
-        'data', COALESCE(v_data, '[]'::json),
-        'total', v_total
-    );
 END;
 $function$
 ;
@@ -3290,256 +2891,6 @@ END;
 $function$
 ;
 
--- Función: process_payment
-CREATE OR REPLACE FUNCTION public.process_payment(p_idclient integer, p_amount numeric, p_method character varying, p_ref character varying DEFAULT NULL::character varying, p_tasa numeric DEFAULT NULL::numeric, p_date date DEFAULT CURRENT_DATE, p_picture character varying DEFAULT NULL::character varying, p_create_by character varying DEFAULT NULL::character varying, p_codigo_banco character varying DEFAULT NULL::character varying, p_idroute bigint DEFAULT NULL::bigint, p_shedule character varying DEFAULT NULL::character varying)
- RETURNS json
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-DECLARE
-    v_current_balance NUMERIC(10,2);
-    v_recharge_id BIGINT;
-    v_amount_in_usd NUMERIC(10,2);
-    v_estimated_tickets NUMERIC(10,2);
-    v_calc JSON;
-    v_idroute BIGINT;
-BEGIN
-    -- Validar autenticación
-    IF auth.role() <> 'authenticated' THEN
-        RETURN json_build_object('success', false, 'message', 'No autorizado.');
-    END IF;
-
-    -- Validar monto
-    IF p_amount <= 0 THEN
-        RETURN json_build_object('success', false, 'message', 'El monto de la recarga debe ser mayor a cero.');
-    END IF;
-
-    -- Validar que el cliente exista
-    SELECT balance, idroute INTO v_current_balance, v_idroute FROM public.clients WHERE id = p_idclient;
-    IF v_current_balance IS NULL THEN
-        RETURN json_build_object('success', false, 'message', 'El cliente especificado no existe.');
-    END IF;
-
-    -- Si se proporcionó p_idroute, usarlo; si no, usar el del cliente
-    IF p_idroute IS NOT NULL THEN
-        v_idroute := p_idroute;
-    END IF;
-
-    -- Unificar conversión y estimación
-    v_calc := public.calculate_tickets(p_amount, p_method, p_tasa);
-    v_amount_in_usd := (v_calc->>'usd_amount')::NUMERIC;
-    v_estimated_tickets := (v_calc->>'estimated_tickets')::NUMERIC;
-
-    -- Insertar registro (Status 0 = Pendiente)
-    INSERT INTO public.recharge (
-        idclient, method, ref, picture, amount, tasa, date, status, "createBy", "createAt", codigo_banco, idroute, shedule
-    )
-    VALUES (
-        p_idclient,
-        p_method,
-        NULLIF(p_ref, ''),
-        NULLIF(p_picture, ''),
-        v_amount_in_usd,
-        p_tasa,
-        p_date,
-        0,
-        p_create_by,
-        NOW(),
-        NULLIF(p_codigo_banco, ''),
-        v_idroute,
-        NULLIF(p_shedule, '')
-    )
-    RETURNING id INTO v_recharge_id;
-
-    RETURN json_build_object(
-        'success', true,
-        'message', 'Pago registrado exitosamente. En espera por verificación administrativa.',
-        'recharge_id', v_recharge_id,
-        'estimated_tickets', v_estimated_tickets,
-        'current_balance', v_current_balance
-    );
-EXCEPTION
-    WHEN SQLSTATE '23505' THEN
-        RETURN json_build_object(
-            'success', false,
-            'message', 'Esta combinación de banco y referencia ya fue procesada. Verifique los datos e intente de nuevo.'
-        );
-    WHEN OTHERS THEN
-        RETURN json_build_object(
-            'success', false,
-            'message', 'Error en transacción: ' || SQLERRM
-        );
-END;
-$function$
-;
-
--- Función: process_payment
-CREATE OR REPLACE FUNCTION public.process_payment(p_idclient integer, p_amount numeric, p_method character varying, p_ref character varying DEFAULT NULL::character varying, p_tasa numeric DEFAULT NULL::numeric, p_date date DEFAULT CURRENT_DATE, p_picture character varying DEFAULT NULL::character varying, p_create_by character varying DEFAULT NULL::character varying, p_codigo_banco character varying DEFAULT NULL::character varying, p_idroute bigint DEFAULT NULL::bigint, p_idshedule bigint DEFAULT NULL::bigint)
- RETURNS json
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-DECLARE
-    v_current_balance NUMERIC(10,2);
-    v_recharge_id BIGINT;
-    v_amount_in_usd NUMERIC(10,2);
-    v_estimated_tickets NUMERIC(10,2);
-    v_calc JSON;
-    v_idroute BIGINT;
-BEGIN
-    -- Validar autenticación
-    IF auth.role() <> 'authenticated' THEN
-        RETURN json_build_object('success', false, 'message', 'No autorizado.');
-    END IF;
-
-    -- Validar monto
-    IF p_amount <= 0 THEN
-        RETURN json_build_object('success', false, 'message', 'El monto de la recarga debe ser mayor a cero.');
-    END IF;
-
-    -- Validar que el cliente exista
-    SELECT balance, idroute INTO v_current_balance, v_idroute FROM public.clients WHERE id = p_idclient;
-    IF v_current_balance IS NULL THEN
-        RETURN json_build_object('success', false, 'message', 'El cliente especificado no existe.');
-    END IF;
-
-    -- Si se proporcionó p_idroute, usarlo; si no, usar el del cliente
-    IF p_idroute IS NOT NULL THEN
-        v_idroute := p_idroute;
-    END IF;
-
-    -- Unificar conversión y estimación
-    v_calc := public.calculate_tickets(p_amount, p_method, p_tasa);
-    v_amount_in_usd := (v_calc->>'usd_amount')::NUMERIC;
-    v_estimated_tickets := (v_calc->>'estimated_tickets')::NUMERIC;
-
-    -- Insertar registro (Status 0 = Pendiente)
-    INSERT INTO public.recharge (
-        idclient, method, ref, picture, amount, tasa, date, status, "createBy", "createAt", codigo_banco, idroute, tickets, idshedule
-    )
-    VALUES (
-        p_idclient,
-        p_method,
-        NULLIF(p_ref, ''),
-        NULLIF(p_picture, ''),
-        v_amount_in_usd,
-        p_tasa,
-        p_date,
-        0,
-        p_create_by,
-        NOW(),
-        NULLIF(p_codigo_banco, ''),
-        v_idroute,
-        v_estimated_tickets,
-        p_idshedule
-    )
-    RETURNING id INTO v_recharge_id;
-
-    RETURN json_build_object(
-        'success', true,
-        'message', 'Pago registrado exitosamente. En espera por verificación administrativa.',
-        'recharge_id', v_recharge_id,
-        'estimated_tickets', v_estimated_tickets,
-        'current_balance', v_current_balance
-    );
-EXCEPTION
-    WHEN SQLSTATE '23505' THEN
-        RETURN json_build_object(
-            'success', false,
-            'message', 'Esta combinación de banco y referencia ya fue procesada. Verifique los datos e intente de nuevo.'
-        );
-    WHEN OTHERS THEN
-        RETURN json_build_object(
-            'success', false,
-            'message', 'Error en transacción: ' || SQLERRM
-        );
-END;
-$function$
-;
-
--- Función: process_payment
-CREATE OR REPLACE FUNCTION public.process_payment(p_idclient integer, p_amount numeric, p_method character varying, p_ref character varying DEFAULT NULL::character varying, p_tasa numeric DEFAULT NULL::numeric, p_date date DEFAULT CURRENT_DATE, p_picture character varying DEFAULT NULL::character varying, p_create_by character varying DEFAULT NULL::character varying, p_codigo_banco character varying DEFAULT NULL::character varying, p_idroute bigint DEFAULT NULL::bigint, p_shedule character varying DEFAULT NULL::character varying)
- RETURNS json
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-DECLARE
-    v_current_balance NUMERIC(10,2);
-    v_recharge_id BIGINT;
-    v_amount_in_usd NUMERIC(10,2);
-    v_estimated_tickets NUMERIC(10,2);
-    v_calc JSON;
-    v_idroute BIGINT;
-BEGIN
-    -- Validar autenticación
-    IF auth.role() <> 'authenticated' THEN
-        RETURN json_build_object('success', false, 'message', 'No autorizado.');
-    END IF;
-
-    -- Validar monto
-    IF p_amount <= 0 THEN
-        RETURN json_build_object('success', false, 'message', 'El monto de la recarga debe ser mayor a cero.');
-    END IF;
-
-    -- Validar que el cliente exista
-    SELECT balance, idroute INTO v_current_balance, v_idroute FROM public.clients WHERE id = p_idclient;
-    IF v_current_balance IS NULL THEN
-        RETURN json_build_object('success', false, 'message', 'El cliente especificado no existe.');
-    END IF;
-
-    -- Si se proporcionó p_idroute, usarlo; si no, usar el del cliente
-    IF p_idroute IS NOT NULL THEN
-        v_idroute := p_idroute;
-    END IF;
-
-    -- Unificar conversión y estimación
-    v_calc := public.calculate_tickets(p_amount, p_method, p_tasa);
-    v_amount_in_usd := (v_calc->>'usd_amount')::NUMERIC;
-    v_estimated_tickets := (v_calc->>'estimated_tickets')::NUMERIC;
-
-    -- Insertar registro (Status 0 = Pendiente)
-    INSERT INTO public.recharge (
-        idclient, method, ref, picture, amount, tasa, date, status, "createBy", "createAt", codigo_banco, idroute, shedule
-    )
-    VALUES (
-        p_idclient,
-        p_method,
-        NULLIF(p_ref, ''),
-        NULLIF(p_picture, ''),
-        v_amount_in_usd,
-        p_tasa,
-        p_date,
-        0,
-        p_create_by,
-        NOW(),
-        NULLIF(p_codigo_banco, ''),
-        v_idroute,
-        NULLIF(p_shedule, '')
-    )
-    RETURNING id INTO v_recharge_id;
-
-    RETURN json_build_object(
-        'success', true,
-        'message', 'Pago registrado exitosamente. En espera por verificación administrativa.',
-        'recharge_id', v_recharge_id,
-        'estimated_tickets', v_estimated_tickets,
-        'current_balance', v_current_balance
-    );
-EXCEPTION
-    WHEN SQLSTATE '23505' THEN
-        RETURN json_build_object(
-            'success', false,
-            'message', 'Esta combinación de banco y referencia ya fue procesada. Verifique los datos e intente de nuevo.'
-        );
-    WHEN OTHERS THEN
-        RETURN json_build_object(
-            'success', false,
-            'message', 'Error en transacción: ' || SQLERRM
-        );
-END;
-$function$
-;
-
 -- Función: get_solicitudes_by_date_range
 CREATE OR REPLACE FUNCTION public.get_solicitudes_by_date_range(p_date_from date DEFAULT CURRENT_DATE, p_date_to date DEFAULT CURRENT_DATE, p_idroute bigint[] DEFAULT NULL::bigint[], p_idhorario bigint[] DEFAULT NULL::bigint[])
  RETURNS TABLE(id integer, client_name text, client_carrer text, client_document text, client_phone text, date character varying, shedule character varying, route character varying, status smallint)
@@ -3597,72 +2948,353 @@ END;
 $function$
 ;
 
--- Función: get_careers
-CREATE OR REPLACE FUNCTION public.get_careers()
- RETURNS json
+-- Función: handle_new_user
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+ RETURNS trigger
  LANGUAGE plpgsql
- STABLE SECURITY DEFINER
+ SECURITY DEFINER
 AS $function$
+DECLARE
+  v_raw_name TEXT;
+  v_raw_full_name text;
+  v_name TEXT;
+  v_phone TEXT;
+  v_photo_url text;
+  v_document_id TEXT;
+  v_carrer TEXT;
+  v_role TEXT;
+  v_role_enum public.user_role;
 BEGIN
-    IF auth.role() <> 'authenticated' THEN
-        RETURN '[]'::json;
-    END IF;
-    RETURN COALESCE((SELECT json_agg(json_build_object('id', id, 'code', code, 'description', description, 'status', status) ORDER BY code) FROM public.careers), '[]'::json);
+  
+  -- 1. Definir el rol (por defecto 'student')
+  v_role := LOWER(COALESCE(NEW.raw_user_meta_data->>'role', 'student'));
+  
+  v_role_enum := CASE v_role
+    WHEN 'admin' THEN 'admin'::public.user_role
+    WHEN 'student' THEN 'student'::public.user_role
+    WHEN 'driver' THEN 'driver'::public.user_role
+    WHEN 'supervisor' THEN 'supervisor'::public.user_role
+    ELSE 'student'::public.user_role -- Fallback si mandan algo inválido
+  END;
+  -- 2. Capturar el user_name original de los metadatos
+  v_raw_name := COALESCE(NEW.raw_user_meta_data->>'user_name', 'usuario');
+  --Nombre completo del cliente
+  v_raw_full_name := COALESCE(NEW.raw_user_meta_data->>'name', v_raw_name);
+  --Foto del usuario o cliente
+  v_photo_url := NULLIF(NEW.raw_user_meta_data->>'photo_url', '');
+  
+  -- 3. LIMPIEZA DEL NOMBRE: 
+  --    - LOWER(...) lo pasa todo a minúsculas.
+  --    - regexp_replace(..., '[^a-z0-9]', '', 'g') elimina cualquier cosa que NO sea una letra de la 'a' a la 'z' o un número. Esto quita espacios, tildes, eñes y caracteres especiales.
+  v_name := LOWER(regexp_replace(v_raw_name, '[^a-zA-Z0-9]', '', 'g'));
+
+  -- Si después de la limpieza el nombre queda vacío (ej. el usuario puso solo emojis o símbolos), asignamos un fallback con parte de su email
+  IF v_name = '' OR v_name IS NULL THEN
+    v_name := LOWER(regexp_replace(split_part(NEW.email, '@', 1), '[^a-zA-Z0-9]', '', 'g'));
+  END IF;
+
+  -- 4. Inserción en la tabla de perfiles
+--  BEGIN
+    INSERT INTO public.profiles (id, email, role, name, updated_at)
+    VALUES (
+      NEW.id,
+      NEW.email,
+      v_role_enum,
+      v_name, -- Insertamos el nombre ya limpio
+      NOW()
+    );
+--  EXCEPTION WHEN OTHERS THEN
+--    RAISE WARNING 'Fallo especifico en profiles: %', SQLERRM;
+--  END;
+
+  -- 5. Crear el registro en la tabla de clientes SOLO si el rol es 'student'
+  IF v_role = 'student' THEN
+    
+    v_phone       := COALESCE(NEW.raw_user_meta_data->>'phone', '');
+    v_document_id := COALESCE(NEW.raw_user_meta_data->>'document_id', '');
+    v_carrer      := NEW.raw_user_meta_data->>'carrer';
+
+    --BEGIN
+      INSERT INTO public.clients (
+        name,
+        phone,
+        "documentID", 
+        email,
+        "creditLimit",
+        status,
+        "createBy",
+        carrer,
+        photo_url,
+        balance,
+        uid,
+        idroute
+      ) VALUES (
+        v_raw_full_name,
+        v_phone,
+        v_document_id,
+        NEW.email,
+        0,         
+        '2',       
+        'App',    
+        v_carrer,
+        v_photo_url,
+        0,         
+        NEW.id,
+        NULLIF(NEW.raw_user_meta_data->>'idroute', '')::bigint     
+      );
+    --EXCEPTION WHEN OTHERS THEN
+    --  RAISE WARNING 'Fallo especifico en clientes: %', SQLERRM;
+    --END;
+    
+  END IF;
+
+  RETURN NEW;
 END;
 $function$
 ;
 
--- Función: manage_career
-CREATE OR REPLACE FUNCTION public.manage_career(p_action character varying, p_id bigint DEFAULT NULL::bigint, p_code character varying DEFAULT NULL::character varying, p_description character varying DEFAULT NULL::character varying, p_status integer DEFAULT NULL::integer)
+-- Función: get_clients_paginated
+CREATE OR REPLACE FUNCTION public.get_clients_paginated(p_page integer DEFAULT 1, p_per_page integer DEFAULT 10, p_search text DEFAULT NULL::text, p_status text DEFAULT NULL::text, p_sort_field text DEFAULT 'id'::text, p_sort_order text DEFAULT 'ASC'::text, p_idroute bigint DEFAULT NULL::bigint)
  RETURNS json
  LANGUAGE plpgsql
  SECURITY DEFINER
 AS $function$
 DECLARE
-    v_career JSON;
+    v_offset INTEGER;
+    v_data JSON;
+    v_total BIGINT;
+    v_route_ids BIGINT[];
+    v_search TEXT;
 BEGIN
-    IF LOWER(p_action) = 'list' THEN
-        SELECT json_agg(row_to_json(c.*)) INTO v_career FROM (
-            SELECT * FROM public.careers ORDER BY id
-        ) c;
-        RETURN json_build_object('success', true, 'data', COALESCE(v_career, '[]'::json));
-    END IF;
+    v_offset := (p_page - 1) * p_per_page;
+    v_route_ids := public.get_current_user_route_ids();
+    v_search := CASE WHEN p_search IS NOT NULL AND p_search <> '' THEN '%' || p_search || '%' ELSE NULL END;
 
+    SELECT COUNT(*) INTO v_total FROM public.clients c
+    WHERE (v_search IS NULL OR c.name ILIKE v_search OR c.phone ILIKE v_search OR c.email ILIKE v_search OR c."documentID" ILIKE v_search)
+      AND (p_status IS NULL OR c.status = p_status)
+      AND (p_idroute IS NULL OR c.idroute = p_idroute)
+      AND (public.is_admin() OR c.idroute = ANY(v_route_ids));
+
+    SELECT json_agg(t) INTO v_data FROM (
+        SELECT
+            c.id,
+            c.name,
+            c."documentID",
+            c.email,
+            c.phone,
+            c.carrer,
+            c."creditLimit",
+            c.status,
+            c.balance,
+            c.uid,
+            c.idroute,
+            c."createAt",
+            c."createBy",
+            c.photo_url,
+            COALESCE(rt.description, rt.code) AS route_name,
+            au.raw_user_meta_data->>'user_name' AS auth_user_name
+        FROM public.clients c
+        LEFT JOIN public.routes rt ON rt.id = c.idroute
+        LEFT JOIN auth.users au ON au.id = c.uid::uuid
+        WHERE (v_search IS NULL OR c.name ILIKE v_search OR c.phone ILIKE v_search OR c.email ILIKE v_search OR c."documentID" ILIKE v_search)
+          AND (p_status IS NULL OR c.status = p_status)
+          AND (p_idroute IS NULL OR c.idroute = p_idroute)
+          AND (public.is_admin() OR c.idroute = ANY(v_route_ids))
+        ORDER BY
+            CASE WHEN p_sort_field = 'id'         AND p_sort_order = 'ASC'  THEN c.id                 END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'id'         AND p_sort_order = 'DESC' THEN c.id                 END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'name'       AND p_sort_order = 'ASC'  THEN c.name               END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'name'       AND p_sort_order = 'DESC' THEN c.name               END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'phone'      AND p_sort_order = 'ASC'  THEN c.phone              END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'phone'      AND p_sort_order = 'DESC' THEN c.phone              END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'email'      AND p_sort_order = 'ASC'  THEN c.email              END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'email'      AND p_sort_order = 'DESC' THEN c.email              END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'route_name' AND p_sort_order = 'ASC'  THEN rt.description       END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'route_name' AND p_sort_order = 'DESC' THEN rt.description       END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'balance'    AND p_sort_order = 'ASC'  THEN c.balance            END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'balance'    AND p_sort_order = 'DESC' THEN c.balance            END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'status'     AND p_sort_order = 'ASC'  THEN c.status             END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'status'     AND p_sort_order = 'DESC' THEN c.status             END DESC NULLS LAST,
+            c.id ASC
+        LIMIT p_per_page
+        OFFSET v_offset
+    ) t;
+
+    RETURN json_build_object(
+        'data', COALESCE(v_data, '[]'::json),
+        'total', v_total
+    );
+END;
+$function$
+;
+
+-- Función: manage_unit
+CREATE OR REPLACE FUNCTION public.manage_unit(p_action character varying, p_unit_id integer DEFAULT NULL::integer, p_name character varying DEFAULT NULL::character varying, p_number character varying DEFAULT NULL::character varying, p_plate character varying DEFAULT NULL::character varying, p_status integer DEFAULT NULL::integer, p_driver character varying DEFAULT NULL::character varying, p_idroute bigint DEFAULT NULL::bigint, p_email character varying DEFAULT NULL::character varying, p_password character varying DEFAULT NULL::character varying, p_photo_url character varying DEFAULT NULL::character varying)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+    v_unit JSON;
+    v_old_email VARCHAR;
+    v_profile_res JSON;
+    v_auth_id UUID;
+    v_clean_username VARCHAR;
+BEGIN
+    -- 1. Control de acceso
     IF NOT public.is_admin() THEN
         RETURN json_build_object('success', false, 'message', 'Solo administradores pueden realizar esta accion.');
     END IF;
 
+    -- Preparamos el nombre de usuario limpio: todo a minúsculas, quitando espacios y caracteres especiales
+    v_clean_username := LOWER(REGEXP_REPLACE(COALESCE(p_driver, p_name, ''), '[^a-zA-Z0-9]', '', 'g'));
+
+    -- ==========================================
+    -- ACCION: CREATE
+    -- ==========================================
     IF LOWER(p_action) = 'create' THEN
+        IF p_email IS NOT NULL AND p_password IS NOT NULL THEN
+            SELECT public.manage_profile(
+                'create'::character varying,
+                NULL::uuid,
+                p_email,
+                p_password,
+                'driver'::public.user_role,
+                v_clean_username
+            ) INTO v_profile_res;
+
+            IF NOT (v_profile_res->>'success')::BOOLEAN THEN
+                RETURN json_build_object('success', false, 'message', 'Error al crear credenciales del chofer: ' || (v_profile_res->>'message'));
+            END IF;
+        END IF;
+
         WITH inserted AS (
-            INSERT INTO public.careers (code, description, status)
-            VALUES (p_code, p_description, COALESCE(p_status, 0))
+            INSERT INTO public.units (name, number, plate, status, driver, idroute, email, photo_url)
+            VALUES (p_name, p_number, p_plate, COALESCE(p_status, 1), p_driver, p_idroute, p_email, p_photo_url)
             RETURNING *
         )
-        SELECT row_to_json(inserted.*) INTO v_career FROM inserted;
-        RETURN json_build_object('success', true, 'data', v_career, 'message', 'Carrera creada con exito.');
+        SELECT row_to_json(inserted.*) INTO v_unit FROM inserted;
 
+        RETURN json_build_object('success', true, 'data', v_unit, 'message', 'Unidad creada con exito.');
+
+    -- ==========================================
+    -- ACCION: UPDATE
+    -- ==========================================
     ELSIF LOWER(p_action) = 'update' THEN
+        SELECT email INTO v_old_email FROM public.units WHERE id = p_unit_id;
+
+        -- Buscar si el email viejo ya cuenta con un perfil de autenticación ANTES de cambiarlo en public.units
+        v_auth_id := NULL;
+        IF v_old_email IS NOT NULL THEN
+            SELECT id INTO v_auth_id FROM public.profiles WHERE LOWER(email) = LOWER(v_old_email);
+        END IF;
+
+        -- Validar unicidad del email si cambió
+        IF p_email IS NOT NULL AND LOWER(p_email) != LOWER(COALESCE(v_old_email, '')) THEN
+            IF EXISTS (SELECT 1 FROM public.units WHERE LOWER(email) = LOWER(p_email) AND id != p_unit_id) THEN
+                RETURN json_build_object('success', false, 'message', 'El correo ya esta registrado en otra unidad.');
+            END IF;
+            IF EXISTS (SELECT 1 FROM auth.users WHERE LOWER(email) = LOWER(p_email)) THEN
+                RETURN json_build_object('success', false, 'message', 'El correo ya esta registrado en el sistema.');
+            END IF;
+            IF EXISTS (SELECT 1 FROM public.profiles WHERE LOWER(email) = LOWER(p_email)) THEN
+                RETURN json_build_object('success', false, 'message', 'El correo ya esta registrado en el sistema.');
+            END IF;
+        END IF;
+
         WITH updated AS (
-            UPDATE public.careers SET
-                code        = COALESCE(p_code, code),
-                description = COALESCE(p_description, description),
-                status      = COALESCE(p_status, status)
-            WHERE id = p_id
+            UPDATE public.units SET
+                name      = COALESCE(p_name, name),
+                number    = COALESCE(p_number, number),
+                plate     = COALESCE(p_plate, plate),
+                status    = COALESCE(p_status, status),
+                driver    = COALESCE(p_driver, driver),
+                idroute   = COALESCE(p_idroute, idroute),
+                email     = COALESCE(p_email, email),
+                photo_url = COALESCE(p_photo_url, photo_url)
+            WHERE id = p_unit_id
             RETURNING *
         )
-        SELECT row_to_json(updated.*) INTO v_career FROM updated;
-        RETURN json_build_object('success', true, 'data', v_career, 'message', 'Carrera actualizada con exito.');
+        SELECT row_to_json(updated.*) INTO v_unit FROM updated;
 
+        -- Si no se encontró por email viejo y pasaron un email nuevo, intentamos buscar por el nuevo por si acaso
+        IF v_auth_id IS NULL AND p_email IS NOT NULL THEN
+            SELECT id INTO v_auth_id FROM public.profiles WHERE LOWER(email) = LOWER(p_email);
+        END IF;
+
+        v_clean_username := LOWER(REGEXP_REPLACE(COALESCE(p_driver, p_name, (v_unit->>'driver'), ''), '[^a-zA-Z0-9]', '', 'g'));
+
+        IF v_auth_id IS NOT NULL THEN
+            SELECT public.manage_profile(
+                'update'::character varying,
+                v_auth_id,
+                COALESCE(p_email, v_old_email),
+                p_password,
+                'driver'::public.user_role,
+                v_clean_username
+            ) INTO v_profile_res;
+
+            -- Actualizar raw_user_meta_data con el nuevo email
+            IF p_email IS NOT NULL AND LOWER(p_email) != LOWER(COALESCE(v_old_email, '')) THEN
+                UPDATE public.profiles SET email = p_email WHERE id = v_auth_id::uuid;
+                UPDATE auth.users SET
+                    email = p_email,
+                    raw_user_meta_data = raw_user_meta_data || jsonb_build_object('email', p_email)
+                WHERE id = v_auth_id::uuid;
+                --UPDATE auth.users SET
+                --    raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || jsonb_build_object('email', p_email)
+                --WHERE id = v_auth_id;
+            END IF;
+
+        ELSIF v_auth_id IS NULL AND p_password IS NOT NULL AND COALESCE(p_email, v_old_email) IS NOT NULL THEN
+            SELECT public.manage_profile(
+                'create'::character varying,
+                NULL::uuid,
+                COALESCE(p_email, v_old_email),
+                p_password,
+                'driver'::public.user_role,
+                v_clean_username
+            ) INTO v_profile_res;
+
+            IF NOT (v_profile_res->>'success')::BOOLEAN THEN
+                RETURN json_build_object('success', false, 'message', 'Error al registrar credenciales nuevas al chofer: ' || (v_profile_res->>'message'));
+            END IF;
+        END IF;
+
+        RETURN json_build_object('success', true, 'data', v_unit, 'message', 'Unidad actualizada y credenciales sincronizadas.');
+
+    -- ==========================================
+    -- ACCION: DELETE
+    -- ==========================================
     ELSIF LOWER(p_action) = 'delete' THEN
-        DELETE FROM public.careers WHERE id = p_id;
-        RETURN json_build_object('success', true, 'message', 'Carrera eliminada del sistema.');
+        SELECT email INTO v_old_email FROM public.units WHERE id = p_unit_id;
+
+        DELETE FROM public.units WHERE id = p_unit_id;
+
+        IF v_old_email IS NOT NULL THEN
+            SELECT id INTO v_auth_id FROM public.profiles WHERE LOWER(email) = LOWER(v_old_email);
+
+            IF v_auth_id IS NOT NULL THEN
+                PERFORM public.manage_profile(
+                    'delete'::character varying,
+                    v_auth_id,
+                    NULL::character varying,
+                    NULL::character varying,
+                    'driver'::public.user_role,
+                    NULL::character varying
+                );
+            END IF;
+        END IF;
+
+        RETURN json_build_object('success', true, 'message', 'Unidad eliminada del sistema.');
 
     ELSE
         RETURN json_build_object('success', false, 'message', 'Accion no reconocida.');
     END IF;
 
 EXCEPTION WHEN OTHERS THEN
-    RETURN json_build_object('success', false, 'message', 'Error: ' || SQLERRM);
+    RETURN json_build_object('success', false, 'message', 'Error en manage_unit: ' || SQLERRM);
 END;
 $function$
 ;

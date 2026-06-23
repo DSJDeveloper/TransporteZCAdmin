@@ -17,7 +17,7 @@ export const useClientStore = defineStore("client", () => {
       total.value = result.total
       return true
     } catch (err) {
-      error.value = "Error al cargar los clientes"
+      error.value = (err as Error).message || "Error al cargar los clientes"
       console.error(err)
       return false
     } finally {
@@ -32,7 +32,7 @@ export const useClientStore = defineStore("client", () => {
       await createClient(input)
       return true
     } catch (err) {
-      error.value = "Error al crear el cliente"
+      error.value = (err as Error).message || "Error al crear el cliente"
       console.error(err)
       return false
     } finally {
@@ -47,7 +47,7 @@ export const useClientStore = defineStore("client", () => {
       await updateClient(id, input)
       return true
     } catch (err) {
-      error.value = "Error al actualizar el cliente"
+      error.value = (err as Error).message || "Error al actualizar el cliente"
       console.error(err)
       return false
     } finally {
@@ -62,7 +62,7 @@ export const useClientStore = defineStore("client", () => {
       const result = await deleteClient(id)
       return { success: true, message: result.message, deactivated: result.deactivated }
     } catch (err) {
-      error.value = "Error al eliminar el cliente"
+      error.value = (err as Error).message || "Error al eliminar el cliente"
       console.error(err)
       return { success: false }
     } finally {

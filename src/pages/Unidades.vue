@@ -3,6 +3,7 @@ import { ref, computed, reactive, watch, onMounted } from "vue"
 import { useUnitStore } from "../stores/unitStore"
 import { useRouteStore } from "../stores/routeStore"
 import SupervisorBanner from "../components/SupervisorBanner.vue"
+import ErrorDialog from "../components/ErrorDialog.vue"
 import { useAuthStore } from "../stores/authStore"
 import { uploadUnitPhoto } from "../services/unitService"
 import type { Unit, UnitForm } from "../services/unitService"
@@ -20,6 +21,8 @@ const sortAsc = ref(true)
 const dialogOpen = ref(false)
 const editing = ref<Unit | null>(null)
 const saving = ref(false)
+const errorMessage = ref("")
+const errorVisible = ref(false)
 const uploadingPhoto = ref(false)
 const showPassword = ref(false)
 const photoPreview = ref<string | null>(null)
@@ -185,6 +188,9 @@ async function save() {
       : await store.create(form.value)
     if (ok) {
       dialogOpen.value = false
+    } else if (store.error) {
+      errorMessage.value = store.error
+      errorVisible.value = true
     }
   } finally {
     saving.value = false
@@ -222,6 +228,9 @@ async function doDelete() {
   if (ok) {
     deletingConfirm.value = false
     deleting.value = null
+  } else if (store.error) {
+    errorMessage.value = store.error
+    errorVisible.value = true
   }
 }
 
@@ -701,5 +710,11 @@ onMounted(() => {
         </div>
       </div>
     </Teleport>
+
+    <ErrorDialog
+      :visible="errorVisible"
+      :message="errorMessage"
+      @close="errorVisible = false"
+    />
   </div>
 </template>

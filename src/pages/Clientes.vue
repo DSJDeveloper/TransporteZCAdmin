@@ -12,6 +12,7 @@ import type { Movimiento } from "../services/ticketsService"
 import { formatDateTime, formatCurrency } from "../utils/formatters"
 import { useDialog } from "../composables/useDialog"
 import ConfirmDialog from "../components/ConfirmDialog.vue"
+import ErrorDialog from "../components/ErrorDialog.vue"
 import Select from "primevue/select"
 
 const ticketStore = useTicketStore()
@@ -63,6 +64,8 @@ watch([filterStatus, filterRoute], () => {
 const dialogOpen = ref(false)
 const editing = ref<Client | null>(null)
 const saving = ref(false)
+const errorMessage = ref("")
+const errorVisible = ref(false)
 const form = ref<ClientForm>({ name: "", documentID: "", email: "", phone: "", carrer: "", creditLimit: "", status: "0", idroute: null, photo_url: null })
 const errors = reactive<Record<string, string>>({})
 const routes = ref<RouteName[]>([])
@@ -261,6 +264,9 @@ async function save() {
     if (ok) {
       dialogOpen.value = false
       await store.fetchAll(storeParams.value)
+    } else if (store.error) {
+      errorMessage.value = store.error
+      errorVisible.value = true
     }
   } finally {
     saving.value = false
@@ -283,6 +289,9 @@ async function doDelete() {
       showDeactivationDialog.value = true
     }
     await store.fetchAll(storeParams.value)
+  } else if (store.error) {
+    errorMessage.value = store.error
+    errorVisible.value = true
   }
 }
 
@@ -920,6 +929,12 @@ onMounted(async () => {
         </div>
       </div>
     </Teleport>
+
+    <ErrorDialog
+      :visible="errorVisible"
+      :message="errorMessage"
+      @close="errorVisible = false"
+    />
   </div>
 </template>
 
