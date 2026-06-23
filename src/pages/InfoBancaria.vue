@@ -389,7 +389,7 @@ onMounted(() => store.fetchAll())
     <Teleport to="body">
       <div v-if="dialogOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" @click="dialogOpen = false"></div>
-        <div class="relative bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant w-full max-w-lg mx-auto p-md md:p-xl max-h-[90vh] overflow-y-auto">
+        <div class="relative bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant w-full max-w-3xl mx-auto p-md md:p-xl max-h-[92vh] overflow-y-auto">
           <div class="flex items-center justify-between mb-lg">
             <h3 class="font-headline-sm text-headline-sm text-on-surface">
               {{ editing ? "Editar Banco" : "Nuevo Banco" }}

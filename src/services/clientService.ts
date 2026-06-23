@@ -21,6 +21,7 @@ export interface Client {
   idroute: number | null
   route_name: string | null
   auth_user_name: string | null
+  photo_url: string | null
 }
 
 export interface PaginatedClientsParams {
@@ -47,6 +48,7 @@ export type ClientForm = {
   creditLimit: string
   status: string
   idroute: number | null
+  photo_url: string | null
 }
 
 interface RpcResult<T> {
@@ -101,6 +103,7 @@ export async function createClient(client: ClientForm): Promise<Client> {
     p_credit_limit: client.creditLimit,
     p_status: client.status,
     p_idroute: client.idroute ?? null,
+    p_photo_url: client.photo_url ?? null,
   })
   if (error) throw error
   const result = raw as unknown as RpcResult<Client>

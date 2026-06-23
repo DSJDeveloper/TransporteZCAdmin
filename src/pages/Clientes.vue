@@ -63,7 +63,7 @@ watch([filterStatus, filterRoute], () => {
 const dialogOpen = ref(false)
 const editing = ref<Client | null>(null)
 const saving = ref(false)
-const form = ref<ClientForm>({ name: "", documentID: "", email: "", phone: "", carrer: "", creditLimit: "", status: "0", idroute: null })
+const form = ref<ClientForm>({ name: "", documentID: "", email: "", phone: "", carrer: "", creditLimit: "", status: "0", idroute: null, photo_url: null })
 const errors = reactive<Record<string, string>>({})
 const routes = ref<RouteName[]>([])
 
@@ -228,7 +228,7 @@ function clearErrors() {
 
 function openCreate() {
   editing.value = null
-  form.value = { name: "", documentID: "", email: "", phone: "", carrer: "", creditLimit: "", status: "0", idroute: null }
+  form.value = { name: "", documentID: "", email: "", phone: "", carrer: "", creditLimit: "", status: "0", idroute: null, photo_url: null }
   clearErrors()
   dialogOpen.value = true
 }
@@ -244,6 +244,7 @@ function openEdit(c: Client) {
     creditLimit: c.creditLimit,
     status: c.status,
     idroute: c.idroute,
+    photo_url: c.photo_url,
   }
   clearErrors()
   dialogOpen.value = true
@@ -335,8 +336,7 @@ onMounted(async () => {
       </div>
       <button
         class="bg-primary hover:bg-surface-tint text-on-primary px-lg py-sm rounded-xl font-headline-sm text-headline-sm flex items-center justify-center gap-sm transition-all shadow-md active:scale-95 w-full sm:w-auto"
-        @click="openCreate"
-      >
+        @click="openCreate">
         <span class="material-symbols-outlined">add</span>
         <span>Nuevo Cliente</span>
       </button>
@@ -352,57 +352,36 @@ onMounted(async () => {
           <div class="flex items-center gap-md w-full md:w-auto">
             <div class="flex items-center gap-xs text-body-md text-on-surface-variant whitespace-nowrap">
               <span class="hidden md:inline">Mostrar</span>
-              <select
-                v-model.number="perPage"
-                class="bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md py-1 pl-2 pr-1 focus:ring-primary focus:border-primary outline-none"
-              >
-                    <option :value="10">10</option>
-              <option :value="25">25</option>
-              <option :value="50">50</option>
-              <option :value="100">100</option>
-              <option :value="150">150</option>
-              <option :value="500">500</option>
+              <select v-model.number="perPage"
+                class="bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md py-1 pl-2 pr-1 focus:ring-primary focus:border-primary outline-none">
+                <option :value="10">10</option>
+                <option :value="25">25</option>
+                <option :value="50">50</option>
+                <option :value="100">100</option>
+                <option :value="150">150</option>
+                <option :value="500">500</option>
               </select>
               <span class="hidden md:inline">registros</span>
             </div>
             <button
               class="h-7 w-7 flex items-center justify-center rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-all shrink-0 disabled:opacity-40"
-              :disabled="refreshing"
-              @click="refreshData"
-              title="Refrescar datos"
-            >
+              :disabled="refreshing" @click="refreshData" title="Refrescar datos">
               <span class="material-symbols-outlined text-[18px]" :class="{ 'animate-spin': refreshing }">sync</span>
             </button>
             <div class="relative flex-1 md:flex-none">
-              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
-              <input
-                v-model="search"
+              <span
+                class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
+              <input v-model="search"
                 class="w-full md:w-56 pl-9 pr-3 py-1.5 bg-surface-container-low border border-outline-variant rounded-lg text-body-md focus:border-primary outline-none transition-all"
-                placeholder="Buscar clientes..."
-                type="text"
-              />
+                placeholder="Buscar clientes..." type="text" />
             </div>
           </div>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <Select
-            v-model="filterStatus"
-            :options="statusOptions"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Filtrar por estado"
-            class="w-48"
-            showClear
-          />
-          <Select
-            v-model="filterRoute"
-            :options="routes"
-            optionLabel="description"
-            optionValue="id"
-            placeholder="Filtrar por ruta"
-            class="w-60"
-            showClear
-          >
+          <Select v-model="filterStatus" :options="statusOptions" optionLabel="label" optionValue="value"
+            placeholder="Filtrar por estado" class="w-48" showClear />
+          <Select v-model="filterRoute" :options="routes" optionLabel="description" optionValue="id"
+            placeholder="Filtrar por ruta" class="w-60" showClear>
             <template #option="slotProps">
               <span>{{ slotProps.option.code }} - {{ slotProps.option.description }}</span>
             </template>
@@ -432,15 +411,16 @@ onMounted(async () => {
                 <th v-for="col in columns" :key="col.key"
                   class="px-lg py-md font-bold text-on-surface-variant uppercase text-[11px] tracking-widest cursor-pointer select-none hover:text-on-surface transition-colors"
                   :class="col.key === 'balance' ? 'text-right' : col.key === 'status' ? 'text-center' : ''"
-                  @click="sortBy(col.key)"
-                >
+                  @click="sortBy(col.key)">
                   <span class="inline-flex items-center gap-1">
                     {{ col.label }}
                     <span class="material-symbols-outlined text-[14px] leading-none"
                       :class="sortField === col.key ? 'text-primary' : 'text-outline/40'">{{ sortIcon(col.key) }}</span>
                   </span>
                 </th>
-                <th class="px-lg py-md font-bold text-on-surface-variant uppercase text-[11px] tracking-widest text-center">ACCIONES</th>
+                <th
+                  class="px-lg py-md font-bold text-on-surface-variant uppercase text-[11px] tracking-widest text-center">
+                  ACCIONES</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-outline-variant">
@@ -448,48 +428,52 @@ onMounted(async () => {
                 <td class="px-lg py-md text-label-md font-bold text-outline">{{ c.id }}</td>
                 <td class="px-lg py-md">
                   <div class="flex items-center gap-md">
-                    <div
-                      class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0"
-                      :class="statusAvatarClass(c.status)"
-                    >
+                    <img v-if="c.photo_url" :src="c.photo_url" alt=""
+                      class="w-8 h-8 rounded-full object-cover shrink-0" />
+                    <div v-else class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0"
+                      :class="statusAvatarClass(c.status)">
                       {{ initials(c.name) }}
                     </div>
                     <div class="flex items-center gap-xs">
                       <span class="font-body-md font-semibold text-on-surface">{{ c.name }}</span>
-                      <span
-                        v-if="c.status !== '0'"
-                        class="bg-outline-variant text-on-surface-variant text-[10px] px-xs py-[2px] rounded-full font-bold"
-                      >{{ statusInlineLabel(c.status) }}</span>
+                      <span v-if="c.status !== '0'"
+                        class="bg-outline-variant text-on-surface-variant text-[10px] px-xs py-[2px] rounded-full font-bold">{{
+                        statusInlineLabel(c.status) }}</span>
                     </div>
                   </div>
                 </td>
                 <td class="px-lg py-md text-body-md text-on-surface-variant">{{ c.phone }}</td>
                 <td class="px-lg py-md text-body-md text-on-surface-variant">{{ c.email }}</td>
                 <td class="px-lg py-md text-body-md text-on-surface-variant">{{ c.auth_user_name ?? '-' }}</td>
-                <td class="px-lg py-md text-body-md text-on-surface-variant">{{ c.route_name ?? routeName(c.idroute) }}</td>
+                <td class="px-lg py-md text-body-md text-on-surface-variant">{{ c.route_name ?? routeName(c.idroute) }}
+                </td>
                 <td class="px-lg py-md text-center">
                   <span class="inline-block px-sm py-[2px] rounded-full text-[11px] font-bold"
-                    :class="statusClass(c.status)"
-                  >{{ statusLabel(c.status) }}</span>
+                    :class="statusClass(c.status)">{{ statusLabel(c.status) }}</span>
                 </td>
                 <td class="px-lg py-md text-right font-bold" :class="c.balance < 0 ? 'text-error' : 'text-primary'">
                   {{ c.balance.toFixed(2) }}
                 </td>
                 <td class="px-lg py-md text-center">
-                    <div class="flex items-center justify-center gap-xs opacity-40 group-hover:opacity-100 transition-all duration-200">
-                      <button class="p-xs hover:bg-secondary/10 rounded-lg text-secondary transition-colors" title="Ver movimientos" @click="openMovements(c)">
-                        <span class="material-symbols-outlined text-[20px]">receipt_long</span>
-                      </button>
-                      <button class="p-xs hover:bg-warning/10 rounded-lg text-warning transition-colors" title="Restar ticket" @click="ticketDeductDialog.open({ client: c })">
-                        <span class="material-symbols-outlined text-[20px]">do_disturb</span>
-                      </button>
-                      <button class="p-xs hover:bg-primary/10 rounded-lg text-primary transition-colors" title="Editar" @click="openEdit(c)">
-                        <span class="material-symbols-outlined text-[20px]">edit</span>
-                      </button>
-                      <button class="p-xs hover:bg-error/10 rounded-lg text-error transition-colors" title="Eliminar" @click="confirmDelete(c)">
-                        <span class="material-symbols-outlined text-[20px]">delete</span>
-                      </button>
-                    </div>
+                  <div
+                    class="flex items-center justify-center gap-xs opacity-40 group-hover:opacity-100 transition-all duration-200">
+                    <button class="p-xs hover:bg-secondary/10 rounded-lg text-secondary transition-colors"
+                      title="Ver movimientos" @click="openMovements(c)">
+                      <span class="material-symbols-outlined text-[20px]">receipt_long</span>
+                    </button>
+                    <button class="p-xs hover:bg-warning/10 rounded-lg text-warning transition-colors"
+                      title="Restar ticket" @click="ticketDeductDialog.open({ client: c })">
+                      <span class="material-symbols-outlined text-[20px]">do_disturb</span>
+                    </button>
+                    <button class="p-xs hover:bg-primary/10 rounded-lg text-primary transition-colors" title="Editar"
+                      @click="openEdit(c)">
+                      <span class="material-symbols-outlined text-[20px]">edit</span>
+                    </button>
+                    <button class="p-xs hover:bg-error/10 rounded-lg text-error transition-colors" title="Eliminar"
+                      @click="confirmDelete(c)">
+                      <span class="material-symbols-outlined text-[20px]">delete</span>
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -501,18 +485,16 @@ onMounted(async () => {
           <div v-for="c in store.records" :key="c.id" class="p-md space-y-sm">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-md">
-                <div
-                  class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0"
-                  :class="statusAvatarClass(c.status)"
-                >
+                <img v-if="c.photo_url" :src="c.photo_url" alt="" class="w-8 h-8 rounded-full object-cover shrink-0" />
+                <div v-else class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0"
+                  :class="statusAvatarClass(c.status)">
                   {{ initials(c.name) }}
                 </div>
                 <div>
                   <span class="font-bold text-on-surface">{{ c.name }}</span>
-                  <span
-                    v-if="c.status !== '0'"
-                    class="ml-1 bg-outline-variant text-on-surface-variant text-[10px] px-1 py-[2px] rounded-full font-bold"
-                  >{{ statusInlineLabel(c.status) }}</span>
+                  <span v-if="c.status !== '0'"
+                    class="ml-1 bg-outline-variant text-on-surface-variant text-[10px] px-1 py-[2px] rounded-full font-bold">{{
+                    statusInlineLabel(c.status) }}</span>
                 </div>
               </div>
             </div>
@@ -532,8 +514,7 @@ onMounted(async () => {
               <div class="flex items-center gap-1 justify-end">
                 <span class="material-symbols-outlined text-[16px] text-outline">badge</span>
                 <span class="inline-block px-sm py-[1px] rounded-full text-[11px] font-bold"
-                  :class="statusClass(c.status)"
-                >{{ statusLabel(c.status) }}</span>
+                  :class="statusClass(c.status)">{{ statusLabel(c.status) }}</span>
               </div>
             </div>
             <div class="flex items-center gap-1 mt-1 text-body-md text-on-surface-variant">
@@ -547,29 +528,25 @@ onMounted(async () => {
               <div class="flex gap-xs">
                 <button
                   class="flex-1 flex items-center justify-center gap-1 py-2 px-3 rounded-lg border border-outline-variant text-secondary font-bold text-[13px] hover:bg-secondary/10 transition-colors"
-                  @click="openMovements(c)"
-                >
+                  @click="openMovements(c)">
                   <span class="material-symbols-outlined text-[18px]">receipt_long</span>
                   Movimientos
                 </button>
                 <button
                   class="flex-1 flex items-center justify-center gap-1 py-2 px-3 rounded-lg border border-outline-variant text-warning font-bold text-[13px] hover:bg-warning/10 transition-colors"
-                  @click="ticketDeductDialog.open({ client: c })"
-                >
+                  @click="ticketDeductDialog.open({ client: c })">
                   <span class="material-symbols-outlined text-[18px]">do_disturb</span>
                   Ticket
                 </button>
                 <button
                   class="flex-1 flex items-center justify-center gap-1 py-2 px-3 rounded-lg border border-outline-variant text-primary font-bold text-[13px] hover:bg-primary-container/10 transition-colors"
-                  @click="openEdit(c)"
-                >
+                  @click="openEdit(c)">
                   <span class="material-symbols-outlined text-[18px]">edit</span>
                   Editar
                 </button>
                 <button
                   class="flex-1 flex items-center justify-center gap-1 py-2 px-3 rounded-lg border border-outline-variant text-error font-bold text-[13px] hover:bg-error-container/10 transition-colors"
-                  @click="confirmDelete(c)"
-                >
+                  @click="confirmDelete(c)">
                   <span class="material-symbols-outlined text-[18px]">delete</span>
                   Eliminar
                 </button>
@@ -580,38 +557,29 @@ onMounted(async () => {
       </template>
 
       <!-- Pagination -->
-      <div class="p-md md:p-lg border-t border-outline-variant flex flex-col md:flex-row items-center justify-between gap-md bg-surface-container-low/20">
+      <div
+        class="p-md md:p-lg border-t border-outline-variant flex flex-col md:flex-row items-center justify-between gap-md bg-surface-container-low/20">
         <p class="font-body-md text-body-md text-on-surface-variant text-center md:text-left">
-          Mostrando <span class="font-bold text-on-surface">{{ fromRecord }}-{{ toRecord }}</span> de <span class="font-bold text-on-surface">{{ store.total }}</span> registros
+          Mostrando <span class="font-bold text-on-surface">{{ fromRecord }}-{{ toRecord }}</span> de <span
+            class="font-bold text-on-surface">{{ store.total }}</span> registros
         </p>
         <div class="flex items-center gap-xs">
           <button
             class="p-xs rounded-lg hover:bg-surface-container-high text-secondary disabled:opacity-30 transition-colors"
-            :disabled="page <= 1"
-            @click="goToPage(page - 1)"
-          >
+            :disabled="page <= 1" @click="goToPage(page - 1)">
             <span class="material-symbols-outlined">chevron_left</span>
           </button>
           <div class="flex gap-xs">
             <template v-for="p in pageRange" :key="p">
-              <button
-                v-if="p === '...'"
-                class="px-1 self-center text-outline text-label-md"
-                disabled
-              >...</button>
-              <button
-                v-else
-                class="w-8 h-8 rounded-lg text-label-md font-bold transition-colors"
+              <button v-if="p === '...'" class="px-1 self-center text-outline text-label-md" disabled>...</button>
+              <button v-else class="w-8 h-8 rounded-lg text-label-md font-bold transition-colors"
                 :class="p === page ? 'bg-primary text-on-primary' : 'hover:bg-surface-container-high text-on-surface-variant'"
-                @click="goToPage(p)"
-              >{{ p }}</button>
+                @click="goToPage(p)">{{ p }}</button>
             </template>
           </div>
           <button
             class="p-xs rounded-lg hover:bg-surface-container-high text-secondary disabled:opacity-30 transition-colors"
-            :disabled="page >= totalPages"
-            @click="goToPage(page + 1)"
-          >
+            :disabled="page >= totalPages" @click="goToPage(page + 1)">
             <span class="material-symbols-outlined">chevron_right</span>
           </button>
         </div>
@@ -622,7 +590,8 @@ onMounted(async () => {
     <Teleport to="body">
       <div v-if="selectedClient" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" @click="closeMovements"></div>
-        <div class="relative bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant w-full max-w-3xl mx-auto p-md md:p-xl max-h-[90vh] flex flex-col">
+        <div
+          class="relative bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant w-full max-w-3xl mx-auto p-md md:p-xl max-h-[92vh] flex flex-col">
           <!-- Header -->
           <div class="flex items-center justify-between mb-lg shrink-0">
             <div>
@@ -659,19 +628,30 @@ onMounted(async () => {
             <table class="w-full text-left font-body-md text-body-md border-collapse">
               <thead class="bg-surface-container-high/20 sticky top-0 z-10">
                 <tr>
-                  <th class="px-lg py-md font-bold text-on-surface-variant uppercase text-[11px] tracking-widest">FECHA</th>
-                  <th class="px-lg py-md font-bold text-on-surface-variant uppercase text-[11px] tracking-widest">TIPO</th>
-                  <th class="px-lg py-md font-bold text-on-surface-variant uppercase text-[11px] tracking-widest text-right">MONTO</th>
-                  <th class="px-lg py-md font-bold text-on-surface-variant uppercase text-[11px] tracking-widest text-right">SALDO</th>
-                  <th class="px-lg py-md font-bold text-on-surface-variant uppercase text-[11px] tracking-widest">ESTADO</th>
+                  <th class="px-lg py-md font-bold text-on-surface-variant uppercase text-[11px] tracking-widest">FECHA
+                  </th>
+                  <th class="px-lg py-md font-bold text-on-surface-variant uppercase text-[11px] tracking-widest">TIPO
+                  </th>
+                  <th
+                    class="px-lg py-md font-bold text-on-surface-variant uppercase text-[11px] tracking-widest text-right">
+                    MONTO</th>
+                  <th
+                    class="px-lg py-md font-bold text-on-surface-variant uppercase text-[11px] tracking-widest text-right">
+                    SALDO</th>
+                  <th class="px-lg py-md font-bold text-on-surface-variant uppercase text-[11px] tracking-widest">ESTADO
+                  </th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-outline-variant">
                 <tr v-for="m in movements" :key="m.id + m.type" class="hover:bg-primary-container/5 transition-colors">
-                  <td class="px-lg py-md text-on-surface whitespace-nowrap">{{ formatDateTime(m.created_at || m.date) }}</td>
+                  <td class="px-lg py-md text-on-surface whitespace-nowrap">{{ formatDateTime(m.created_at || m.date) }}
+                  </td>
                   <td class="px-lg py-md">
-                    <span class="inline-flex items-center gap-1 font-bold" :class="m.isRecharge ? 'text-primary' : 'text-on-surface'">
-                      <span class="material-symbols-outlined text-[16px]">{{ m.isRecharge ? 'add_circle' : 'remove_circle' }}</span>
+                    <span class="inline-flex items-center gap-1 font-bold"
+                      :class="m.isRecharge ? 'text-primary' : 'text-on-surface'">
+                      <span class="material-symbols-outlined text-[16px]">{{ m.isRecharge ? 'add_circle' :
+                        'remove_circle'
+                        }}</span>
                       {{ m.isRecharge ? "Recarga" : "Transacción" }}
                     </span>
                   </td>
@@ -682,7 +662,8 @@ onMounted(async () => {
                     {{ m.newBalanceClient != null ? formatCurrency(m.newBalanceClient) : "—" }}
                   </td>
                   <td class="px-lg py-md">
-                    <span class="px-sm py-1 rounded-full text-[11px] font-bold whitespace-nowrap" :class="movementStatusClass(m.status)">
+                    <span class="px-sm py-1 rounded-full text-[11px] font-bold whitespace-nowrap"
+                      :class="movementStatusClass(m.status)">
                       {{ movementStatusLabel(m.status) }}
                     </span>
                   </td>
@@ -693,10 +674,8 @@ onMounted(async () => {
 
           <!-- Footer -->
           <div class="flex items-center justify-end pt-md mt-md border-t border-outline-variant shrink-0">
-            <button
-              class="h-11 px-lg rounded-xl bg-primary text-on-primary font-bold hover:shadow-lg transition-all"
-              @click="closeMovements"
-            >Cerrar</button>
+            <button class="h-11 px-lg rounded-xl bg-primary text-on-primary font-bold hover:shadow-lg transition-all"
+              @click="closeMovements">Cerrar</button>
           </div>
         </div>
       </div>
@@ -706,7 +685,8 @@ onMounted(async () => {
     <Teleport to="body">
       <div v-if="ticketDeductDialog.visible.value" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" @click="ticketDeductDialog.close"></div>
-        <div class="relative bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant w-full max-w-sm mx-auto p-md md:p-xl">
+        <div
+          class="relative bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant w-full max-w-sm mx-auto p-md md:p-xl">
           <div class="flex items-center justify-between mb-lg">
             <h3 class="font-headline-sm text-headline-sm text-on-surface">Restar Ticket</h3>
             <button class="text-outline hover:text-on-surface transition-colors" @click="ticketDeductDialog.close">
@@ -720,27 +700,27 @@ onMounted(async () => {
               </div>
               <div>
                 <p class="font-bold text-on-surface">{{ ticketDeductDialog.data.value?.client.name }}</p>
-                <p class="text-body-md text-on-surface-variant">Saldo actual: <strong :class="(ticketDeductDialog.data.value?.client.balance ?? 0) < 0 ? 'text-error' : 'text-primary'">{{ (ticketDeductDialog.data.value?.client.balance ?? 0).toFixed(2) }}</strong></p>
+                <p class="text-body-md text-on-surface-variant">Saldo actual: <strong
+                    :class="(ticketDeductDialog.data.value?.client.balance ?? 0) < 0 ? 'text-error' : 'text-primary'">{{
+                      (ticketDeductDialog.data.value?.client.balance ?? 0).toFixed(2) }}</strong></p>
               </div>
             </div>
             <div class="space-y-base">
-              <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Cantidad de ticket a procesar</label>
-              <select
-                v-model.number="ticketCount"
-                class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface"
-              >
+              <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Cantidad de
+                ticket
+                a procesar</label>
+              <select v-model.number="ticketCount"
+                class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface">
                 <option v-for="n in 10" :key="n" :value="n">{{ n }}</option>
               </select>
             </div>
             <div class="flex flex-col-reverse sm:flex-row justify-end gap-md pt-md border-t border-outline-variant">
               <button
                 class="h-11 px-lg rounded-xl border border-outline-variant text-on-surface-variant font-bold hover:bg-surface-container transition-all"
-                @click="ticketDeductDialog.close"
-              >Cancelar</button>
+                @click="ticketDeductDialog.close">Cancelar</button>
               <button
                 class="h-11 px-lg rounded-xl bg-warning text-white font-bold hover:shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-xs"
-                @click="confirmTicketDeduct.open({ client: ticketDeductDialog.data.value!.client, count: ticketCount })"
-              >
+                @click="confirmTicketDeduct.open({ client: ticketDeductDialog.data.value!.client, count: ticketCount })">
                 <span class="material-symbols-outlined text-[18px]">do_disturb</span>
                 Procesar
               </button>
@@ -750,22 +730,17 @@ onMounted(async () => {
       </div>
     </Teleport>
 
-    <ConfirmDialog
-      :visible="confirmTicketDeduct.visible.value"
-      title="Restar Ticket"
+    <ConfirmDialog :visible="confirmTicketDeduct.visible.value" title="Restar Ticket"
       :message="`¿Está seguro de restar <strong>${confirmTicketDeduct.data.value?.count ?? 0} ticket(s)</strong> a <strong>${confirmTicketDeduct.data.value?.client.name ?? ''}</strong>?`"
-      confirm-label="Sí, restar ticket"
-      variant="danger"
-      :loading="deducting"
-      @confirm="doDeductTickets"
-      @cancel="confirmTicketDeduct.close"
-    />
+      confirm-label="Sí, restar ticket" variant="danger" :loading="deducting" @confirm="doDeductTickets"
+      @cancel="confirmTicketDeduct.close" />
 
     <!-- Create/Edit Dialog -->
     <Teleport to="body">
       <div v-if="dialogOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" @click="dialogOpen = false"></div>
-        <div class="relative bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant w-full max-w-lg mx-auto p-md md:p-xl max-h-[90vh] overflow-y-auto">
+        <div
+          class="relative bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant w-full max-w-3xl mx-auto p-md md:p-xl max-h-[90vh] overflow-y-auto">
           <div class="flex items-center justify-between mb-lg">
             <h3 class="font-headline-sm text-headline-sm text-on-surface">
               {{ editing ? "Editar Cliente" : "Nuevo Cliente" }}
@@ -774,105 +749,83 @@ onMounted(async () => {
               <span class="material-symbols-outlined">close</span>
             </button>
           </div>
+          <div v-if="form.photo_url" class="flex justify-center mb-lg">
+            <img :src="form.photo_url" alt="Avatar"
+              class="w-20 h-20 rounded-full object-cover border-2 border-outline-variant" />
+          </div>
           <form @submit.prevent="save" class="space-y-lg">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-lg">
               <div class="space-y-base md:col-span-2">
-                <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Nombre</label>
-                <input
-                  v-model="form.name"
-                  :class="[
-                    'w-full h-11 px-md bg-surface-container-lowest border rounded-xl transition-all font-body-md text-body-md outline-none',
-                    errors.name
-                      ? 'border-error focus:ring-2 focus:ring-error focus:border-error'
-                      : 'border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary'
-                  ]"
-                  placeholder="Nombre completo"
-                  @input="errors.name && delete errors.name"
-                />
+                <label
+                  class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Nombre</label>
+                <input v-model="form.name" :class="[
+                  'w-full h-11 px-md bg-surface-container-lowest border rounded-xl transition-all font-body-md text-body-md outline-none',
+                  errors.name
+                    ? 'border-error focus:ring-2 focus:ring-error focus:border-error'
+                    : 'border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary'
+                ]" placeholder="Nombre completo" @input="errors.name && delete errors.name" />
                 <p v-if="errors.name" class="text-error text-[12px] font-bold">{{ errors.name }}</p>
               </div>
               <div class="space-y-base">
-                <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Cédula</label>
-                <input
-                  v-model="form.documentID"
-                  :class="[
-                    'w-full h-11 px-md bg-surface-container-lowest border rounded-xl transition-all font-body-md text-body-md outline-none',
-                    errors.documentID
-                      ? 'border-error focus:ring-2 focus:ring-error focus:border-error'
-                      : 'border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary'
-                  ]"
-                  placeholder="Ej. V-12345678"
-                  @input="errors.documentID && delete errors.documentID"
-                />
+                <label
+                  class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Cédula</label>
+                <input v-model="form.documentID" :class="[
+                  'w-full h-11 px-md bg-surface-container-lowest border rounded-xl transition-all font-body-md text-body-md outline-none',
+                  errors.documentID
+                    ? 'border-error focus:ring-2 focus:ring-error focus:border-error'
+                    : 'border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary'
+                ]" placeholder="Ej. V-12345678" @input="errors.documentID && delete errors.documentID" />
                 <p v-if="errors.documentID" class="text-error text-[12px] font-bold">{{ errors.documentID }}</p>
               </div>
               <div class="space-y-base">
-                <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Correo</label>
-                <input
-                  v-model="form.email"
-                  :class="[
-                    'w-full h-11 px-md bg-surface-container-lowest border rounded-xl transition-all font-body-md text-body-md outline-none',
-                    errors.email
-                      ? 'border-error focus:ring-2 focus:ring-error focus:border-error'
-                      : 'border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary'
-                  ]"
-                  placeholder="correo@ejemplo.com"
-                  type="email"
-                  @input="errors.email && delete errors.email"
-                />
+                <label
+                  class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Correo</label>
+                <input v-model="form.email" :class="[
+                  'w-full h-11 px-md bg-surface-container-lowest border rounded-xl transition-all font-body-md text-body-md outline-none',
+                  errors.email
+                    ? 'border-error focus:ring-2 focus:ring-error focus:border-error'
+                    : 'border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary'
+                ]" placeholder="correo@ejemplo.com" type="email" @input="errors.email && delete errors.email" />
                 <p v-if="errors.email" class="text-error text-[12px] font-bold">{{ errors.email }}</p>
               </div>
               <div class="space-y-base">
-                <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Teléfono</label>
-                <input
-                  v-model="form.phone"
-                  :class="[
-                    'w-full h-11 px-md bg-surface-container-lowest border rounded-xl transition-all font-body-md text-body-md outline-none',
-                    errors.phone
-                      ? 'border-error focus:ring-2 focus:ring-error focus:border-error'
-                      : 'border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary'
-                  ]"
-                  placeholder="Ej. 0412-1234567"
-                  @input="errors.phone && delete errors.phone"
-                />
+                <label
+                  class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Teléfono</label>
+                <input v-model="form.phone" :class="[
+                  'w-full h-11 px-md bg-surface-container-lowest border rounded-xl transition-all font-body-md text-body-md outline-none',
+                  errors.phone
+                    ? 'border-error focus:ring-2 focus:ring-error focus:border-error'
+                    : 'border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary'
+                ]" placeholder="Ej. 0412-1234567" @input="errors.phone && delete errors.phone" />
                 <p v-if="errors.phone" class="text-error text-[12px] font-bold">{{ errors.phone }}</p>
               </div>
               <div class="space-y-base">
-                <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Carrera</label>
-                <input
-                  v-model="form.carrer"
-                  :class="[
-                    'w-full h-11 px-md bg-surface-container-lowest border rounded-xl transition-all font-body-md text-body-md outline-none',
-                    errors.carrer
-                      ? 'border-error focus:ring-2 focus:ring-error focus:border-error'
-                      : 'border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary'
-                  ]"
-                  placeholder="Carrera universitaria"
-                  @input="errors.carrer && delete errors.carrer"
-                />
+                <label
+                  class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Carrera</label>
+                <input v-model="form.carrer" :class="[
+                  'w-full h-11 px-md bg-surface-container-lowest border rounded-xl transition-all font-body-md text-body-md outline-none',
+                  errors.carrer
+                    ? 'border-error focus:ring-2 focus:ring-error focus:border-error'
+                    : 'border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary'
+                ]" placeholder="Carrera universitaria" @input="errors.carrer && delete errors.carrer" />
                 <p v-if="errors.carrer" class="text-error text-[12px] font-bold">{{ errors.carrer }}</p>
               </div>
               <div class="space-y-base">
-                <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Límite de Crédito</label>
-                <input
-                  v-model="form.creditLimit"
-                  :class="[
-                    'w-full h-11 px-md bg-surface-container-lowest border rounded-xl transition-all font-body-md text-body-md outline-none',
-                    errors.creditLimit
-                      ? 'border-error focus:ring-2 focus:ring-error focus:border-error'
-                      : 'border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary'
-                  ]"
-                  placeholder="Ej. 100.00"
-                  @input="errors.creditLimit && delete errors.creditLimit"
-                />
+                <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Límite de
+                  Crédito</label>
+                <input v-model="form.creditLimit" :class="[
+                  'w-full h-11 px-md bg-surface-container-lowest border rounded-xl transition-all font-body-md text-body-md outline-none',
+                  errors.creditLimit
+                    ? 'border-error focus:ring-2 focus:ring-error focus:border-error'
+                    : 'border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary'
+                ]" placeholder="Ej. 100.00" @input="errors.creditLimit && delete errors.creditLimit" />
                 <p v-if="errors.creditLimit" class="text-error text-[12px] font-bold">{{ errors.creditLimit }}</p>
               </div>
-              <div class="space-y-base md:col-span-2">
-                <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Estado</label>
-                <select
-                  v-model="form.status"
-                  class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface"
-                >
+              <div class="space-y-base">
+                <label
+                  class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Estado</label>
+                <select v-model="form.status"
+                  class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface">
                   <option value="0">Activo</option>
                   <option value="1">Inactivo</option>
                   <option value="2">Pendiente</option>
@@ -880,26 +833,26 @@ onMounted(async () => {
               </div>
               <div class="space-y-base md:col-span-2">
                 <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Ruta</label>
-                <select
-                  v-model="form.idroute"
-                  class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface"
-                >
+                <select v-model="form.idroute"
+                  class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface">
                   <option :value="null">Sin ruta</option>
                   <option v-for="r in routes" :key="r.id" :value="r.id">{{ r.code }} - {{ r.description }}</option>
                 </select>
+                <div hidden class="space-y-base md:col-span-2">
+                  <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Foto
+                    URL</label>
+                  <input v-model="form.photo_url"
+                    class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface"
+                    placeholder="https://ejemplo.com/foto.jpg" />
+                </div>
               </div>
             </div>
             <div class="flex flex-col-reverse sm:flex-row justify-end gap-md pt-md border-t border-outline-variant">
-              <button
-                type="button"
+              <button type="button"
                 class="h-11 px-lg rounded-xl border border-outline-variant text-on-surface-variant font-bold hover:bg-surface-container transition-all"
-                @click="dialogOpen = false"
-              >Cancelar</button>
-              <button
-                type="submit"
-                :disabled="saving"
-                class="h-11 px-lg rounded-xl bg-primary text-on-primary font-bold hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-xs"
-              >
+                @click="dialogOpen = false">Cancelar</button>
+              <button type="submit" :disabled="saving"
+                class="h-11 px-lg rounded-xl bg-primary text-on-primary font-bold hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-xs">
                 <template v-if="saving">
                   <span class="animate-spin material-symbols-outlined text-[18px]">sync</span>
                   Guardando...
@@ -909,6 +862,7 @@ onMounted(async () => {
                 </template>
               </button>
             </div>
+
           </form>
         </div>
       </div>
@@ -918,26 +872,26 @@ onMounted(async () => {
     <Teleport to="body">
       <div v-if="deletingConfirm" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" @click="deletingConfirm = false"></div>
-        <div class="relative bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant w-full max-w-sm mx-auto p-md md:p-xl">
+        <div
+          class="relative bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant w-full max-w-sm mx-auto p-md md:p-xl">
           <div class="flex items-start gap-md mb-lg">
             <div class="w-12 h-12 rounded-full bg-error-container/30 flex items-center justify-center shrink-0">
               <span class="material-symbols-outlined text-error text-[28px]">warning</span>
             </div>
             <div>
               <h3 class="font-headline-sm text-headline-sm text-on-surface">Eliminar Cliente</h3>
-              <p class="text-body-md text-on-surface-variant mt-1">¿Estás seguro de eliminar <strong>{{ deleting?.name }}</strong>?</p>
+              <p class="text-body-md text-on-surface-variant mt-1">¿Estás seguro de eliminar <strong>{{ deleting?.name
+                  }}</strong>?</p>
               <p class="text-body-md text-on-surface-variant">Esta acción no se puede deshacer.</p>
             </div>
           </div>
           <div class="flex flex-col-reverse sm:flex-row justify-end gap-md">
             <button
               class="h-11 px-lg rounded-xl border border-outline-variant text-on-surface-variant font-bold hover:bg-surface-container transition-all"
-              @click="deletingConfirm = false"
-            >Cancelar</button>
+              @click="deletingConfirm = false">Cancelar</button>
             <button
               class="h-11 px-lg rounded-xl bg-error text-on-error font-bold hover:shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-xs"
-              @click="doDelete"
-            >Eliminar</button>
+              @click="doDelete">Eliminar</button>
           </div>
         </div>
       </div>
@@ -947,7 +901,8 @@ onMounted(async () => {
     <Teleport to="body">
       <div v-if="showDeactivationDialog" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" @click="showDeactivationDialog = false"></div>
-        <div class="relative bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant w-full max-w-sm mx-auto p-md md:p-xl">
+        <div
+          class="relative bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant w-full max-w-sm mx-auto p-md md:p-xl">
           <div class="flex items-start gap-md mb-lg">
             <div class="w-12 h-12 rounded-full bg-primary-container/30 flex items-center justify-center shrink-0">
               <span class="material-symbols-outlined text-primary text-[28px]">info</span>
@@ -960,22 +915,23 @@ onMounted(async () => {
           <div class="flex justify-end">
             <button
               class="h-11 px-lg rounded-xl bg-primary text-on-primary font-bold hover:shadow-lg active:scale-[0.98] transition-all"
-              @click="showDeactivationDialog = false"
-            >Entendido</button>
+              @click="showDeactivationDialog = false">Entendido</button>
           </div>
         </div>
       </div>
     </Teleport>
-</div>
+  </div>
 </template>
 
 <style scoped>
 .custom-scrollbar::-webkit-scrollbar {
   width: 4px;
 }
+
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
+
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 10px;
