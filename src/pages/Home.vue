@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, nextTick } from 'vue'
 import { supabase } from '@/services/supabaseClient'
 import StatCard from '@/components/dashboard/StatCard.vue'
 import DebtorsCard from '@/components/dashboard/DebtorsCard.vue'
@@ -28,10 +27,10 @@ interface WeekRow {
 const kpis = ref<Kpis | null>(null)
 const weekly = ref<WeekRow[]>([])
 const loading = ref(true)
-
-const router = useRouter()
+const ready = ref(false)
 
 const movementsRef = ref<InstanceType<typeof RecentMovements> | null>(null)
+const tripsReportRef = ref<InstanceType<typeof TripsReport> | null>(null)
 
 function formatCurrency(n: number): string {
   const sign = n < 0 ? '-' : ''
@@ -59,8 +58,15 @@ async function loadDashboard() {
 }
 
 onMounted(async () => {
+  // 1. Allow browser to paint initial layout with skeletons
+  await nextTick()
+  ready.value = true
+  // 2. Defer data loading to end of microtask queue
+  await nextTick()
   await loadDashboard()
+  // 3. Load child data after parent is settled
   movementsRef.value?.load()
+  tripsReportRef.value?.load()
 })
 </script>
 
@@ -110,11 +116,20 @@ onMounted(async () => {
       />
     </div>
 
-    <!-- Reporte de Reservaciones por Rango -->
-    <SolicitudesReport />
+    <!-- Skeleton: Reportes -->
+    <div v-if="!ready" class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm">
+      <div class="p-lg border-b border-outline-variant">
+        <div class="h-5 w-56 bg-surface-container-high rounded animate-pulse" />
+      </div>
+    </div>
+    <SolicitudesReport v-if="ready" />
 
-    <!-- Reporte de Viajes Realizados -->
-    <TripsReport />
+    <div v-if="!ready" class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm">
+      <div class="p-lg border-b border-outline-variant">
+        <div class="h-5 w-56 bg-surface-container-high rounded animate-pulse" />
+      </div>
+    </div>
+    <TripsReport v-if="ready" ref="tripsReportRef" />
 
     <!-- Bottom Section: Weekly Chart + Recent Movements -->
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-lg">
@@ -122,7 +137,23 @@ onMounted(async () => {
         :data="weekly"
         :loading="loading"
       />
+      <div v-if="!ready" class="lg:col-span-3 bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-sm">
+        <div class="space-y-gutter">
+          <div v-for="i in 3" :key="i" class="flex items-center gap-md p-md">
+            <div class="w-12 h-12 rounded-full bg-surface-container animate-pulse shrink-0" />
+            <div class="flex-1 space-y-xs">
+              <div class="h-4 w-48 rounded bg-surface-container animate-pulse" />
+              <div class="h-3 w-32 rounded bg-surface-container animate-pulse" />
+            </div>
+            <div class="text-right space-y-xs">
+              <div class="h-4 w-20 rounded bg-surface-container animate-pulse" />
+              <div class="h-3 w-24 rounded bg-surface-container animate-pulse" />
+            </div>
+          </div>
+        </div>
+      </div>
       <RecentMovements
+        v-if="ready"
         ref="movementsRef"
         :limit="5"
       />

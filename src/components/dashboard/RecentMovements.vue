@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { ref } from 'vue'
 import { supabase } from '@/services/supabaseClient'
 import { downloadCSV } from '@/utils/exportCsv'
 
@@ -83,8 +83,6 @@ function exportCSV() {
 }
 
 defineExpose({ load })
-
-onMounted(load)
 </script>
 
 <template>

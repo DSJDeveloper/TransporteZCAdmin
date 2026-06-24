@@ -155,6 +155,7 @@ export const useAuthStore = defineStore("auth", () => {
       await fetchProfile(authData.user.id, authData.user.email ?? "");
       if (user.value && ['admin', 'supervisor'].includes(user.value.role)) {
         session.value = authData.user;
+        initialized.value = true;
       } else {
         await signOutAndClear()
         throw new Error('not_admin')
@@ -211,6 +212,7 @@ export const useAuthStore = defineStore("auth", () => {
   }
 
   async function initAuth() {
+    if (initialized.value) return
     loading.value = true;
     try {
       /**

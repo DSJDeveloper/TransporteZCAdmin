@@ -87,7 +87,11 @@ const router = createRouter({
 
 router.beforeEach(async (to, _, next) => {
   const auth = useAuthStore();
-  if (!auth.initialized) await auth.initAuth();
+  if (!auth.initialized) {
+    // Yield to event loop so Vue can process pending state before async auth
+    await new Promise(resolve => setTimeout(resolve, 0))
+    await auth.initAuth();
+  }
   if (to.meta.requiresAuth && !auth.session) return next({ name: "login" });
   if (to.name === "login" && auth.session) return next({ name: "home" });
   if (to.meta.adminOnly && auth.isSupervisor) return next({ name: "home" });

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { getTripsByDateRange } from '@/services/transactionService'
 import { formatDate } from '@/utils/formatters'
 import { getRouteNames } from '@/services/routeService'
@@ -16,15 +16,23 @@ const selectedRoute = ref<number | null>(null)
 const selectedUnit = ref<number | null>(null)
 const routes = ref<RouteName[]>([])
 const units = ref<UnitName[]>([])
+const loadingFilters = ref(false)
 
-onMounted(async () => {
+async function load() {
+  if (routes.value.length > 0) return
+  loadingFilters.value = true
   try {
-    routes.value = await getRouteNames()
-    units.value = await getUnitNames()
+    const [r, u] = await Promise.all([getRouteNames(), getUnitNames()])
+    routes.value = r
+    units.value = u
   } catch (err) {
     console.error('Error loading filters:', err)
+  } finally {
+    loadingFilters.value = false
   }
-})
+}
+
+defineExpose({ load })
 
 async function exportPdf() {
   exporting.value = true
