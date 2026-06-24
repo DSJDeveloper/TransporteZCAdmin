@@ -131,6 +131,34 @@ export const useTicketStore = defineStore("ticket", () => {
     return true;
   };
 
+  const addTickets = async (idclient: number, ticketCount: number) => {
+    const auth = useAuthStore()
+
+    if (!auth.validateSession()) {
+      error.value = auth.error
+      return false
+    }
+
+    loading.value.procesarPago = true
+    error.value = null
+
+    try {
+      const result = await ticketsService.addTicketsToClient(idclient, ticketCount, auth.idclient)
+      if (result.success) {
+        return true
+      } else {
+        error.value = result.message ?? "Error al agregar tickets"
+        return false
+      }
+    } catch (err) {
+      error.value = (err as Error).message || "Error al agregar tickets"
+      console.error(err)
+      return false
+    } finally {
+      loading.value.procesarPago = false
+    }
+  }
+
   const cobrarTicketsBulk = async (listaTickets: TicketCobroItem[]) => {
     const auth = useAuthStore();
 
@@ -230,6 +258,7 @@ export const useTicketStore = defineStore("ticket", () => {
     cargarMovimientos,
     procesarPago,
     resetStore,
+    addTickets,
     cobrarTicketsBulk,
     // Getters
     getBalanceFormatted,

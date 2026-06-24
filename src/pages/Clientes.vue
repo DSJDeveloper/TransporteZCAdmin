@@ -303,6 +303,11 @@ const ticketCount = ref(1)
 const deducting = ref(false)
 const confirmTicketDeduct = useDialog<{ client: Client; count: number }>()
 
+const ticketAddDialog = useDialog<{ client: Client }>()
+const ticketAddCount = ref(1)
+const adding = ref(false)
+const confirmTicketAdd = useDialog<{ client: Client; count: number }>()
+
 async function doDeductTickets() {
   const payload = confirmTicketDeduct.data.value
   if (!payload) return
@@ -322,6 +327,25 @@ async function doDeductTickets() {
     }
   } finally {
     deducting.value = false
+  }
+}
+
+async function doAddTickets() {
+  const payload = confirmTicketAdd.data.value
+  if (!payload) return
+  adding.value = true
+  try {
+    const ok = await ticketStore.addTickets(payload.client.id, payload.count)
+    if (ok) {
+      await store.fetchAll(storeParams.value)
+      confirmTicketAdd.close()
+      ticketAddDialog.close()
+    } else if (ticketStore.error) {
+      errorMessage.value = ticketStore.error
+      errorVisible.value = true
+    }
+  } finally {
+    adding.value = false
   }
 }
 
@@ -474,6 +498,10 @@ onMounted(async () => {
                       title="Restar ticket" @click="ticketDeductDialog.open({ client: c })">
                       <span class="material-symbols-outlined text-[20px]">do_disturb</span>
                     </button>
+                    <button class="p-xs hover:bg-tertiary/10 rounded-lg text-tertiary transition-colors"
+                      title="Sumar ticket" @click="ticketAddDialog.open({ client: c })">
+                      <span class="material-symbols-outlined text-[20px]">add_circle</span>
+                    </button>
                     <button class="p-xs hover:bg-primary/10 rounded-lg text-primary transition-colors" title="Editar"
                       @click="openEdit(c)">
                       <span class="material-symbols-outlined text-[20px]">edit</span>
@@ -545,7 +573,13 @@ onMounted(async () => {
                   class="flex-1 flex items-center justify-center gap-1 py-2 px-3 rounded-lg border border-outline-variant text-warning font-bold text-[13px] hover:bg-warning/10 transition-colors"
                   @click="ticketDeductDialog.open({ client: c })">
                   <span class="material-symbols-outlined text-[18px]">do_disturb</span>
-                  Ticket
+                  Restar
+                </button>
+                <button
+                  class="flex-1 flex items-center justify-center gap-1 py-2 px-3 rounded-lg border border-outline-variant text-tertiary font-bold text-[13px] hover:bg-tertiary/10 transition-colors"
+                  @click="ticketAddDialog.open({ client: c })">
+                  <span class="material-symbols-outlined text-[18px]">add_circle</span>
+                  Sumar
                 </button>
                 <button
                   class="flex-1 flex items-center justify-center gap-1 py-2 px-3 rounded-lg border border-outline-variant text-primary font-bold text-[13px] hover:bg-primary-container/10 transition-colors"
@@ -743,6 +777,60 @@ onMounted(async () => {
       :message="`¿Está seguro de restar <strong>${confirmTicketDeduct.data.value?.count ?? 0} ticket(s)</strong> a <strong>${confirmTicketDeduct.data.value?.client.name ?? ''}</strong>?`"
       confirm-label="Sí, restar ticket" variant="danger" :loading="deducting" @confirm="doDeductTickets"
       @cancel="confirmTicketDeduct.close" />
+
+    <!-- Sumar Ticket Dialog -->
+    <Teleport to="body">
+      <div v-if="ticketAddDialog.visible.value" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" @click="ticketAddDialog.close"></div>
+        <div
+          class="relative bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant w-full max-w-sm mx-auto p-md md:p-xl">
+          <div class="flex items-center justify-between mb-lg">
+            <h3 class="font-headline-sm text-headline-sm text-on-surface">Sumar Ticket</h3>
+            <button class="text-outline hover:text-on-surface transition-colors" @click="ticketAddDialog.close">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <div class="space-y-lg">
+            <div class="flex items-center gap-md p-md bg-surface-container rounded-lg">
+              <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                <span class="material-symbols-outlined">person</span>
+              </div>
+              <div>
+                <p class="font-bold text-on-surface">{{ ticketAddDialog.data.value?.client.name }}</p>
+                <p class="text-body-md text-on-surface-variant">Saldo actual: <strong
+                    :class="(ticketAddDialog.data.value?.client.balance ?? 0) < 0 ? 'text-error' : 'text-primary'">{{
+                      (ticketAddDialog.data.value?.client.balance ?? 0).toFixed(2) }}</strong></p>
+              </div>
+            </div>
+            <div class="space-y-base">
+              <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Cantidad de
+                ticket
+                a agregar</label>
+              <select v-model.number="ticketAddCount"
+                class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface">
+                <option v-for="n in 10" :key="n" :value="n">{{ n }}</option>
+              </select>
+            </div>
+            <div class="flex flex-col-reverse sm:flex-row justify-end gap-md pt-md border-t border-outline-variant">
+              <button
+                class="h-11 px-lg rounded-xl border border-outline-variant text-on-surface-variant font-bold hover:bg-surface-container transition-all"
+                @click="ticketAddDialog.close">Cancelar</button>
+              <button
+                class="h-11 px-lg rounded-xl bg-primary text-on-primary font-bold hover:shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-xs"
+                @click="confirmTicketAdd.open({ client: ticketAddDialog.data.value!.client, count: ticketAddCount })">
+                <span class="material-symbols-outlined text-[18px]">add_circle</span>
+                Procesar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <ConfirmDialog :visible="confirmTicketAdd.visible.value" title="Sumar Ticket"
+      :message="`¿Está seguro de agregar <strong>${confirmTicketAdd.data.value?.count ?? 0} ticket(s)</strong> a <strong>${confirmTicketAdd.data.value?.client.name ?? ''}</strong>?`"
+      confirm-label="Sí, agregar ticket" variant="primary" :loading="adding" @confirm="doAddTickets"
+      @cancel="confirmTicketAdd.close" />
 
     <!-- Create/Edit Dialog -->
     <Teleport to="body">

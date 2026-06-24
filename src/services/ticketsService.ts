@@ -389,6 +389,16 @@ export const ticketsService = {
     return data;
   },
 */
+  async addTicketsToClient(idclient: number, ticketCount: number, createBy: number) {
+    const { data, error } = await supabase.rpc("add_tickets_to_client", {
+      p_idclient: idclient,
+      p_ticket_count: ticketCount,
+      p_create_by: createBy,
+    })
+    if (error) throw error
+    return data as { success: boolean; message?: string; new_balance?: number }
+  },
+
   /**
    * Otro ejemplo de RPC para generar reporte diario
    */

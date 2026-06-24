@@ -1,7 +1,9 @@
 -- =====================================================
--- BACKUP: LÓGICA DE SERVIDOR (RPC, RLS, TRIGGERS)
--- Fecha: 2026-06-23T11:36:39.762Z
+-- BACKUP: LÓGICA DE SERVIDOR (VISTAS, RPC, RLS, TRIGGERS)
+-- Fecha: 2026-06-23T20:08:55.044Z
 -- =====================================================
+
+-- >>> VISTAS <<<
 
 -- >>> FUNCIONES / RPC <<<
 
@@ -3302,165 +3304,165 @@ $function$
 -- >>> POLÍTICAS DE SEGURIDAD (RLS) <<<
 
 -- Política para: clients
-ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Permitir lectura por email" ON public.clients;
-CREATE POLICY "Permitir lectura por email" ON public.clients FOR SELECT TO authenticated USING (((email)::text = (auth.jwt() ->> 'email'::text)));
+ALTER TABLE public."clients" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Permitir lectura por email" ON public."clients";
+CREATE POLICY "Permitir lectura por email" ON public."clients" FOR SELECT TO authenticated USING (((email)::text = (auth.jwt() ->> 'email'::text)));
 
 -- Política para: transactions
-ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Usuarios ven lo suyo o Admins ven todo" ON public.transactions;
-CREATE POLICY "Usuarios ven lo suyo o Admins ven todo" ON public.transactions FOR SELECT TO authenticated USING (((EXISTS ( SELECT 1
+ALTER TABLE public."transactions" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Usuarios ven lo suyo o Admins ven todo" ON public."transactions";
+CREATE POLICY "Usuarios ven lo suyo o Admins ven todo" ON public."transactions" FOR SELECT TO authenticated USING (((EXISTS ( SELECT 1
    FROM clients
   WHERE (clients.id = transactions.idclient))) OR (COALESCE(((auth.jwt() ->> 'is_super_admin'::text))::boolean, false) = true)));
 
 -- Política para: profiles
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Usuarios leen su propio perfil" ON public.profiles;
-CREATE POLICY "Usuarios leen su propio perfil" ON public.profiles FOR SELECT TO authenticated USING ((id = auth.uid()));
+ALTER TABLE public."profiles" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Usuarios leen su propio perfil" ON public."profiles";
+CREATE POLICY "Usuarios leen su propio perfil" ON public."profiles" FOR SELECT TO authenticated USING ((id = auth.uid()));
 
 -- Política para: solicitude
-ALTER TABLE public.solicitude ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "users_select_own" ON public.solicitude;
-CREATE POLICY "users_select_own" ON public.solicitude FOR SELECT TO public USING ((idclient = get_my_client_id()));
+ALTER TABLE public."solicitude" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "users_select_own" ON public."solicitude";
+CREATE POLICY "users_select_own" ON public."solicitude" FOR SELECT TO public USING ((idclient = get_my_client_id()));
 
 -- Política para: solicitude
-ALTER TABLE public.solicitude ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "users_insert_own" ON public.solicitude;
-CREATE POLICY "users_insert_own" ON public.solicitude FOR INSERT TO public USING (null) WITH CHECK ((idclient = get_my_client_id()));
+ALTER TABLE public."solicitude" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "users_insert_own" ON public."solicitude";
+CREATE POLICY "users_insert_own" ON public."solicitude" FOR INSERT TO public WITH CHECK ((idclient = get_my_client_id()));
 
 -- Política para: solicitude
-ALTER TABLE public.solicitude ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "users_update_own" ON public.solicitude;
-CREATE POLICY "users_update_own" ON public.solicitude FOR UPDATE TO public USING ((idclient = get_my_client_id())) WITH CHECK ((idclient = get_my_client_id()));
+ALTER TABLE public."solicitude" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "users_update_own" ON public."solicitude";
+CREATE POLICY "users_update_own" ON public."solicitude" FOR UPDATE TO public USING ((idclient = get_my_client_id())) WITH CHECK ((idclient = get_my_client_id()));
 
 -- Política para: solicitude
-ALTER TABLE public.solicitude ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "admin_select_all" ON public.solicitude;
-CREATE POLICY "admin_select_all" ON public.solicitude FOR SELECT TO public USING (is_admin());
+ALTER TABLE public."solicitude" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "admin_select_all" ON public."solicitude";
+CREATE POLICY "admin_select_all" ON public."solicitude" FOR SELECT TO public USING (is_admin());
 
 -- Política para: solicitude
-ALTER TABLE public.solicitude ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "admin_insert_all" ON public.solicitude;
-CREATE POLICY "admin_insert_all" ON public.solicitude FOR INSERT TO public USING (null) WITH CHECK (is_admin());
+ALTER TABLE public."solicitude" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "admin_insert_all" ON public."solicitude";
+CREATE POLICY "admin_insert_all" ON public."solicitude" FOR INSERT TO public WITH CHECK (is_admin());
 
 -- Política para: solicitude
-ALTER TABLE public.solicitude ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "admin_update_all" ON public.solicitude;
-CREATE POLICY "admin_update_all" ON public.solicitude FOR UPDATE TO public USING (is_admin()) WITH CHECK (is_admin());
+ALTER TABLE public."solicitude" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "admin_update_all" ON public."solicitude";
+CREATE POLICY "admin_update_all" ON public."solicitude" FOR UPDATE TO public USING (is_admin()) WITH CHECK (is_admin());
 
 -- Política para: solicitude
-ALTER TABLE public.solicitude ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "admin_delete_all" ON public.solicitude;
-CREATE POLICY "admin_delete_all" ON public.solicitude FOR DELETE TO public USING (is_admin());
+ALTER TABLE public."solicitude" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "admin_delete_all" ON public."solicitude";
+CREATE POLICY "admin_delete_all" ON public."solicitude" FOR DELETE TO public USING (is_admin());
 
 -- Política para: units
-ALTER TABLE public.units ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Permitir lectura general de unidades" ON public.units;
-CREATE POLICY "Permitir lectura general de unidades" ON public.units FOR SELECT TO authenticated USING (true);
+ALTER TABLE public."units" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Permitir lectura general de unidades" ON public."units";
+CREATE POLICY "Permitir lectura general de unidades" ON public."units" FOR SELECT TO authenticated USING (true);
 
 -- Política para: clients
-ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Permitir lectura general de clientes" ON public.clients;
-CREATE POLICY "Permitir lectura general de clientes" ON public.clients FOR SELECT TO authenticated USING (true);
+ALTER TABLE public."clients" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Permitir lectura general de clientes" ON public."clients";
+CREATE POLICY "Permitir lectura general de clientes" ON public."clients" FOR SELECT TO authenticated USING (true);
 
 -- Política para: company
-ALTER TABLE public.company ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "company_select_all" ON public.company;
-CREATE POLICY "company_select_all" ON public.company FOR SELECT TO authenticated USING (true);
+ALTER TABLE public."company" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "company_select_all" ON public."company";
+CREATE POLICY "company_select_all" ON public."company" FOR SELECT TO authenticated USING (true);
 
 -- Política para: company
-ALTER TABLE public.company ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "company_insert_admin" ON public.company;
-CREATE POLICY "company_insert_admin" ON public.company FOR INSERT TO authenticated USING (null) WITH CHECK (is_admin());
+ALTER TABLE public."company" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "company_insert_admin" ON public."company";
+CREATE POLICY "company_insert_admin" ON public."company" FOR INSERT TO authenticated WITH CHECK (is_admin());
 
 -- Política para: company
-ALTER TABLE public.company ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "company_update_admin" ON public.company;
-CREATE POLICY "company_update_admin" ON public.company FOR UPDATE TO authenticated USING (is_admin()) WITH CHECK (is_admin());
+ALTER TABLE public."company" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "company_update_admin" ON public."company";
+CREATE POLICY "company_update_admin" ON public."company" FOR UPDATE TO authenticated USING (is_admin()) WITH CHECK (is_admin());
 
 -- Política para: company
-ALTER TABLE public.company ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "company_delete_admin" ON public.company;
-CREATE POLICY "company_delete_admin" ON public.company FOR DELETE TO authenticated USING (is_admin());
+ALTER TABLE public."company" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "company_delete_admin" ON public."company";
+CREATE POLICY "company_delete_admin" ON public."company" FOR DELETE TO authenticated USING (is_admin());
 
 -- Política para: horario
-ALTER TABLE public.horario ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "horario_select_all" ON public.horario;
-CREATE POLICY "horario_select_all" ON public.horario FOR SELECT TO authenticated USING (true);
+ALTER TABLE public."horario" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "horario_select_all" ON public."horario";
+CREATE POLICY "horario_select_all" ON public."horario" FOR SELECT TO authenticated USING (true);
 
 -- Política para: horario
-ALTER TABLE public.horario ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "horario_insert_admin" ON public.horario;
-CREATE POLICY "horario_insert_admin" ON public.horario FOR INSERT TO authenticated USING (null) WITH CHECK (is_admin());
+ALTER TABLE public."horario" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "horario_insert_admin" ON public."horario";
+CREATE POLICY "horario_insert_admin" ON public."horario" FOR INSERT TO authenticated WITH CHECK (is_admin());
 
 -- Política para: horario
-ALTER TABLE public.horario ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "horario_update_admin" ON public.horario;
-CREATE POLICY "horario_update_admin" ON public.horario FOR UPDATE TO authenticated USING (is_admin()) WITH CHECK (is_admin());
+ALTER TABLE public."horario" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "horario_update_admin" ON public."horario";
+CREATE POLICY "horario_update_admin" ON public."horario" FOR UPDATE TO authenticated USING (is_admin()) WITH CHECK (is_admin());
 
 -- Política para: horario
-ALTER TABLE public.horario ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "horario_delete_admin" ON public.horario;
-CREATE POLICY "horario_delete_admin" ON public.horario FOR DELETE TO authenticated USING (is_admin());
+ALTER TABLE public."horario" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "horario_delete_admin" ON public."horario";
+CREATE POLICY "horario_delete_admin" ON public."horario" FOR DELETE TO authenticated USING (is_admin());
 
 -- Política para: bank_info
-ALTER TABLE public.bank_info ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "bank_info_select_all" ON public.bank_info;
-CREATE POLICY "bank_info_select_all" ON public.bank_info FOR SELECT TO authenticated USING (true);
+ALTER TABLE public."bank_info" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "bank_info_select_all" ON public."bank_info";
+CREATE POLICY "bank_info_select_all" ON public."bank_info" FOR SELECT TO authenticated USING (true);
 
 -- Política para: bank_info
-ALTER TABLE public.bank_info ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "bank_info_insert_admin" ON public.bank_info;
-CREATE POLICY "bank_info_insert_admin" ON public.bank_info FOR INSERT TO authenticated USING (null) WITH CHECK (is_admin());
+ALTER TABLE public."bank_info" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "bank_info_insert_admin" ON public."bank_info";
+CREATE POLICY "bank_info_insert_admin" ON public."bank_info" FOR INSERT TO authenticated WITH CHECK (is_admin());
 
 -- Política para: bank_info
-ALTER TABLE public.bank_info ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "bank_info_update_admin" ON public.bank_info;
-CREATE POLICY "bank_info_update_admin" ON public.bank_info FOR UPDATE TO authenticated USING (is_admin()) WITH CHECK (is_admin());
+ALTER TABLE public."bank_info" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "bank_info_update_admin" ON public."bank_info";
+CREATE POLICY "bank_info_update_admin" ON public."bank_info" FOR UPDATE TO authenticated USING (is_admin()) WITH CHECK (is_admin());
 
 -- Política para: bank_info
-ALTER TABLE public.bank_info ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "bank_info_delete_admin" ON public.bank_info;
-CREATE POLICY "bank_info_delete_admin" ON public.bank_info FOR DELETE TO authenticated USING (is_admin());
+ALTER TABLE public."bank_info" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "bank_info_delete_admin" ON public."bank_info";
+CREATE POLICY "bank_info_delete_admin" ON public."bank_info" FOR DELETE TO authenticated USING (is_admin());
 
 -- Política para: routes
-ALTER TABLE public.routes ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "routes_select_all" ON public.routes;
-CREATE POLICY "routes_select_all" ON public.routes FOR SELECT TO authenticated USING (true);
+ALTER TABLE public."routes" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "routes_select_all" ON public."routes";
+CREATE POLICY "routes_select_all" ON public."routes" FOR SELECT TO authenticated USING (true);
 
 -- Política para: routes
-ALTER TABLE public.routes ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "routes_insert_admin" ON public.routes;
-CREATE POLICY "routes_insert_admin" ON public.routes FOR INSERT TO authenticated USING (null) WITH CHECK (is_admin());
+ALTER TABLE public."routes" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "routes_insert_admin" ON public."routes";
+CREATE POLICY "routes_insert_admin" ON public."routes" FOR INSERT TO authenticated WITH CHECK (is_admin());
 
 -- Política para: routes
-ALTER TABLE public.routes ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "routes_update_admin" ON public.routes;
-CREATE POLICY "routes_update_admin" ON public.routes FOR UPDATE TO authenticated USING (is_admin()) WITH CHECK (is_admin());
+ALTER TABLE public."routes" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "routes_update_admin" ON public."routes";
+CREATE POLICY "routes_update_admin" ON public."routes" FOR UPDATE TO authenticated USING (is_admin()) WITH CHECK (is_admin());
 
 -- Política para: routes
-ALTER TABLE public.routes ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "routes_delete_admin" ON public.routes;
-CREATE POLICY "routes_delete_admin" ON public.routes FOR DELETE TO authenticated USING (is_admin());
+ALTER TABLE public."routes" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "routes_delete_admin" ON public."routes";
+CREATE POLICY "routes_delete_admin" ON public."routes" FOR DELETE TO authenticated USING (is_admin());
 
 -- Política para: route_horarios
-ALTER TABLE public.route_horarios ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "route_horarios_select_all" ON public.route_horarios;
-CREATE POLICY "route_horarios_select_all" ON public.route_horarios FOR SELECT TO authenticated USING (true);
+ALTER TABLE public."route_horarios" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "route_horarios_select_all" ON public."route_horarios";
+CREATE POLICY "route_horarios_select_all" ON public."route_horarios" FOR SELECT TO authenticated USING (true);
 
 -- Política para: route_horarios
-ALTER TABLE public.route_horarios ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "route_horarios_insert_admin" ON public.route_horarios;
-CREATE POLICY "route_horarios_insert_admin" ON public.route_horarios FOR INSERT TO authenticated USING (null) WITH CHECK (is_admin());
+ALTER TABLE public."route_horarios" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "route_horarios_insert_admin" ON public."route_horarios";
+CREATE POLICY "route_horarios_insert_admin" ON public."route_horarios" FOR INSERT TO authenticated WITH CHECK (is_admin());
 
 -- Política para: route_horarios
-ALTER TABLE public.route_horarios ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "route_horarios_delete_admin" ON public.route_horarios;
-CREATE POLICY "route_horarios_delete_admin" ON public.route_horarios FOR DELETE TO authenticated USING (is_admin());
+ALTER TABLE public."route_horarios" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "route_horarios_delete_admin" ON public."route_horarios";
+CREATE POLICY "route_horarios_delete_admin" ON public."route_horarios" FOR DELETE TO authenticated USING (is_admin());
 
 -- >>> TRIGGERS <<<
 
--- Trigger: on_auth_user_created sobre users
-DROP TRIGGER IF EXISTS on_auth_user_created ON users;
-CREATE TRIGGER on_auth_user_created AFTER INSERT ON users FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+-- Trigger: on_auth_user_created sobre auth.users
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth."users";
+CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth."users" FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
