@@ -49,7 +49,7 @@ checksum_cmd() {
 # ── Build ─────────────────────────────────────────────────────
 echo "→ Building project…"
 BUILD_HASH=$(date +%s | md5sum 2>/dev/null | head -c 8 || date +%s | md5 2>/dev/null | head -c 8 || date +%s | shasum -a 256 | head -c 8)
-VITE_BUILD_HASH="$BUILD_HASH" npm run build
+VITE_BUILD_HASH="$BUILD_HASH" npm run build -- --mode=production
 echo "{\"version\":\"$BUILD_HASH\",\"builtAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > dist/version.json
 
 echo "→ Ensuring remote directory exists…"
