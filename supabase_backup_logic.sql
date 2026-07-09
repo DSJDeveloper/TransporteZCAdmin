@@ -1,6 +1,6 @@
 -- =====================================================
 -- BACKUP: LÓGICA DE SERVIDOR (VISTAS, RPC, RLS, TRIGGERS)
--- Fecha: 2026-06-23T20:08:55.044Z
+-- Fecha: 2026-06-29T14:42:49.738Z
 -- =====================================================
 
 -- >>> VISTAS <<<
@@ -573,7 +573,7 @@ BEGIN
     'code', h.code,
     'shudle', h.shudle,
     'status', h.status
-  ) ORDER BY h.code) INTO v_data
+  ) ORDER BY h.shudle::time asc) INTO v_data
   FROM public.route_horarios rh
   INNER JOIN public.horario h ON h.id = rh.idhorario
   WHERE rh.idroute = p_idroute;
@@ -607,36 +607,6 @@ BEGIN
     FROM public.units u
     LEFT JOIN public.routes r ON r.id = u.idroute
     WHERE u.status = 1;
-
-    RETURN json_build_object(
-        'success', true,
-        'data', COALESCE(v_data, '[]'::json)
-    );
-END;
-$function$
-;
-
--- Función: get_route_horarios
-CREATE OR REPLACE FUNCTION public.get_route_horarios(p_idroute bigint)
- RETURNS json
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-DECLARE
-    v_data JSON;
-BEGIN
-    IF auth.role() <> 'authenticated' THEN
-        RETURN json_build_object('success', false, 'message', 'No autorizado.');
-    END IF;
-
-    SELECT json_agg(json_build_object(
-        'id', h.id,
-        'code', h.code,
-        'shudle', h.shudle
-    ) ORDER BY h.code) INTO v_data
-    FROM public.route_horarios rh
-    INNER JOIN public.horario h ON h.id = rh.idhorario
-    WHERE rh.idroute = p_idroute AND h.status = 0;
 
     RETURN json_build_object(
         'success', true,
@@ -778,6 +748,36 @@ EXCEPTION WHEN OTHERS THEN
         'message', 'Lote cancelado (Rollback ejecutado): ' || SQLERRM,
         'processed_records', 0,
         'details', '[]'::json
+    );
+END;
+$function$
+;
+
+-- Función: get_route_horarios
+CREATE OR REPLACE FUNCTION public.get_route_horarios(p_idroute bigint)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+    v_data JSON;
+BEGIN
+    IF auth.role() <> 'authenticated' THEN
+        RETURN json_build_object('success', false, 'message', 'No autorizado.');
+    END IF;
+
+    SELECT json_agg(json_build_object(
+        'id', h.id,
+        'code', h.code,
+        'shudle', h.shudle
+    ) ORDER BY h.shudle::time asc) INTO v_data
+    FROM public.route_horarios rh
+    INNER JOIN public.horario h ON h.id = rh.idhorario
+    WHERE rh.idroute = p_idroute AND h.status = 0;
+
+    RETURN json_build_object(
+        'success', true,
+        'data', COALESCE(v_data, '[]'::json)
     );
 END;
 $function$
@@ -1146,79 +1146,6 @@ END;
 $function$
 ;
 
--- Función: get_client_history
-CREATE OR REPLACE FUNCTION public.get_client_history(p_client_id integer, p_from timestamp without time zone, p_to timestamp without time zone, p_status integer DEFAULT NULL::integer)
- RETURNS json
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-declare
-  v_recharges json;
-  v_transactions json;
-  v_total_transactions numeric(10,2); 
-begin
-
-  -- 1. CONSULTA DE RECARGAS (Optimizada y Blindada)
-  select json_agg(t) into v_recharges 
-  from (
-    select 
-      id, 
-      idclient, 
-      method, 
-      ref, 
-      picture, 
-      amount, 
-      tasa, 
-      date, 
-      status, 
-      tickets,
-      "createBy", 
-      "createAt" AS created_at_formatted -- Le damos un alias plano sin comillas para el frontend
-    from public.recharge 
-    where idclient = p_client_id 
-      -- Forzamos a Postgres a comparar como Timestamps puros sin importar zonas horarias
-      and "createAt"::timestamp >= p_from::timestamp 
-      and "createAt"::timestamp <= p_to::timestamp 
-      and (p_status is null or status = p_status) -- Cambiado <= por = para ser exactos con el entero
-    order by id desc
-  ) t;
-  
-  -- 2. CONSULTA DE TRANSACCIONES
-  select json_agg(t) into v_transactions 
-  from (
-    SELECT 
-      t.*,
-      c.name AS client_name
-    FROM public.transactions t
-    LEFT JOIN public.clients c ON t.idclient = c.id 
-    WHERE t.idclient = p_client_id 
-      AND t.created_at::timestamp >= p_from::timestamp 
-      AND t.created_at::timestamp <= p_to::timestamp
-      AND (p_status IS NULL OR t.status = p_status) -- Descomentado y adaptado con el alias 't.'
-    ORDER BY t.id DESC
-    -- select * from public.transactions 
-    -- where idclient = p_client_id 
-    --   and created_at::timestamp >= p_from::timestamp 
-    --   and created_at::timestamp <= p_to::timestamp 
-    -- order by id desc
-  ) t;
-
-  -- 3. SUMATORIA
-  select coalesce(sum(amount), 0.00) into v_total_transactions
-  from public.transactions
-  where idclient = p_client_id 
-    and created_at::timestamp >= p_from::timestamp 
-    and created_at::timestamp <= p_to::timestamp;
-  
-  return json_build_object(
-    'recharges', coalesce(v_recharges, '[]'::json), 
-    'transactions', coalesce(v_transactions, '[]'::json),
-    'total_transactions_amount', v_total_transactions
-  );
-end;
-$function$
-;
-
 -- Función: manage_career
 CREATE OR REPLACE FUNCTION public.manage_career(p_action character varying, p_id bigint DEFAULT NULL::bigint, p_code character varying DEFAULT NULL::character varying, p_description character varying DEFAULT NULL::character varying, p_status integer DEFAULT NULL::integer)
  RETURNS json
@@ -1271,6 +1198,78 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
     RETURN json_build_object('success', false, 'message', 'Error: ' || SQLERRM);
 END;
+$function$
+;
+
+-- Función: get_client_history
+CREATE OR REPLACE FUNCTION public.get_client_history(p_client_id integer, p_from timestamp without time zone, p_to timestamp without time zone, p_status integer DEFAULT NULL::integer)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+declare
+  v_recharges json;
+  v_transactions json;
+  v_total_transactions numeric(10,2);
+begin
+
+  -- 1. CONSULTA DE RECARGAS
+  select json_agg(t) into v_recharges
+  from (
+    select
+      id,
+      idclient,
+      method,
+      ref,
+      picture,
+      amount,
+      tasa,
+      date,
+      status,
+      tickets,
+      "createBy",
+      "createAt" AS created_at_formatted
+    from public.recharge
+    where idclient = p_client_id
+      and "createAt"::timestamp >= p_from::timestamp
+      and "createAt"::timestamp <= p_to::timestamp
+      and (p_status is null or status = p_status)
+    order by id desc
+  ) t;
+
+  -- 2. CONSULTA DE TRANSACCIONES
+  select json_agg(t) into v_transactions
+  from (
+    SELECT
+      t.*,
+      c.name AS client_name,
+      r.description as route_name,
+      u.name as unit_name
+    FROM public.transactions t
+    LEFT JOIN public.clients c ON t.idclient = c.id
+    LEFT JOIN public.routes r on t.idroute= r.id
+    LEFT JOIN public.units u on t.idunit= u.id
+    WHERE t.idclient = p_client_id
+      AND t.created_at::timestamp >= p_from::timestamp
+      AND t.created_at::timestamp <= p_to::timestamp
+      AND (p_status IS NULL OR t.status = p_status)
+    ORDER BY t.id DESC
+  ) t;
+
+  -- 3. SUMATORIA (se mantiene para compatibilidad, pero frontend ya no lo usa como balance)
+  select coalesce(sum(amount), 0.00) into v_total_transactions
+  from public.transactions
+  where idclient = p_client_id
+    and created_at::timestamp >= p_from::timestamp
+    and created_at::timestamp <= p_to::timestamp;
+
+  return json_build_object(
+    'recharges', coalesce(v_recharges, '[]'::json),
+    'transactions', coalesce(v_transactions, '[]'::json),
+    'total_transactions_amount', v_total_transactions,
+    'current_balance', (SELECT balance FROM public.clients WHERE id = p_client_id)
+  );
+end;
 $function$
 ;
 
@@ -3299,6 +3298,49 @@ EXCEPTION WHEN OTHERS THEN
     RETURN json_build_object('success', false, 'message', 'Error en manage_unit: ' || SQLERRM);
 END;
 $function$
+;
+
+-- Función: add_tickets_to_client
+CREATE OR REPLACE FUNCTION public.add_tickets_to_client(p_idclient integer, p_ticket_count integer, p_create_by integer)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$DECLARE
+    v_client_name VARCHAR(255);
+    v_current_balance NUMERIC(10,2);
+    v_new_balance NUMERIC(10,2);
+    v_tx_uid VARCHAR(255);
+BEGIN
+    IF NOT public.is_admin() THEN
+        RETURN json_build_object('success', false, 'message', 'Solo administradores pueden realizar esta operacion.');
+    END IF;
+
+    IF p_ticket_count IS NULL OR p_ticket_count <= 0 THEN
+        RETURN json_build_object('success', false, 'message', 'La cantidad de tickets debe ser mayor a cero.');
+    END IF;
+
+    SELECT name, balance INTO v_client_name, v_current_balance
+    FROM public.clients WHERE id = p_idclient
+    FOR UPDATE;
+
+    IF v_client_name IS NULL THEN
+        RETURN json_build_object('success', false, 'message', 'El cliente no existe.');
+    END IF;
+
+    v_new_balance := v_current_balance + p_ticket_count;
+
+    UPDATE public.clients SET balance = v_new_balance WHERE id = p_idclient;
+
+    v_tx_uid := TO_CHAR(NOW(), 'YYMMDDHH24MISS') || FLOOR(RANDOM() * 100)::TEXT || '0';
+
+    INSERT INTO public.transactions (uid, idclient, "createBy", amount, status, shedule, "newBalanceClient", created_at,idunit)
+    VALUES (v_tx_uid, p_idclient, p_create_by, p_ticket_count::NUMERIC(10,2), 0, 'Asignación', v_new_balance, NOW(),0);
+
+    RETURN json_build_object('success', true, 'message', 'Tickets agregados correctamente.', 'new_balance', v_new_balance);
+
+EXCEPTION WHEN OTHERS THEN
+    RETURN json_build_object('success', false, 'message', 'Error al agregar tickets: ' || SQLERRM);
+END;$function$
 ;
 
 -- >>> POLÍTICAS DE SEGURIDAD (RLS) <<<

@@ -40,6 +40,7 @@ export interface Movimiento {
   date: string;
   idunit: number;
   shedule: string | null;
+  unit_name: string | null;
   newBalanceClient: number | null;
   method: string | null;
   ref: string | null;
@@ -127,11 +128,11 @@ export const ticketsService = {
         created_at: r.created_at_formatted,
         idunit: 0,
         shedule: null,
+        unit_name:null,
         isRecharge: true,
         newBalanceClient: null,
       }),
     );
-
     const transactions = (data.transactions || []).map(
       (t: any): Movimiento => ({
         id: t.id,
@@ -145,8 +146,9 @@ export const ticketsService = {
         createBy: t.createBy,
         created_at: t.created_at,
         client: t.client,
+        unit_name:t.unit_name,
         idunit: 0,
-        shedule: null,
+        shedule: t.shedule,
         method: null,
         ref: null,
         isRecharge: false,
@@ -272,6 +274,7 @@ export const ticketsService = {
         created_at: t.created_at,
         idunit: 0,
         client: t.client_name,
+        unit_name:t.unit_name,
         shedule: null,
         method: null,
         ref: null,

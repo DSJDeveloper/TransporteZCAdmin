@@ -317,7 +317,7 @@ async function doDeductTickets() {
       {
         client_uid: payload.client.uid,
         ticket_count: payload.count,
-        shedule: "Manual",
+        shedule: "Deducción",
       },
     ])
     if (ok) {
@@ -471,7 +471,7 @@ onMounted(async () => {
                       <span class="font-body-md font-semibold text-on-surface">{{ c.name }}</span>
                       <span v-if="c.status !== '0'"
                         class="bg-outline-variant text-on-surface-variant text-[10px] px-xs py-[2px] rounded-full font-bold">{{
-                        statusInlineLabel(c.status) }}</span>
+                          statusInlineLabel(c.status) }}</span>
                     </div>
                   </div>
                 </td>
@@ -531,7 +531,7 @@ onMounted(async () => {
                   <span class="font-bold text-on-surface">{{ c.name }}</span>
                   <span v-if="c.status !== '0'"
                     class="ml-1 bg-outline-variant text-on-surface-variant text-[10px] px-1 py-[2px] rounded-full font-bold">{{
-                    statusInlineLabel(c.status) }}</span>
+                      statusInlineLabel(c.status) }}</span>
                 </div>
               </div>
             </div>
@@ -634,7 +634,7 @@ onMounted(async () => {
       <div v-if="selectedClient" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" @click="closeMovements"></div>
         <div
-          class="relative bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant w-full max-w-3xl mx-auto p-md md:p-xl max-h-[92vh] flex flex-col">
+          class="relative bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant w-full max-w-6xl mx-auto p-md md:p-xl max-h-[92vh] flex flex-col">
           <!-- Header -->
           <div class="flex items-center justify-between mb-lg shrink-0">
             <div>
@@ -669,7 +669,7 @@ onMounted(async () => {
           <!-- Movements table -->
           <div v-else class="flex-1 overflow-y-auto custom-scrollbar -mx-md md:-mx-xl">
             <table class="w-full text-left font-body-md text-body-md border-collapse">
-              <thead class="bg-surface-container-high/20 sticky top-0 z-10">
+              <thead class="bg-surface-container-high/30 sticky top-0 z-10">
                 <tr>
                   <th class="px-lg py-md font-bold text-on-surface-variant uppercase text-[11px] tracking-widest">FECHA
                   </th>
@@ -681,6 +681,12 @@ onMounted(async () => {
                   <th
                     class="px-lg py-md font-bold text-on-surface-variant uppercase text-[11px] tracking-widest text-right">
                     SALDO</th>
+                  <th class="px-lg py-md font-bold text-on-surface-variant uppercase text-[11px] tracking-widest">
+                    UNIDAD
+                  </th>
+                  <th class="px-lg py-md font-bold text-on-surface-variant uppercase text-[11px] tracking-widest">
+                    HORARIO
+                  </th>
                   <th class="px-lg py-md font-bold text-on-surface-variant uppercase text-[11px] tracking-widest">ESTADO
                   </th>
                 </tr>
@@ -698,11 +704,20 @@ onMounted(async () => {
                       {{ m.isRecharge ? "Recarga" : "Transacción" }}
                     </span>
                   </td>
-                  <td class="px-lg py-md text-right font-bold" :class="m.isRecharge ? 'text-primary' : 'text-error'">
-                    {{ m.isRecharge ? "+" : "−" }}{{ formatCurrency(Math.abs(m.amount)) }}
+                  <td class="px-lg py-md text-right font-bold"
+                    :class="m.isRecharge ? 'text-primary' : (m.shedule == 'Deducción' || m.shedule == 'Manual') ? 'text-error' : 'text-on-surface'">
+                    {{ m.isRecharge ? "+" : (m.shedule == 'Deducción' || m.shedule == 'Manual') ? "−" : "+" }}{{
+                      (Math.abs(m.amount).toFixed(2)) }}
                   </td>
                   <td class="px-lg py-md text-right text-on-surface font-bold">
-                    {{ m.newBalanceClient != null ? formatCurrency(m.newBalanceClient) : "—" }}
+                    {{ m.newBalanceClient != null ? (m.newBalanceClient.toFixed(2)) : "—" }}
+                  </td>
+                  <td class="px-lg py-md">
+                    {{ m.unit_name || "-" }}
+                  </td>
+                  
+                  <td class="px-lg py-md">
+                    {{ m.shedule || "-" }}
                   </td>
                   <td class="px-lg py-md">
                     <span class="px-sm py-1 rounded-full text-[11px] font-bold whitespace-nowrap"
@@ -1018,11 +1033,7 @@ onMounted(async () => {
       </div>
     </Teleport>
 
-    <ErrorDialog
-      :visible="errorVisible"
-      :message="errorMessage"
-      @close="errorVisible = false"
-    />
+    <ErrorDialog :visible="errorVisible" :message="errorMessage" @close="errorVisible = false" />
   </div>
 </template>
 
