@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 
-import { writeFileSync, existsSync, readFileSync,unlinkSync } from 'node:fs'
+import { writeFileSync, existsSync, readFileSync, unlinkSync, createWriteStream } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { execSync } from 'node:child_process' 
+import archiver from 'archiver'
+
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(__dirname, '..')
 
@@ -25,8 +26,8 @@ if (existsSync(envLocal)) {
   }
 }
 
-if (!process.env.SUPABASE_DB_URL_FROM) {
-  console.error('[backup] ERROR: Falta SUPABASE_DB_URL_FROM en .env.local')
+if (!process.env.SUPABASE_DB_URL) {
+  console.error('[backup] ERROR: Falta SUPABASE_DB_URL en .env.local')
   process.exit(1)
 }
 
@@ -39,7 +40,7 @@ try {
 }
 
 const client = new pg.default.Client({
-  connectionString: process.env.SUPABASE_DB_URL_FROM,
+  connectionString: process.env.SUPABASE_DB_URL,
   ssl: { rejectUnauthorized: false },
 })
 
@@ -47,7 +48,6 @@ try {
   await client.connect()
   console.log('[backup] Conectado a Supabase con éxito.')
 
-  //const targetTables = ['company', 'clients', 'users_profiles', 'recharge', 'solicitude', 'transactions', 'units','horario','']
   const { rows: tableRows } = await client.query(`
     SELECT table_name 
     FROM information_schema.tables 
@@ -63,19 +63,11 @@ try {
     SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'
   `)
   const actualExistingTables = existingTablesRows.map(r => r.table_name)
-  //const tablesToBackup = targetTables.filter(t => actualExistingTables.includes(t))
 
   // Inicializadores de contenido
   let sqlSchema = `-- BACKUP: ESTRUCTURA DE TABLAS\n\n`
   let sqlData = `-- BACKUP: DATA\n\n`
-
-  // -----------------------------------------------------
-  // ⚡ ARCHIVO 3: LÓGICA (VISTAS, RPC, RLS, TRIGGERS)
-  // -----------------------------------------------------
-  let sqlLogic = `-- =====================================================\n`
-  sqlLogic += `-- BACKUP: LÓGICA DE SERVIDOR (VISTAS, RPC, RLS, TRIGGERS)\n`
-  sqlLogic += `-- Fecha: ${new Date().toISOString()}\n`
-  sqlLogic += `-- =====================================================\n\n`
+  
   // -----------------------------------------------------
   // 🧨 LOTE DE DROP TABLES (Al inicio)
   // -----------------------------------------------------
@@ -85,7 +77,8 @@ try {
     sqlSchema += `DROP TABLE IF EXISTS public."${table}" CASCADE;\n`
   }
   sqlSchema += `\n`
-// -----------------------------------------------------
+
+  // -----------------------------------------------------
   // 🏷️ EXTRACCIÓN DE ENUMS (Tipos personalizados)
   // -----------------------------------------------------
   console.log('[backup] 🏷️ Extrayendo ENUMs...')
@@ -106,6 +99,7 @@ try {
     }
     sqlSchema += `\n`
   }
+
   // -----------------------------------------------------
   // 🔢 EXTRACCIÓN DE SECUENCIAS
   // -----------------------------------------------------
@@ -120,12 +114,12 @@ try {
   
   if (sequences.length > 0) {
     for (const seq of sequences) {
-      // Usamos comillas dobles por si hay mayúsculas en el nombre de la secuencia
       sqlSchema += `CREATE SEQUENCE IF NOT EXISTS public."${seq.sequence_name}";\n`
     }
     sqlSchema += `\n`
   }
-// -----------------------------------------------------
+
+  // -----------------------------------------------------
   // 🏗️ ARCHIVO 1: ESQUEMA (CREATE TABLE)
   // -----------------------------------------------------
   console.log('[backup] 🏗️ Extrayendo esquemas de tablas...')
@@ -134,7 +128,6 @@ try {
       SELECT 'CREATE TABLE IF NOT EXISTS public."' || table_name || '" (' || 
              string_agg(
                '"' || column_name || '" ' || 
-               -- Aquí está la corrección: si es USER-DEFINED, usamos el udt_name (el nombre de tu ENUM)
                CASE WHEN data_type = 'USER-DEFINED' THEN '"' || udt_name || '"' ELSE data_type END || 
                COALESCE('(' || character_maximum_length || ')', '') || 
                CASE WHEN is_nullable = 'NO' THEN ' NOT NULL' ELSE '' END || 
@@ -155,6 +148,41 @@ try {
       sqlSchema += rows[0].ddl + '\n\n'
     }
   }
+
+  // -----------------------------------------------------
+  // 🔄 SINCRONIZACIÓN DE SECUENCIAS (Auto-Incrementos previos)
+  // -----------------------------------------------------
+  console.log('[backup] 🔄 Generando sincronización de secuencias...')
+  sqlData += `-- >>> SINCRONIZACIÓN DE SECUENCIAS <<<\n`
+  for (const table of tablesToBackup) {
+    sqlData += `
+DO $$ 
+DECLARE 
+  max_id bigint;
+  is_ident varchar;
+  dtype varchar;
+BEGIN
+  SELECT is_identity, data_type INTO is_ident, dtype
+  FROM information_schema.columns 
+  WHERE table_schema = 'public' 
+    AND table_name = '${table}' 
+    AND column_name = 'id';
+
+  IF is_ident IS NOT NULL AND dtype IN ('integer', 'bigint', 'smallint') THEN
+    EXECUTE 'SELECT MAX("id") FROM public."${table}"' INTO max_id;
+    IF max_id IS NOT NULL THEN
+      IF is_ident = 'YES' THEN
+        EXECUTE 'ALTER TABLE public."${table}" ALTER COLUMN "id" RESTART WITH ' || (max_id + 1);
+      ELSE
+        EXECUTE 'SELECT setval(pg_get_serial_sequence(''public."${table}"'', ''id''), ' || max_id || ')';
+      END IF;
+    END IF;
+  END IF;
+END $$;\n`;
+  }
+
+  sqlData += `\nSET session_replication_role = 'origin';\n`
+
   // -----------------------------------------------------
   // 🔎 EXTRACCIÓN DE ÍNDICES
   // -----------------------------------------------------
@@ -175,52 +203,7 @@ try {
       sqlSchema += '\n'
     }
   }
-// -----------------------------------------------------
-  // 🔑 EXTRACCIÓN DE PRIMARY KEYS
-  // -----------------------------------------------------
-  console.log('[backup] 🔑 Extrayendo Primary Keys...')
-  sqlSchema += `-- >>> PRIMARY KEYS <<<\n`
-  for (const table of tablesToBackup) {
-    const { rows: pkRows } = await client.query(`
-      SELECT con.conname, pg_get_constraintdef(con.oid) as def
-      FROM pg_constraint con
-      JOIN pg_class rel ON rel.oid = con.conrelid
-      JOIN pg_namespace nsp ON nsp.oid = con.connamespace
-      WHERE nsp.nspname = 'public' 
-        AND rel.relname = $1 
-        AND con.contype = 'p'
-    `, [table])
 
-    for (const pk of pkRows) {
-      sqlSchema += `ALTER TABLE public."${table}" DROP CONSTRAINT IF EXISTS "${pk.conname}" CASCADE;\n`
-      sqlSchema += `ALTER TABLE public."${table}" ADD CONSTRAINT "${pk.conname}" ${pk.def};\n`
-    }
-  }
-  sqlSchema += `\n`
-  
-// -----------------------------------------------------
-  // 🔗 EXTRACCIÓN DE FOREIGN KEYS
-  // -----------------------------------------------------
-  console.log('[backup] 🔗 Extrayendo Foreign Keys...')
-  sqlLogic += `-- >>> FOREIGN KEYS <<<\n`
-  for (const table of tablesToBackup) {
-    const { rows: fkRows } = await client.query(`
-      SELECT con.conname, pg_get_constraintdef(con.oid) as def
-      FROM pg_constraint con
-      JOIN pg_class rel ON rel.oid = con.conrelid
-      JOIN pg_namespace nsp ON nsp.oid = con.connamespace
-      WHERE nsp.nspname = 'public' 
-        AND rel.relname = $1 
-        AND con.contype = 'f'
-    `, [table])
-
-    for (const fk of fkRows) {
-      sqlLogic += `ALTER TABLE public."${table}" DROP CONSTRAINT IF EXISTS "${fk.conname}";\n`
-      sqlLogic += `ALTER TABLE public."${table}" ADD CONSTRAINT "${fk.conname}" ${fk.def};\n`
-    }
-  }
-  sqlLogic += `\n`
-  
   // -----------------------------------------------------
   // 📦 ARCHIVO 2: DATA
   // -----------------------------------------------------
@@ -254,7 +237,7 @@ try {
           if (typeof val === 'number') return val
           return `'${String(val).replace(/'/g, "''")}'`
         }).join(', ')
-        sqlData += `INSERT INTO auth.users (${authColumns}) VALUES (${values}) ON CONFLICT DO NOTHING;\n`
+        sqlData += `INSERT INTO auth.users (${authColumns}) VALUES (${values});\n`
       }
       sqlData += `\n`
     }
@@ -290,7 +273,7 @@ try {
           if (typeof val === 'number') return val
           return `'${String(val).replace(/'/g, "''")}'`
         }).join(', ')
-        sqlData += `INSERT INTO auth.identities (${identityColumns}) VALUES (${values}) ON CONFLICT DO NOTHING;\n`
+        sqlData += `INSERT INTO auth.identities (${identityColumns}) VALUES (${values});\n`
       }
       sqlData += `\n`
     }
@@ -300,11 +283,10 @@ try {
   }
 
   // =====================================================
-  // 🔄 EXTRACCIÓN DE TABLAS PUBLIC (Bucle Unificado y Corregido)
+  // 🔄 EXTRACCIÓN DE TABLAS PUBLIC
   // =====================================================
   for (const table of tablesToBackup) {
     sqlData += `-- Data para: public."${table}"\n`
-    // Se agregan las comillas dobles al table_name
     sqlData += `TRUNCATE TABLE public."${table}" RESTART IDENTITY CASCADE;\n`
 
     const { rows } = await client.query(`SELECT * FROM public."${table}"`)
@@ -323,7 +305,7 @@ try {
         if (typeof val === 'number') return val
         return `'${String(val).replace(/'/g, "''")}'`
       }).join(', ')
-      sqlData += `INSERT INTO public."${table}" (${columns}) VALUES (${values}) ON CONFLICT DO NOTHING;\n`
+      sqlData += `INSERT INTO public."${table}" (${columns}) VALUES (${values});\n`
     }
     sqlData += `\n`
   }
@@ -362,11 +344,15 @@ END $$;\n`;
 
   sqlData += `\nSET session_replication_role = 'origin';\n`
 
-  
+  // -----------------------------------------------------
+  // ⚡ ARCHIVO 3: LÓGICA (VISTAS, RPC, RLS, TRIGGERS)
+  // -----------------------------------------------------
+  let sqlLogic = `-- =====================================================\n`
+  sqlLogic += `-- BACKUP: LÓGICA DE SERVIDOR (VISTAS, RPC, RLS, TRIGGERS)\n`
+  sqlLogic += `-- Fecha: ${new Date().toISOString()}\n`
+  sqlLogic += `-- =====================================================\n\n`
 
-  // -----------------------------------------------------
-  // 👁️ EXPORTAR VISTAS (VIEWS)
-  // -----------------------------------------------------
+  // 👁️ VISTAS
   console.log('[backup] 👁️ Extrayendo Vistas...')
   sqlLogic += `-- >>> VISTAS <<<\n\n`
   const { rows: views } = await client.query(`
@@ -379,9 +365,7 @@ END $$;\n`;
     sqlLogic += `CREATE OR REPLACE VIEW public."${v.table_name}" AS \n${v.view_definition};\n\n`
   }
 
-  // -----------------------------------------------------
-  // ⚡ EXPORTAR FUNCIONES / RPC
-  // -----------------------------------------------------
+  // ⚡ FUNCIONES / RPC
   console.log('[backup] ⚡ Extrayendo Funciones y RPCs...')
   sqlLogic += `-- >>> FUNCIONES / RPC <<<\n\n`
   const { rows: functions } = await client.query(`
@@ -396,9 +380,7 @@ END $$;\n`;
     sqlLogic += `${fn.definition};\n\n`
   }
 
-  // -----------------------------------------------------
-  // 🛡️ EXPORTAR POLÍTICAS RLS
-  // -----------------------------------------------------
+  // 🛡️ POLÍTICAS RLS
   console.log('[backup] 🛡️ Extrayendo Políticas RLS...')
   sqlLogic += `-- >>> POLÍTICAS DE SEGURIDAD (RLS) <<<\n\n`
   const { rows: policies } = await client.query(`
@@ -420,9 +402,7 @@ END $$;\n`;
     sqlLogic += policyStatement + `;\n\n`;
   }
 
-  // -----------------------------------------------------
-  // ⚙️ EXPORTAR TRIGGERS
-  // -----------------------------------------------------
+  // ⚙️ TRIGGERS
   console.log('[backup] ⚙️ Extrayendo Triggers activos...')
   sqlLogic += `-- >>> TRIGGERS <<<\n\n`
   const { rows: triggers } = await client.query(`
@@ -442,41 +422,57 @@ END $$;\n`;
   }
 
   // -----------------------------------------------------
-  // 💾 ESCRITURA FISICA
+  // 💾 ESCRITURA FÍSICA Y COMPRESIÓN EN UN SOLO .ZIP
   // -----------------------------------------------------
   const schemaPath = resolve(ROOT, 'supabase_backup_schema.sql')
   const dataPath = resolve(ROOT, 'supabase_backup_data.sql')
   const logicPath = resolve(ROOT, 'supabase_backup_logic.sql')
+
   writeFileSync(schemaPath, sqlSchema, 'utf-8')
   writeFileSync(dataPath, sqlData, 'utf-8')
   writeFileSync(logicPath, sqlLogic, 'utf-8')
 
-  console.log('✅ ¡Proceso ge generacion finalizado!')
+  console.log('[backup] 🗜️ Comprimiendo archivos en formato .zip...')
+  
+  const zipName = `supabase_backup_${new Date().toISOString().slice(0, 10)}.zip`
+  const outputFilePath = resolve(ROOT, zipName)
+
+  await new Promise((resolvePromise, reject) => {
+    const output = createWriteStream(outputFilePath)
+    const archive = archiver('zip', { zlib: { level: 9 } })
+
+    output.on('close', () => {
+      console.log(`[backup] 📦 Respaldo comprimido con éxito: ${zipName} (${archive.pointer()} bytes)`)
+      
+      // Limpiar archivos .sql sueltos, dejando solo el .zip
+      try {
+        unlinkSync(schemaPath)
+        unlinkSync(dataPath)
+        unlinkSync(logicPath)
+        console.log('[backup] 🧹 Archivos temporales .sql eliminados.')
+      } catch (e) {
+        console.error('[backup] ⚠️ No se pudieron limpiar los archivos temporales:', e)
+      }
+
+      resolvePromise()
+    })
+
+    archive.on('error', (err) => {
+      reject(err)
+    })
+
+    archive.pipe(output)
+
+    archive.file(schemaPath, { name: 'supabase_backup_schema.sql' })
+    archive.file(dataPath, { name: 'supabase_backup_data.sql' })
+    archive.file(logicPath, { name: 'supabase_backup_logic.sql' })
+
+    archive.finalize()
+  })
+
+  console.log('✅ ¡Proceso finalizado!')
 } catch (err) {
-  console.error(err)
+  console.error('[backup] ❌ ERROR:', err)
 } finally {
   await client.end()
 }
-
-console.log('[backup] 🗜️ Aplicando máxima compresión nativa (XZ)...')
-  
-  const archiveName = `supabase_backup_${new Date().toISOString().slice(0, 10)}.tar.xz`
-  
-  const archivePath = resolve(ROOT, archiveName)
-
-  try {
-    // La bandera -J usa compresión xz nativa de Linux.
-    // XZ_OPT=-9 le indica que use el nivel máximo de compresión disponible.
-    //execSync(`XZ_OPT=-9 tar -cJf "${archivePath}" -C "${ROOT}" supabase_backup_schema.sql supabase_backup_data.sql supabase_backup_logic.sql`, { stdio: 'inherit' })
-    //execSync(`GZIP=-9 tar -czf "${archivePath}" -C "${ROOT}" supabase_backup_schema.sql supabase_backup_data.sql supabase_backup_logic.sql`, { stdio: 'inherit' })
-    //execSync(`tar -cz9f "${archivePath}" -C "${ROOT}" supabase_backup_schema.sql supabase_backup_data.sql supabase_backup_logic.sql`, { stdio: 'inherit' })
-    execSync(`tar -cJ9f "${archivePath}" -C "${ROOT}" supabase_backup_schema.sql supabase_backup_data.sql supabase_backup_logic.sql`, { stdio: 'inherit' })
-    // Limpiamos los archivos .sql sueltos del directorio
-    unlinkSync(schemaPath)
-    unlinkSync(dataPath)
-    unlinkSync(logicPath)
-    
-    console.log(`[backup] 📦 Respaldo ultra-comprimido creado con éxito: ${archiveName}`)
-  } catch (err) {
-    console.error('[backup] ❌ Error al comprimir con XZ:', err.message)
-  }

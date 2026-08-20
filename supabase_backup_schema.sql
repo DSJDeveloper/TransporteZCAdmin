@@ -70,3 +70,29 @@ CREATE UNIQUE INDEX user_routes_user_id_idroute_key ON public.user_routes USING 
 CREATE INDEX idx_transactions_client_date ON public.transactions USING btree (idclient, created_at);
 CREATE INDEX idx_transactions_idroute ON public.transactions USING btree (idroute);
 
+-- >>> PRIMARY KEYS <<<
+ALTER TABLE public."clients" DROP CONSTRAINT IF EXISTS "clients_pkey" CASCADE;
+ALTER TABLE public."clients" ADD CONSTRAINT "clients_pkey" PRIMARY KEY (id);
+ALTER TABLE public."units" DROP CONSTRAINT IF EXISTS "units_pkey" CASCADE;
+ALTER TABLE public."units" ADD CONSTRAINT "units_pkey" PRIMARY KEY (id);
+ALTER TABLE public."route_horarios" DROP CONSTRAINT IF EXISTS "route_horarios_pkey" CASCADE;
+ALTER TABLE public."route_horarios" ADD CONSTRAINT "route_horarios_pkey" PRIMARY KEY (id);
+ALTER TABLE public."recharge" DROP CONSTRAINT IF EXISTS "recharge_pkey" CASCADE;
+ALTER TABLE public."recharge" ADD CONSTRAINT "recharge_pkey" PRIMARY KEY (id);
+ALTER TABLE public."company" DROP CONSTRAINT IF EXISTS "company_pkey" CASCADE;
+ALTER TABLE public."company" ADD CONSTRAINT "company_pkey" PRIMARY KEY (id);
+ALTER TABLE public."profiles" DROP CONSTRAINT IF EXISTS "profiles_pkey" CASCADE;
+ALTER TABLE public."profiles" ADD CONSTRAINT "profiles_pkey" PRIMARY KEY (id);
+ALTER TABLE public."user_routes" DROP CONSTRAINT IF EXISTS "user_routes_pkey" CASCADE;
+ALTER TABLE public."user_routes" ADD CONSTRAINT "user_routes_pkey" PRIMARY KEY (id);
+ALTER TABLE public."horario" DROP CONSTRAINT IF EXISTS "horario_pkey" CASCADE;
+ALTER TABLE public."horario" ADD CONSTRAINT "horario_pkey" PRIMARY KEY (id);
+ALTER TABLE public."transactions" DROP CONSTRAINT IF EXISTS "transactions_pkey" CASCADE;
+ALTER TABLE public."transactions" ADD CONSTRAINT "transactions_pkey" PRIMARY KEY (id);
+ALTER TABLE public."solicitude" DROP CONSTRAINT IF EXISTS "solicitude_pkey" CASCADE;
+ALTER TABLE public."solicitude" ADD CONSTRAINT "solicitude_pkey" PRIMARY KEY (id);
+ALTER TABLE public."routes" DROP CONSTRAINT IF EXISTS "routes_pkey" CASCADE;
+ALTER TABLE public."routes" ADD CONSTRAINT "routes_pkey" PRIMARY KEY (id);
+ALTER TABLE public."bank_info" DROP CONSTRAINT IF EXISTS "bank_info_pkey" CASCADE;
+ALTER TABLE public."bank_info" ADD CONSTRAINT "bank_info_pkey" PRIMARY KEY (id);
+
