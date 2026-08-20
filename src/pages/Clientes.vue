@@ -14,8 +14,10 @@ import { useDialog } from "../composables/useDialog"
 import ConfirmDialog from "../components/ConfirmDialog.vue"
 import DetalleRecargaModal from "../components/DetalleRecargaModal.vue"
 import ErrorDialog from "../components/ErrorDialog.vue"
-import { getRechargeById, type Recharge } from "../services/rechargeService"
+import { getRechargeById, processRechargeStatus, type Recharge } from "../services/rechargeService"
+import { useToast } from "primevue/usetoast"
 import Select from "primevue/select"
+import Toast from "primevue/toast"
 
 const ticketStore = useTicketStore()
 const auth = useAuthStore()
@@ -157,7 +159,19 @@ function movementStatusLabel(status: number): string {
   if (status === 3) return "Rechazado"
   return "Desconocido"
 }
+function rechargeStatusLabel(status: number): string {
 
+  if (status === 0 ) return "Pendiente"
+  if (status === 1) return "Aprobada"
+  if (status === 3) return "Rechazado"
+  return "Desconocido"
+}
+
+function rechargeStatusClass(status: number): string {
+   if (status === 0) return "bg-amber-100 text-amber-800"
+  if (status === 1) return "bg-tertiary-container/20 text-tertiary-container"
+  return "bg-error-container text-on-error-container"
+}
 function movementStatusClass(status: number): string {
   if (status === 0 || status === 1) return "bg-tertiary-fixed text-on-tertiary-fixed"
   if (status === 2) return "bg-primary-container/30 text-primary"
@@ -178,6 +192,54 @@ async function openRechargeDetail(m: Movimiento) {
   } catch (err) {
     console.error("Error fetching recharge detail:", err)
   }
+}
+
+const toast = useToast()
+const processingId = ref<number | null>(null)
+const confirmAction = useDialog<{ recharge: Recharge; action: "approve" | "reject" }>()
+
+async function refreshMovements() {
+  if (!selectedClient.value) return
+  try {
+    const result = await ticketsService.getMovimientosUnificado(selectedClient.value.id)
+    movements.value = result.history.slice(0, movementsLimit)
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+async function handleRechargeAction(r: Recharge, action: "approve" | "reject") {
+  if (processingId.value) return
+  processingId.value = r.id
+  try {
+    const userName = auth.user?.name ?? "Admin"
+    await processRechargeStatus(r.id, action, userName)
+    toast.add({
+      severity: action === "approve" ? "success" : "warn",
+      summary: action === "approve" ? "Aprobada" : "Rechazada",
+      detail: `Recarga #${r.id} ${action === "approve" ? "aprobada" : "rechazada"} correctamente.`,
+      life: 3000,
+    })
+    detailVisible.value = false
+    detailRecharge.value = null
+    await refreshMovements()
+  } catch (err: any) {
+    toast.add({
+      severity: "error",
+      summary: "Error",
+      detail: err?.message ?? "No se pudo procesar la recarga.",
+      life: 4000,
+    })
+  } finally {
+    processingId.value = null
+  }
+}
+
+async function handleConfirmAction() {
+  const payload = confirmAction.data.value
+  if (!payload) return
+  await handleRechargeAction(payload.recharge, payload.action)
+  confirmAction.close()
 }
 
 const deleting = ref<Client | null>(null)
@@ -740,8 +802,8 @@ onMounted(async () => {
                   </td>
                   <td class="px-lg py-md">
                     <span class="px-sm py-1 rounded-full text-[11px] font-bold whitespace-nowrap"
-                      :class="movementStatusClass(m.status)">
-                      {{ movementStatusLabel(m.status) }}
+                      :class="m.isRecharge ? rechargeStatusClass(m.status) : movementStatusClass(m.status)">
+                      {{ m.isRecharge ? rechargeStatusLabel(m.status) : movementStatusLabel(m.status) }}
                     </span>
                   </td>
                   <td class="px-lg py-md text-center">
@@ -766,8 +828,8 @@ onMounted(async () => {
                     {{ m.isRecharge ? "Recarga" : "Transacción" }}
                   </span>
                   <span class="px-sm py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap"
-                    :class="movementStatusClass(m.status)">
-                    {{ movementStatusLabel(m.status) }}
+                    :class="m.isRecharge ? rechargeStatusClass(m.status) : movementStatusClass(m.status)">
+                    {{ m.isRecharge ? rechargeStatusLabel(m.status) : movementStatusLabel(m.status) }}
                   </span>
                 </div>
 
@@ -1113,9 +1175,24 @@ onMounted(async () => {
       </div>
     </Teleport>
 
-    <DetalleRecargaModal v-model:visible="detailVisible" :recharge="detailRecharge" :show-actions="false" />
+    <DetalleRecargaModal v-model:visible="detailVisible" :recharge="detailRecharge"
+      @approve="(r) => confirmAction.open({ recharge: r, action: 'approve' })"
+      @reject="(r) => confirmAction.open({ recharge: r, action: 'reject' })" />
 
     <ErrorDialog :visible="errorVisible" :message="errorMessage" @close="errorVisible = false" />
+
+    <ConfirmDialog
+      :visible="confirmAction.visible.value"
+      :title="confirmAction.data.value?.action === 'approve' ? 'Aprobar Recarga' : 'Rechazar Recarga'"
+      :message="`¿Está seguro de <strong>${confirmAction.data.value?.action === 'approve' ? 'aprobar' : 'rechazar'}</strong> la recarga <strong>#${confirmAction.data.value?.recharge.id ?? ''}</strong> de <strong>${confirmAction.data.value?.recharge.clients?.name ?? ''}</strong>?`"
+      :confirm-label="confirmAction.data.value?.action === 'approve' ? 'Sí, aprobar' : 'Sí, rechazar'"
+      :variant="confirmAction.data.value?.action === 'approve' ? 'primary' : 'danger'"
+      :loading="processingId !== null"
+      @confirm="handleConfirmAction"
+      @cancel="confirmAction.close"
+    />
+
+    <Toast position="top-right" />
   </div>
 </template>
 
