@@ -58,6 +58,11 @@ remote "mkdir -p $REMOTE_PATH"
 echo "→ Uploading dist files…"
 rsync -avz --delete -e "$RSYNC_SSH" "$LOCAL_DIST/" "$SSH_DEST:$REMOTE_PATH/"
 
+# ── Set remote permissions ────────────────────────────────────
+echo "→ Setting remote permissions for nginx…"
+remote "sudo chown -R www-data:www-data '$REMOTE_PATH' && \
+        sudo find '$REMOTE_PATH' -type d -exec chmod 755 {} + && \
+        sudo find '$REMOTE_PATH' -type f -exec chmod 644 {} +"
 # ── Render nginx config ──────────────────────────────────────
 TMP_CONF=$(mktemp)
 trap 'rm -f "$TMP_CONF"' EXIT
