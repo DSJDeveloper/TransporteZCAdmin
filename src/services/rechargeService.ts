@@ -40,6 +40,7 @@ export interface RechargeFilters {
   dateFrom?: string | null
   dateTo?: string | null
   method?: string | null
+  search?: string | null
 }
 
 export async function getRecharges(
@@ -58,6 +59,7 @@ export async function getRecharges(
     p_method: filters?.method ?? null,
     p_sort_field: sortField ?? "id",
     p_sort_order: sortAsc !== undefined ? (sortAsc ? "ASC" : "DESC") : "DESC",
+    p_search: filters?.search ?? null,
   })
   if (error) throw error
   const result = raw as unknown as PaginatedResult
@@ -83,4 +85,10 @@ export async function processRechargeStatus(
   if (error) throw error
   const result = raw as unknown as RpcResult
   if (!result.success) throw new Error(result.message ?? "Error al procesar la recarga")
+}
+
+export async function getRechargeById(id: number): Promise<Recharge | null> {
+  const { data, error } = await supabase.rpc("get_recharge_by_id", { p_id: id })
+  if (error) throw error
+  return (data as Recharge | null) ?? null
 }

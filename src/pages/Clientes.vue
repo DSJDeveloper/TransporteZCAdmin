@@ -12,7 +12,9 @@ import type { Movimiento } from "../services/ticketsService"
 import { formatDateTime, formatCurrency } from "../utils/formatters"
 import { useDialog } from "../composables/useDialog"
 import ConfirmDialog from "../components/ConfirmDialog.vue"
+import DetalleRecargaModal from "../components/DetalleRecargaModal.vue"
 import ErrorDialog from "../components/ErrorDialog.vue"
+import { getRechargeById, type Recharge } from "../services/rechargeService"
 import Select from "primevue/select"
 
 const ticketStore = useTicketStore()
@@ -160,6 +162,22 @@ function movementStatusClass(status: number): string {
   if (status === 0 || status === 1) return "bg-tertiary-fixed text-on-tertiary-fixed"
   if (status === 2) return "bg-primary-container/30 text-primary"
   return "bg-error-container/30 text-error"
+}
+
+const detailRecharge = ref<Recharge | null>(null)
+const detailVisible = ref(false)
+
+async function openRechargeDetail(m: Movimiento) {
+  if (!m.isRecharge) return
+  try {
+    const r = await getRechargeById(m.id)
+    if (r) {
+      detailRecharge.value = r
+      detailVisible.value = true
+    }
+  } catch (err) {
+    console.error("Error fetching recharge detail:", err)
+  }
 }
 
 const deleting = ref<Client | null>(null)
@@ -666,9 +684,9 @@ onMounted(async () => {
             <p class="ml-2">Sin movimientos registrados</p>
           </div>
 
-          <!-- Movements table -->
+          <!-- Movements: Desktop table -->
           <div v-else class="flex-1 overflow-y-auto custom-scrollbar -mx-md md:-mx-xl">
-            <table class="w-full text-left font-body-md text-body-md border-collapse">
+            <table class="w-full text-left font-body-md text-body-md border-collapse hidden md:table">
               <thead class="bg-surface-container-high/30 sticky top-0 z-10">
                 <tr>
                   <th class="px-lg py-md font-bold text-on-surface-variant uppercase text-[11px] tracking-widest">FECHA
@@ -688,6 +706,8 @@ onMounted(async () => {
                     HORARIO
                   </th>
                   <th class="px-lg py-md font-bold text-on-surface-variant uppercase text-[11px] tracking-widest">ESTADO
+                  </th>
+                  <th class="px-lg py-md font-bold text-on-surface-variant uppercase text-[11px] tracking-widest w-[1%]">
                   </th>
                 </tr>
               </thead>
@@ -715,7 +735,6 @@ onMounted(async () => {
                   <td class="px-lg py-md">
                     {{ m.unit_name || "-" }}
                   </td>
-                  
                   <td class="px-lg py-md">
                     {{ m.shedule || "-" }}
                   </td>
@@ -725,9 +744,70 @@ onMounted(async () => {
                       {{ movementStatusLabel(m.status) }}
                     </span>
                   </td>
+                  <td class="px-lg py-md text-center">
+                    <button v-if="m.isRecharge" @click="openRechargeDetail(m)"
+                      class="p-1.5 rounded-lg hover:bg-primary-container/40 transition-colors"
+                      title="Ver detalle">
+                      <span class="material-symbols-outlined text-[18px] text-primary">visibility</span>
+                    </button>
+                  </td>
                 </tr>
               </tbody>
             </table>
+
+            <!-- Movements: Mobile cards -->
+            <div class="md:hidden space-y-md px-md">
+              <div v-for="m in movements" :key="'card-' + m.id + m.type"
+                class="bg-surface-container rounded-xl p-md border border-outline-variant/40">
+                <div class="flex items-start justify-between gap-sm mb-sm">
+                  <span class="inline-flex items-center gap-1 font-bold text-[13px]"
+                    :class="m.isRecharge ? 'text-primary' : 'text-on-surface'">
+                    <span class="material-symbols-outlined text-[16px]">{{ m.isRecharge ? 'add_circle' : 'remove_circle' }}</span>
+                    {{ m.isRecharge ? "Recarga" : "Transacción" }}
+                  </span>
+                  <span class="px-sm py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap"
+                    :class="movementStatusClass(m.status)">
+                    {{ movementStatusLabel(m.status) }}
+                  </span>
+                </div>
+
+                <p class="text-[12px] text-on-surface-variant mb-sm">
+                  {{ formatDateTime(m.created_at || m.date) }}
+                </p>
+
+                <div class="grid grid-cols-2 gap-x-lg gap-y-xs text-[13px]">
+                  <div>
+                    <span class="text-on-surface-variant">Monto</span>
+                    <p class="font-bold"
+                      :class="m.isRecharge ? 'text-primary' : (m.shedule == 'Deducción' || m.shedule == 'Manual') ? 'text-error' : 'text-on-surface'">
+                      {{ m.isRecharge ? "+" : (m.shedule == 'Deducción' || m.shedule == 'Manual') ? "−" : "+" }}{{ Math.abs(m.amount).toFixed(2) }}
+                    </p>
+                  </div>
+                  <div>
+                    <span class="text-on-surface-variant">Saldo</span>
+                    <p class="font-bold text-on-surface">
+                      {{ m.newBalanceClient != null ? m.newBalanceClient.toFixed(2) : "—" }}
+                    </p>
+                  </div>
+                  <div v-if="m.unit_name">
+                    <span class="text-on-surface-variant">Unidad</span>
+                    <p class="text-on-surface">{{ m.unit_name }}</p>
+                  </div>
+                  <div v-if="m.shedule">
+                    <span class="text-on-surface-variant">Horario</span>
+                    <p class="text-on-surface">{{ m.shedule }}</p>
+                  </div>
+                </div>
+
+                <div v-if="m.isRecharge" class="flex justify-end mt-sm pt-sm border-t border-outline-variant/40">
+                  <button @click="openRechargeDetail(m)"
+                    class="inline-flex items-center gap-1 px-md py-1.5 rounded-lg bg-primary/10 text-primary text-[13px] font-bold hover:bg-primary/20 transition-colors">
+                    <span class="material-symbols-outlined text-[16px]">visibility</span>
+                    Ver detalle
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Footer -->
@@ -1032,6 +1112,8 @@ onMounted(async () => {
         </div>
       </div>
     </Teleport>
+
+    <DetalleRecargaModal v-model:visible="detailVisible" :recharge="detailRecharge" :show-actions="false" />
 
     <ErrorDialog :visible="errorVisible" :message="errorMessage" @close="errorVisible = false" />
   </div>

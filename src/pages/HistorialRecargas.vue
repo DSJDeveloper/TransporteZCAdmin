@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from "vue"
+import { ref, computed, watch, onMounted, onUnmounted } from "vue"
 import { useRechargeStore } from "../stores/rechargeStore.ts"
 import { useAuthStore } from "../stores/authStore.ts"
 import { useToast } from "primevue/usetoast"
@@ -7,8 +7,9 @@ import type { Recharge } from "../services/rechargeService.ts"
 import SupervisorBanner from "../components/SupervisorBanner.vue"
 import FiltroRango from "../components/FiltroRango.vue"
 import type { FiltroRango as FiltroRangoType } from "../components/FiltroRango.vue"
-import { formatDate, formatDateTime, formatCurrency, toStr } from "../utils/formatters.ts"
+import { formatDate, formatCurrency, toStr } from "../utils/formatters.ts"
 import ConfirmDialog from "../components/ConfirmDialog.vue"
+import DetalleRecargaModal from "../components/DetalleRecargaModal.vue"
 import { useDialog } from "../composables/useDialog"
 
 const ALLOWED_SORT_FIELDS = ["id", "date", "amount", "tickets", "method", "status", "client_name", "route_name"] as const
@@ -28,11 +29,8 @@ const dateTo = ref<string>(hoy)
 
 const search = ref("")
 const detailRecharge = ref<Recharge | null>(null)
-const previewImage = ref<string | null>(null)
-const previewPdf = ref<string | null>(null)
+const detailVisible = ref(false)
 const processingId = ref<number | null>(null)
-const imgError = ref(false)
-const previewImgError = ref(false)
 
 const confirmAction = useDialog<{ recharge: Recharge; action: "approve" | "reject" }>()
 async function handleConfirmAction() {
@@ -51,12 +49,14 @@ async function refreshData() {
   refreshing.value = false
 }
 
-function onImgError() {
-  imgError.value = true
+function openDetail(r: Recharge) {
+  detailRecharge.value = r
+  detailVisible.value = true
 }
 
-function onPreviewImgError() {
-  previewImgError.value = true
+function closeDetail() {
+  detailVisible.value = false
+  detailRecharge.value = null
 }
 
 const filtroinicial = ref<FiltroRangoType>({
@@ -66,17 +66,6 @@ const filtroinicial = ref<FiltroRangoType>({
 const totalPages = computed(() => Math.max(1, Math.ceil(store.totalCount / perPage.value)))
 const fromRecord = computed(() => (page.value - 1) * perPage.value + 1)
 const toRecord = computed(() => Math.min(page.value * perPage.value, store.totalCount))
-
-const filtered = computed(() => {
-  const q = search.value.toLowerCase().trim()
-  if (!q) return store.list
-  return store.list.filter(
-    (r) =>
-      r.clients?.name?.toLowerCase().includes(q) ||
-      String(r.id).includes(q) ||
-      r.ref?.toLowerCase().includes(q),
-  )
-})
 
 const pageRange = computed(() => {
   const total = totalPages.value
@@ -102,12 +91,15 @@ function goToPage(p: number | string) {
   page.value = p
 }
 
+let searchDebounce: ReturnType<typeof setTimeout> | null = null
+
 async function loadPage() {
   await store.fetchRecharges(page.value, perPage.value, {
     status: statusFilter.value,
     method: methodFilter.value,
     dateFrom: dateFrom.value || null,
     dateTo: dateTo.value || null,
+    search: search.value.trim() || null,
   })
 }
 
@@ -119,6 +111,18 @@ watch(perPage, () => {
 watch([statusFilter, methodFilter], () => {
   page.value = 1
   loadPage()
+})
+
+watch(search, () => {
+  if (searchDebounce) clearTimeout(searchDebounce)
+  searchDebounce = setTimeout(() => {
+    page.value = 1
+    loadPage()
+  }, 350)
+})
+
+onUnmounted(() => {
+  if (searchDebounce) clearTimeout(searchDebounce)
 })
 
 function onFiltrarRango(payload: FiltroRangoType) {
@@ -141,10 +145,6 @@ function clearFilters() {
 watch([() => store.sortField, () => store.sortAsc], () => {
   page.value = 1
   loadPage()
-})
-
-watch(search, () => {
-  page.value = 1
 })
 
 const columns = computed<{ key: SortField; label: string; hide?: string }[]>(() => [
@@ -202,35 +202,6 @@ function getMethodLabel(m: string): string {
   return map[m.toLowerCase()] ?? m
 }
 
-function fmtDateTime(d: string | null | undefined): string {
-  if (!d) return "—"
-  return formatDateTime(d)
-}
-
-function openDetail(r: Recharge) {
-  detailRecharge.value = r
-  imgError.value = false
-}
-
-function closeDetail() {
-  detailRecharge.value = null
-  previewImage.value = null
-  previewPdf.value = null
-}
-
-function openImagePreview(pic: string) {
-  previewImage.value = pic
-  previewImgError.value = false
-}
-
-function openPdfPreview(pic: string) {
-  previewPdf.value = pic
-}
-
-function isPdf(url: string): boolean {
-  return url.toLowerCase().endsWith(".pdf")
-}
-
 async function handleAction(r: Recharge, action: "approve" | "reject") {
   if (processingId.value) return
   processingId.value = r.id
@@ -258,12 +229,7 @@ async function handleAction(r: Recharge, action: "approve" | "reject") {
 }
 
 onMounted(async () => {
-  await Promise.all([store.fetchStats(), store.fetchRecharges(1, perPage.value, {
-    status: statusFilter.value,
-    method: methodFilter.value,
-    dateFrom: dateFrom.value || null,
-    dateTo: dateTo.value || null,
-  })])
+  await Promise.all([store.fetchStats(), loadPage()])
 })
 </script>
 
@@ -429,7 +395,7 @@ onMounted(async () => {
       </div>
 
       <!-- Empty state -->
-      <div v-else-if="!filtered.length && !store.loading" class="p-xl text-center text-on-surface-variant">
+      <div v-else-if="!store.list.length && !store.loading" class="p-xl text-center text-on-surface-variant">
         <span class="material-symbols-outlined text-[48px] text-outline">account_balance_wallet</span>
         <p class="mt-2">No se encontraron recargas</p>
       </div>
@@ -457,7 +423,7 @@ onMounted(async () => {
               </tr>
             </thead>
             <tbody class="divide-y divide-outline-variant">
-              <tr v-for="r in filtered" :key="r.id" class="hover:bg-primary-container/5 transition-colors group">
+              <tr v-for="r in store.list" :key="r.id" class="hover:bg-primary-container/5 transition-colors group">
                 <td class="px-lg py-md font-bold text-on-surface">{{ r.id }}</td>
                 <td class="px-lg py-md text-on-surface-variant text-[13px]">{{ formatDate(r.date) }}</td>
                 <td class="px-lg py-md">
@@ -513,7 +479,7 @@ onMounted(async () => {
 
         <!-- Mobile cards -->
         <div class="md:hidden divide-y divide-outline-variant">
-          <div v-for="r in filtered" :key="r.id" class="p-md space-y-sm">
+          <div v-for="r in store.list" :key="r.id" class="p-md space-y-sm">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-sm">
                 <div
@@ -596,229 +562,13 @@ onMounted(async () => {
     </section>
 
     <!-- Detail Modal -->
-    <Teleport to="body">
-      <div v-if="detailRecharge" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="closeDetail"></div>
-        <div class="relative w-full max-w-3xl mx-auto max-h-[90vh] flex flex-col" @click.stop>
-          <div
-            class="bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant overflow-hidden flex flex-col max-h-[90vh]">
-            <!-- Header -->
-            <div class="flex items-center justify-between p-md md:p-lg border-b border-outline-variant shrink-0">
-              <div class="flex items-center gap-md">
-                <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                  <span class="material-symbols-outlined">receipt_long</span>
-                </div>
-                <div>
-                  <h3 class="font-headline-sm text-headline-sm text-on-surface">Detalle de Recarga #{{ detailRecharge.id
-                    }}
-                  </h3>
-                  <p class="text-label-md text-on-surface-variant">{{ fmtDateTime(detailRecharge.createAt) }}</p>
-                </div>
-              </div>
-              <button class="text-outline hover:text-on-surface transition-colors" @click="closeDetail">
-                <span class="material-symbols-outlined">close</span>
-              </button>
-            </div>
-
-            <!-- Body -->
-            <div class="overflow-y-auto p-md md:p-lg space-y-lg">
-              <!-- Info grid -->
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-lg">
-                <div class="space-y-md">
-                  <div>
-                    <label
-                      class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-base">Cliente</label>
-                    <div class="flex items-center gap-sm">
-                      <div
-                        class="w-9 h-9 rounded-full bg-secondary-container flex items-center justify-center text-secondary font-bold text-[12px] shrink-0">
-                        {{ detailRecharge.clients ? initials(detailRecharge.clients.name) : "??" }}
-                      </div>
-                      <span class="font-bold text-on-surface text-body-md">{{ detailRecharge.clients?.name ?? "—"
-                        }}</span>
-                    </div>
-                  </div>
-                  <div>
-                    <label
-                      class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-base">Método
-                      de Pago</label>
-                    <div class="flex items-center gap-sm">
-                      <span class="material-symbols-outlined text-outline">
-                        {{ detailRecharge.method.toLowerCase().includes("efectivo") ? "payments" : "phone_android" }}
-                      </span>
-                      <span class="text-on-surface font-medium">{{ getMethodLabel(detailRecharge.method) }}</span>
-                    </div>
-                  </div>
-                  <div v-if="detailRecharge.ref">
-                    <label
-                      class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-base">Referencia</label>
-                    <div class="flex items-center gap-sm">
-                      <span class="material-symbols-outlined text-outline">tag</span>
-                      <code class="bg-surface-container-high px-sm py-xs rounded text-primary font-bold text-body-md">{{
-                    detailRecharge.ref }}</code>
-                    </div>
-                  </div>
-                  <div>
-                    <label
-                      class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-base">Registrado
-                      por</label>
-                    <div class="flex items-center gap-sm">
-                      <span class="material-symbols-outlined text-outline">person</span>
-                      <span class="text-on-surface">{{ detailRecharge.createBy ?? "—" }}</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="space-y-md">
-                  <div>
-                    <label
-                      class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-base">Monto</label>
-                    <div class="text-[28px] font-bold text-on-surface">
-                      {{ formatCurrency(detailRecharge.amount) }}
-                      <span class="text-body-md text-outline font-normal">USD</span>
-                    </div>
-                  </div>
-                  <div v-if="detailRecharge.tasa && detailRecharge.tasa > 0">
-                    <label
-                      class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-base">Tasa
-                      de Cambio</label>
-                    <div class="flex items-center gap-sm">
-                      <span class="material-symbols-outlined text-outline">currency_exchange</span>
-                      <span class="text-on-surface font-bold text-body-md">1 USD = {{
-                        formatCurrency(detailRecharge.tasa,
-                        'es-VE', 'VES') }}</span>
-                    </div>
-                  </div>
-                  <div>
-                    <label
-                      class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-base">Fecha</label>
-                    <div class="flex items-center gap-sm">
-                      <span class="material-symbols-outlined text-outline">calendar_today</span>
-                      <span class="text-on-surface">{{ formatDate(detailRecharge.date) }}</span>
-                    </div>
-                  </div>
-                  <div>
-                    <label
-                      class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-base">Estado</label>
-                    <span class="px-md py-sm rounded-full text-[12px] font-bold uppercase tracking-wider inline-block"
-                      :class="statusClass(detailRecharge.status)">{{ statusLabel(detailRecharge.status) }}</span>
-                  </div>
-                  <div v-if="detailRecharge.status !== 0 && detailRecharge.updateAprobate">
-                    <label
-                      class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-base">Procesado
-                      el</label>
-                    <div class="flex items-center gap-sm">
-                      <span class="material-symbols-outlined text-outline">check_circle</span>
-                      <span class="text-on-surface">{{ fmtDateTime(detailRecharge.updateAprobate) }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Comprobante -->
-              <div v-if="detailRecharge.picture" class="border-t border-outline-variant pt-lg">
-                <label
-                  class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-md">Comprobante
-                  de Pago</label>
-                <div
-                  class="bg-surface-container-low/50 rounded-xl border border-outline-variant overflow-hidden cursor-pointer hover:bg-surface-container-low transition-colors"
-                  @click="isPdf(detailRecharge.picture!) ? openPdfPreview(detailRecharge.picture!) : openImagePreview(detailRecharge.picture!)">
-                  <div v-if="isPdf(detailRecharge.picture!)"
-                    class="flex flex-col items-center justify-center py-xl text-center">
-                    <span class="material-symbols-outlined text-[64px] text-error">picture_as_pdf</span>
-                    <span class="text-on-surface-variant text-body-md mt-sm">Ver PDF del comprobante</span>
-                    <span class="text-label-md text-primary font-bold mt-xs">Abrir documento →</span>
-                  </div>
-                  <img v-else v-show="!imgError" :src="detailRecharge.picture" alt="Comprobante de pago"
-                    class="w-full max-h-64 object-contain bg-white" @error="onImgError" />
-                  <div v-if="imgError"
-                    class="flex flex-col items-center justify-center py-xl text-center bg-surface-container-low/50 rounded-xl border border-dashed border-outline-variant">
-                    <span class="material-symbols-outlined text-[48px] text-error">broken_image</span>
-                    <span class="text-on-surface-variant text-body-md mt-sm">No se pudo cargar la imagen</span>
-                    <span class="text-label-md text-outline mt-xs">El comprobante no está disponible</span>
-                  </div>
-                </div>
-              </div>
-              <div v-else class="border-t border-outline-variant pt-lg">
-                <label
-                  class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-md">Comprobante
-                  de Pago</label>
-                <div
-                  class="flex flex-col items-center justify-center py-xl text-center bg-surface-container-low/50 rounded-xl border border-dashed border-outline-variant">
-                  <span class="material-symbols-outlined text-[48px] text-outline-variant">image_not_supported</span>
-                  <span class="text-on-surface-variant text-body-md mt-sm">Sin comprobante adjunto</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Footer actions -->
-            <div v-if="canAct(detailRecharge.status)"
-              class="border-t border-outline-variant p-md md:p-lg flex flex-col-reverse sm:flex-row justify-end gap-md shrink-0 bg-surface-container-low/20">
-              <button
-                class="h-11 px-lg rounded-xl border border-outline-variant text-on-surface-variant font-bold hover:bg-surface-container transition-all"
-                @click="closeDetail">Cerrar</button>
-              <button
-                class="h-11 px-lg rounded-xl bg-error text-on-error font-bold hover:shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-xs disabled:opacity-50"
-                :disabled="processingId === detailRecharge.id"
-                @click="confirmAction.open({ recharge: detailRecharge!, action: 'reject' })">
-                <span class="material-symbols-outlined text-[18px]">do_not_disturb_on</span>
-                Rechazar
-              </button>
-              <button
-                class="h-11 px-lg rounded-xl bg-tertiary text-on-tertiary font-bold hover:shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-xs disabled:opacity-50"
-                :disabled="processingId === detailRecharge.id"
-                @click="confirmAction.open({ recharge: detailRecharge!, action: 'approve' })">
-                <span class="material-symbols-outlined text-[18px]">check_circle</span>
-                Aprobar
-              </button>
-            </div>
-            <div v-else
-              class="border-t border-outline-variant p-md md:p-lg flex justify-end shrink-0 bg-surface-container-low/20">
-              <button
-                class="h-11 px-lg rounded-xl border border-outline-variant text-on-surface-variant font-bold hover:bg-surface-container transition-all"
-                @click="closeDetail">Cerrar</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Teleport>
-
-    <!-- Image Preview Overlay (from detail modal) -->
-    <Teleport to="body">
-      <div v-if="previewImage" class="fixed inset-0 z-[60] flex items-center justify-center p-4"
-        @click="previewImage = null">
-        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
-          <div class="relative max-w-4xl max-h-[90vh] w-full mx-auto flex items-center justify-center" @click.stop>
-            <button class="absolute -top-10 right-0 text-white/80 hover:text-white transition-colors"
-              @click="previewImage = null">
-              <span class="material-symbols-outlined text-[28px]">close</span>
-            </button>
-            <img v-show="!previewImgError" :src="previewImage" alt="Comprobante de pago"
-              class="w-full max-h-[85vh] object-contain rounded-xl" @error="onPreviewImgError" />
-            <div v-if="previewImgError"
-              class="flex flex-col items-center justify-center py-16 text-center">
-              <span class="material-symbols-outlined text-[64px] text-error">broken_image</span>
-              <span class="text-white text-body-lg mt-sm">No se pudo cargar la imagen</span>
-              <span class="text-white/60 text-label-md mt-xs">El comprobante no está disponible</span>
-            </div>
-          </div>
-      </div>
-    </Teleport>
-
-    <!-- PDF Preview Overlay (from detail modal) -->
-    <Teleport to="body">
-      <div v-if="previewPdf" class="fixed inset-0 z-[60] flex items-center justify-center p-4"
-        @click="previewPdf = null">
-        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
-        <div class="relative w-full max-w-4xl max-h-[90vh] mx-auto flex flex-col" @click.stop>
-          <div class="flex items-center justify-between mb-md">
-            <span class="text-white font-bold">Comprobante PDF</span>
-            <button class="text-white/80 hover:text-white transition-colors" @click="previewPdf = null">
-              <span class="material-symbols-outlined text-[28px]">close</span>
-            </button>
-          </div>
-          <iframe :src="previewPdf" class="w-full h-[80vh] rounded-xl bg-white"></iframe>
-        </div>
-      </div>
-    </Teleport>
+    <DetalleRecargaModal
+      v-model:visible="detailVisible"
+      :recharge="detailRecharge"
+      :show-actions="true"
+      @approve="(r) => confirmAction.open({ recharge: r, action: 'approve' })"
+      @reject="(r) => confirmAction.open({ recharge: r, action: 'reject' })"
+    />
 
     <!-- Confirm Action Dialog -->
     <ConfirmDialog
