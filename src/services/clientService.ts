@@ -1,10 +1,20 @@
 import { supabase } from "./supabaseClient"
 
+/**
+ * @description Strips dots, commas, dashes and whitespace from a document ID string.
+ * @param {string} value - Raw input (e.g. "V-12.345.678").
+ * @returns {string} Normalized uppercase string (e.g. "V12345678").
+ */
+export function sanitizeDocumentId(value: string): string {
+  return value.replace(/[.\-,\s]/g, "").toUpperCase().trim()
+}
+
 export interface Debtor {
   id: number
   name: string
   documentID: string
   balance: number
+  tickets: number
 }
 
 export interface Client {
@@ -17,6 +27,7 @@ export interface Client {
   creditLimit: string
   status: string
   balance: number
+  tickets: number
   uid: string
   idroute: number | null
   route_name: string | null

@@ -187,6 +187,7 @@ Corre este script y a partir de este momento, tanto Blanca, Melissa como cualqui
 3. Haz clic en el botón **New Bucket** (Nuevo contenedor).
 4. Configúralo exactamente así:
 * **Bucket Name:** `payments-evidence` (escribe el nombre todo en minúsculas y sin espacios, tal cual está en tu código).
+* **Tipo de archivo:** `image/png, image/jpeg, image/webp, application/pdf`
 * **Public Bucket:** **¡ACTÍVALO!** (Déjalo en posición *ON*). Esto es vital para que la API te devuelva la URL pública de la imagen sin dar errores de acceso.
 
 

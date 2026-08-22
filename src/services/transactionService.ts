@@ -6,11 +6,13 @@ export interface Transaction {
   idclient: number
   createBy: number
   amount: number
+  ticket: number
   status: number
   created_at: string
   idunit: number
   shedule: string | null
   newBalanceClient: number | null
+  newTicketsClient: number | null
   clients: { name: string } | null
   units: { name: string } | null
   route_name: string | null

@@ -5,6 +5,7 @@ import { useTicketStore } from "../stores/ticketStore"
 import SupervisorBanner from "../components/SupervisorBanner.vue"
 import { useAuthStore } from "../stores/authStore"
 import type { Client, ClientForm } from "../services/clientService"
+import { sanitizeDocumentId } from "../services/clientService"
 import { getRouteNames } from "../services/routeService"
 import type { RouteName } from "../services/routeService"
 import ticketsService from "../services/ticketsService"
@@ -253,7 +254,8 @@ const columns = [
   { key: "auth_user_name", label: "USUARIO" },
   { key: "route_name", label: "RUTA" },
   { key: "status", label: "ESTATDO" },
-  { key: "balance", label: "SALDO" },
+  { key: "balance", label: "SALDO (USD)" },
+  { key: "tickets", label: "TICKETS" },
 ]
 
 function statusLabel(s: string): string {
@@ -335,6 +337,7 @@ function openEdit(c: Client) {
 
 async function save() {
   clearErrors()
+  form.value.documentID = sanitizeDocumentId(form.value.documentID)
   if (!validate()) return
   saving.value = true
   try {
@@ -346,6 +349,14 @@ async function save() {
       await store.fetchAll(storeParams.value)
     } else if (store.error) {
       errorMessage.value = store.error
+      errorVisible.value = true
+    }
+  } catch (err) {
+    const msg = (err as Error).message ?? ""
+    if (msg.includes("23505")) {
+      errors.documentID = "La cédula ya se encuentra registrada"
+    } else {
+      errorMessage.value = msg || "Error al guardar el cliente"
       errorVisible.value = true
     }
   } finally {
@@ -523,7 +534,7 @@ onMounted(async () => {
               <tr>
                 <th v-for="col in columns" :key="col.key"
                   class="px-lg py-md font-bold text-on-surface-variant uppercase text-[11px] tracking-widest cursor-pointer select-none hover:text-on-surface transition-colors"
-                  :class="col.key === 'balance' ? 'text-right' : col.key === 'status' ? 'text-center' : ''"
+                  :class="col.key === 'balance' || col.key === 'tickets' ? 'text-right' : col.key === 'status' ? 'text-center' : ''"
                   @click="sortBy(col.key)">
                   <span class="inline-flex items-center gap-1">
                     {{ col.label }}
@@ -565,7 +576,10 @@ onMounted(async () => {
                     :class="statusClass(c.status)">{{ statusLabel(c.status) }}</span>
                 </td>
                 <td class="px-lg py-md text-right font-bold" :class="c.balance < 0 ? 'text-error' : 'text-primary'">
-                  {{ c.balance.toFixed(2) }}
+                  {{ formatCurrency(c.balance) }}
+                </td>
+                <td class="px-lg py-md text-right font-bold text-on-surface-variant">
+                  {{ (c.tickets ?? 0).toFixed(2) }}
                 </td>
                 <td class="px-lg py-md text-center">
                   <div
@@ -575,11 +589,11 @@ onMounted(async () => {
                       <span class="material-symbols-outlined text-[20px]">receipt_long</span>
                     </button>
                     <button class="p-xs hover:bg-warning/10 rounded-lg text-warning transition-colors"
-                      title="Restar ticket" @click="ticketDeductDialog.open({ client: c })">
+                      title="Restar saldo" @click="ticketDeductDialog.open({ client: c })">
                       <span class="material-symbols-outlined text-[20px]">do_disturb</span>
                     </button>
                     <button class="p-xs hover:bg-tertiary/10 rounded-lg text-tertiary transition-colors"
-                      title="Sumar ticket" @click="ticketAddDialog.open({ client: c })">
+                      title="Sumar saldo" @click="ticketAddDialog.open({ client: c })">
                       <span class="material-symbols-outlined text-[20px]">add_circle</span>
                     </button>
                     <button class="p-xs hover:bg-primary/10 rounded-lg text-primary transition-colors" title="Editar"
@@ -640,8 +654,9 @@ onMounted(async () => {
             </div>
             <div class="flex items-center justify-between">
               <span class="font-bold" :class="c.balance < 0 ? 'text-error' : 'text-primary'">
-                {{ c.balance.toFixed(2) }}
+                {{ formatCurrency(c.balance) }}
               </span>
+              <span class="text-on-surface-variant text-body-sm">{{ (c.tickets ?? 0).toFixed(2) }} tickets</span>
               <div class="flex gap-xs">
                 <button
                   class="flex-1 flex items-center justify-center gap-1 py-2 px-3 rounded-lg border border-outline-variant text-secondary font-bold text-[13px] hover:bg-secondary/10 transition-colors"
@@ -789,10 +804,10 @@ onMounted(async () => {
                   <td class="px-lg py-md text-right font-bold"
                     :class="m.isRecharge ? 'text-primary' : (m.shedule == 'Deducción' || m.shedule == 'Manual') ? 'text-error' : 'text-on-surface'">
                     {{ m.isRecharge ? "+" : (m.shedule == 'Deducción' || m.shedule == 'Manual') ? "−" : "+" }}{{
-                      (Math.abs(m.amount).toFixed(2)) }}
+                      formatCurrency(Math.abs(m.amount)) }}
                   </td>
                   <td class="px-lg py-md text-right text-on-surface font-bold">
-                    {{ m.newBalanceClient != null ? (m.newBalanceClient.toFixed(2)) : "—" }}
+                    {{ m.newBalanceClient != null ? formatCurrency(m.newBalanceClient) : "—" }}
                   </td>
                   <td class="px-lg py-md">
                     {{ m.unit_name || "-" }}
@@ -842,13 +857,13 @@ onMounted(async () => {
                     <span class="text-on-surface-variant">Monto</span>
                     <p class="font-bold"
                       :class="m.isRecharge ? 'text-primary' : (m.shedule == 'Deducción' || m.shedule == 'Manual') ? 'text-error' : 'text-on-surface'">
-                      {{ m.isRecharge ? "+" : (m.shedule == 'Deducción' || m.shedule == 'Manual') ? "−" : "+" }}{{ Math.abs(m.amount).toFixed(2) }}
+                      {{ m.isRecharge ? "+" : (m.shedule == 'Deducción' || m.shedule == 'Manual') ? "−" : "+" }}{{ formatCurrency(Math.abs(m.amount)) }}
                     </p>
                   </div>
                   <div>
                     <span class="text-on-surface-variant">Saldo</span>
                     <p class="font-bold text-on-surface">
-                      {{ m.newBalanceClient != null ? m.newBalanceClient.toFixed(2) : "—" }}
+                      {{ m.newBalanceClient != null ? formatCurrency(m.newBalanceClient) : "—" }}
                     </p>
                   </div>
                   <div v-if="m.unit_name">
@@ -888,7 +903,7 @@ onMounted(async () => {
         <div
           class="relative bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant w-full max-w-sm mx-auto p-md md:p-xl">
           <div class="flex items-center justify-between mb-lg">
-            <h3 class="font-headline-sm text-headline-sm text-on-surface">Restar Ticket</h3>
+            <h3 class="font-headline-sm text-headline-sm text-on-surface">Restar Saldo</h3>
             <button class="text-outline hover:text-on-surface transition-colors" @click="ticketDeductDialog.close">
               <span class="material-symbols-outlined">close</span>
             </button>
@@ -902,17 +917,15 @@ onMounted(async () => {
                 <p class="font-bold text-on-surface">{{ ticketDeductDialog.data.value?.client.name }}</p>
                 <p class="text-body-md text-on-surface-variant">Saldo actual: <strong
                     :class="(ticketDeductDialog.data.value?.client.balance ?? 0) < 0 ? 'text-error' : 'text-primary'">{{
-                      (ticketDeductDialog.data.value?.client.balance ?? 0).toFixed(2) }}</strong></p>
+                      formatCurrency(ticketDeductDialog.data.value?.client.balance ?? 0) }} · {{ (ticketDeductDialog.data.value?.client.tickets ?? 0).toFixed(2) }} tickets</strong></p>
               </div>
             </div>
             <div class="space-y-base">
               <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Cantidad de
-                ticket
-                a procesar</label>
-              <select v-model.number="ticketCount"
-                class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface">
-                <option v-for="n in 10" :key="n" :value="n">{{ n }}</option>
-              </select>
+                tickets</label>
+              <input type="number" v-model.number="ticketCount" min="1" step="1"
+                class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface"
+                placeholder="Ej. 5" />
             </div>
             <div class="flex flex-col-reverse sm:flex-row justify-end gap-md pt-md border-t border-outline-variant">
               <button
@@ -930,9 +943,9 @@ onMounted(async () => {
       </div>
     </Teleport>
 
-    <ConfirmDialog :visible="confirmTicketDeduct.visible.value" title="Restar Ticket"
-      :message="`¿Está seguro de restar <strong>${confirmTicketDeduct.data.value?.count ?? 0} ticket(s)</strong> a <strong>${confirmTicketDeduct.data.value?.client.name ?? ''}</strong>?`"
-      confirm-label="Sí, restar ticket" variant="danger" :loading="deducting" @confirm="doDeductTickets"
+    <ConfirmDialog :visible="confirmTicketDeduct.visible.value" title="Restar Saldo"
+      :message="`¿Está seguro de descontar <strong>${(confirmTicketDeduct.data.value?.count ?? 0).toFixed(2)} tickets</strong> del saldo de <strong>${confirmTicketDeduct.data.value?.client.name ?? ''}</strong>?`"
+      confirm-label="Sí, descontar" variant="danger" :loading="deducting" @confirm="doDeductTickets"
       @cancel="confirmTicketDeduct.close" />
 
     <!-- Sumar Ticket Dialog -->
@@ -942,7 +955,7 @@ onMounted(async () => {
         <div
           class="relative bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant w-full max-w-sm mx-auto p-md md:p-xl">
           <div class="flex items-center justify-between mb-lg">
-            <h3 class="font-headline-sm text-headline-sm text-on-surface">Sumar Ticket</h3>
+            <h3 class="font-headline-sm text-headline-sm text-on-surface">Sumar Saldo</h3>
             <button class="text-outline hover:text-on-surface transition-colors" @click="ticketAddDialog.close">
               <span class="material-symbols-outlined">close</span>
             </button>
@@ -956,17 +969,15 @@ onMounted(async () => {
                 <p class="font-bold text-on-surface">{{ ticketAddDialog.data.value?.client.name }}</p>
                 <p class="text-body-md text-on-surface-variant">Saldo actual: <strong
                     :class="(ticketAddDialog.data.value?.client.balance ?? 0) < 0 ? 'text-error' : 'text-primary'">{{
-                      (ticketAddDialog.data.value?.client.balance ?? 0).toFixed(2) }}</strong></p>
+                      formatCurrency(ticketAddDialog.data.value?.client.balance ?? 0) }} · {{ (ticketAddDialog.data.value?.client.tickets ?? 0).toFixed(2) }} tickets</strong></p>
               </div>
             </div>
             <div class="space-y-base">
               <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Cantidad de
-                ticket
-                a agregar</label>
-              <select v-model.number="ticketAddCount"
-                class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface">
-                <option v-for="n in 10" :key="n" :value="n">{{ n }}</option>
-              </select>
+                tickets</label>
+              <input type="number" v-model.number="ticketAddCount" min="1" step="1"
+                class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface"
+                placeholder="Ej. 20" />
             </div>
             <div class="flex flex-col-reverse sm:flex-row justify-end gap-md pt-md border-t border-outline-variant">
               <button
@@ -984,9 +995,9 @@ onMounted(async () => {
       </div>
     </Teleport>
 
-    <ConfirmDialog :visible="confirmTicketAdd.visible.value" title="Sumar Ticket"
-      :message="`¿Está seguro de agregar <strong>${confirmTicketAdd.data.value?.count ?? 0} ticket(s)</strong> a <strong>${confirmTicketAdd.data.value?.client.name ?? ''}</strong>?`"
-      confirm-label="Sí, agregar ticket" variant="primary" :loading="adding" @confirm="doAddTickets"
+    <ConfirmDialog :visible="confirmTicketAdd.visible.value" title="Sumar Saldo"
+      :message="`¿Está seguro de agregar <strong>${(confirmTicketAdd.data.value?.count ?? 0).toFixed(2)} tickets</strong> al saldo de <strong>${confirmTicketAdd.data.value?.client.name ?? ''}</strong>?`"
+      confirm-label="Sí, agregar saldo" variant="primary" :loading="adding" @confirm="doAddTickets"
       @cancel="confirmTicketAdd.close" />
 
     <!-- Create/Edit Dialog -->

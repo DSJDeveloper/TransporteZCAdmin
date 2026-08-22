@@ -158,8 +158,10 @@ async function exportAllData() {
       cliente: t.clients?.name ?? '',
       unidad: t.units?.name ?? '',
       ruta: t.route_name ?? '',
-      monto: t.amount,
-      nuevo_saldo: t.newBalanceClient ?? 0,
+      monto_usd: t.amount,
+      tickets: t.ticket ?? 0,
+      nuevo_saldo_usd: t.newBalanceClient ?? 0,
+      nuevos_tickets: t.newTicketsClient ?? 0,
       estatus: statusLabel(t.status),
     }))
     downloadCSV(
@@ -172,8 +174,10 @@ async function exportAllData() {
         { key: 'cliente', label: 'Cliente' },
         { key: 'unidad', label: 'Unidad' },
         { key: 'ruta', label: 'Ruta' },
-        { key: 'monto', label: 'Ticket' },
-        { key: 'nuevo_saldo', label: 'Nuevo Saldo' },
+        { key: 'monto_usd', label: 'Monto (USD)' },
+        { key: 'tickets', label: 'Tickets' },
+        { key: 'nuevo_saldo_usd', label: 'Nuevo Saldo (USD)' },
+        { key: 'nuevos_tickets', label: 'Nuevos Tickets' },
         { key: 'estatus', label: 'Estatus' },
       ],
     )
@@ -423,13 +427,24 @@ onMounted(async () => {
               <span class="text-on-surface">{{ (data as Transaction).route_name ?? "—" }}</span>
             </template>
           </Column>
-          <!-- Ticket — always visible -->
-          <Column field="amount" header="Ticket" :sortable="true" style="width: 100px">
+          <!-- Monto (USD) — always visible -->
+          <Column field="amount" header="Monto (USD)" :sortable="true" style="width: 120px">
             <template #body="{ data }">
-              <span class="text-right block font-medium text-on-surface text-nowrap">{{ ((data as Transaction).amount) }}</span>
+              <span class="text-right block font-medium text-on-surface text-nowrap">{{ formatCurrency((data as Transaction).amount) }}</span>
             </template>
           </Column>
-          <!-- Nuevo Saldo — hide on mobile -->
+          <!-- Tickets — hide on mobile -->
+          <Column field="ticket" header="Tickets" :sortable="true"
+            :pt="{
+              headerCell: { class: 'hidden md:table-cell' },
+              bodyCell: { class: 'hidden md:table-cell' },
+            }"
+          >
+            <template #body="{ data }">
+              <span class="text-right block text-on-surface text-nowrap">{{ ((data as Transaction).ticket ?? 0).toFixed(2) }}</span>
+            </template>
+          </Column>
+          <!-- Nuevo Saldo (USD) — hide on mobile -->
           <Column field="newBalanceClient" header="Nuevo Saldo" :sortable="true"
             :pt="{
               headerCell: { class: 'hidden md:table-cell' },
@@ -441,7 +456,7 @@ onMounted(async () => {
                 class="text-right block font-bold text-nowrap"
                 :class="((data as Transaction).newBalanceClient ?? 0) >= 0 ? 'text-primary' : 'text-error'"
               >
-                {{ (data as Transaction).newBalanceClient != null ? ((data as Transaction).newBalanceClient!) : "—" }}
+                {{ (data as Transaction).newBalanceClient != null ? formatCurrency((data as Transaction).newBalanceClient!) : "—" }}
               </span>
             </template>
           </Column>

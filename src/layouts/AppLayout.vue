@@ -96,6 +96,10 @@ function toggleConfig() {
           <span class="material-symbols-outlined">schedule</span>
           <span>Horarios</span>
         </router-link>
+        <router-link to="/configuracion/paradas" :class="navClass('/configuracion/paradas')">
+          <span class="material-symbols-outlined">pin_drop</span>
+          <span>Paradas</span>
+        </router-link>
         <router-link to="/configuracion/rutas" :class="navClass('/configuracion/rutas')">
           <span class="material-symbols-outlined">alt_route</span>
           <span>Rutas</span>

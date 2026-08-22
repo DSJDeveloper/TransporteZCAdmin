@@ -396,30 +396,66 @@ END $$;\n`;
     sqlLogic += `${fn.definition};\n\n`
   }
 
+  // // -----------------------------------------------------
+  // // 🛡️ EXPORTAR POLÍTICAS RLS
+  // // -----------------------------------------------------
+  // console.log('[backup] 🛡️ Extrayendo Políticas RLS...')
+  // sqlLogic += `-- >>> POLÍTICAS DE SEGURIDAD (RLS) <<<\n\n`
+  // const { rows: policies } = await client.query(`
+  //   SELECT tablename, policyname, cmd, 
+  //          array_to_string(roles, ', ') as roles_string, 
+  //          qual, with_check 
+  //   FROM pg_policies 
+  //   WHERE schemaname = 'public'
+  // `)
+  // for (const pol of policies) {
+  //   const targetRoles = pol.roles_string || 'public'
+  //   sqlLogic += `-- Política para: ${pol.tablename}\n`
+  //   sqlLogic += `ALTER TABLE public."${pol.tablename}" ENABLE ROW LEVEL SECURITY;\n`
+  //   sqlLogic += `DROP POLICY IF EXISTS "${pol.policyname}" ON public."${pol.tablename}";\n`
+    
+  //   let policyStatement = `CREATE POLICY "${pol.policyname}" ON public."${pol.tablename}" FOR ${pol.cmd} TO ${targetRoles}`;
+  //   if (pol.qual) policyStatement += ` USING (${pol.qual})`;
+  //   if (pol.with_check) policyStatement += ` WITH CHECK (${pol.with_check})`;
+  //   sqlLogic += policyStatement + `;\n\n`;
+  // }
+
   // -----------------------------------------------------
-  // 🛡️ EXPORTAR POLÍTICAS RLS
+  // 🛡️ EXPORTAR POLÍTICAS RLS (PUBLIC & STORAGE)
   // -----------------------------------------------------
-  console.log('[backup] 🛡️ Extrayendo Políticas RLS...')
+  console.log('[backup] 🛡️ Extrayendo Políticas RLS (public y storage)...')
   sqlLogic += `-- >>> POLÍTICAS DE SEGURIDAD (RLS) <<<\n\n`
+  
   const { rows: policies } = await client.query(`
-    SELECT tablename, policyname, cmd, 
+    SELECT schemaname, tablename, policyname, permissive, cmd, 
            array_to_string(roles, ', ') as roles_string, 
            qual, with_check 
     FROM pg_policies 
-    WHERE schemaname = 'public'
+    WHERE schemaname IN ('public', 'storage')
+    ORDER BY schemaname, tablename;
   `)
-  for (const pol of policies) {
-    const targetRoles = pol.roles_string || 'public'
-    sqlLogic += `-- Política para: ${pol.tablename}\n`
-    sqlLogic += `ALTER TABLE public."${pol.tablename}" ENABLE ROW LEVEL SECURITY;\n`
-    sqlLogic += `DROP POLICY IF EXISTS "${pol.policyname}" ON public."${pol.tablename}";\n`
-    
-    let policyStatement = `CREATE POLICY "${pol.policyname}" ON public."${pol.tablename}" FOR ${pol.cmd} TO ${targetRoles}`;
-    if (pol.qual) policyStatement += ` USING (${pol.qual})`;
-    if (pol.with_check) policyStatement += ` WITH CHECK (${pol.with_check})`;
-    sqlLogic += policyStatement + `;\n\n`;
-  }
 
+  const touchedTables = new Set()
+
+  for (const pol of policies) {
+    const fullTableName = `"${pol.schemaname}"."${pol.tablename}"`
+    const targetRoles = pol.roles_string || 'public'
+    const permissiveClause = pol.permissive === 'RESTRICTIVE' ? 'AS RESTRICTIVE' : 'AS PERMISSIVE'
+
+    // Solo ejecutamos ENABLE ROW LEVEL SECURITY si la tabla pertenece a public
+    if (pol.schemaname === 'public' && !touchedTables.has(fullTableName)) {
+      sqlLogic += `ALTER TABLE ${fullTableName} ENABLE ROW LEVEL SECURITY;\n`
+      touchedTables.add(fullTableName)
+    }
+
+    sqlLogic += `-- Política: "${pol.policyname}" sobre ${fullTableName}\n`
+    sqlLogic += `DROP POLICY IF EXISTS "${pol.policyname}" ON ${fullTableName};\n`
+    
+    let policyStatement = `CREATE POLICY "${pol.policyname}" ON ${fullTableName} ${permissiveClause} FOR ${pol.cmd} TO ${targetRoles}`
+    if (pol.qual) policyStatement += ` USING (${pol.qual})`
+    if (pol.with_check) policyStatement += ` WITH CHECK (${pol.with_check})`
+    sqlLogic += policyStatement + `;\n\n`
+  }
   // -----------------------------------------------------
   // ⚙️ EXPORTAR TRIGGERS
   // -----------------------------------------------------
@@ -440,6 +476,9 @@ END $$;\n`;
     sqlLogic += `DROP TRIGGER IF EXISTS ${tg.trigger_name} ON ${tg.schema_name}."${tg.table_name}";\n`
     sqlLogic += `CREATE TRIGGER ${tg.trigger_name} ${tg.action_timing} ${tg.event_manipulation} ON ${tg.schema_name}."${tg.table_name}" FOR EACH ROW ${tg.action_statement};\n\n`
   }
+
+
+
 
   // -----------------------------------------------------
   // 💾 ESCRITURA FISICA

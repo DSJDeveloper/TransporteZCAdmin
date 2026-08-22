@@ -153,7 +153,7 @@ const columns = computed<{ key: SortField; label: string; hide?: string }[]>(() 
   { key: "client_name", label: "CLIENTE" },
   { key: "route_name", label: "RUTA" },
   { key: "amount", label: "MONTO" },
-  { key: "tickets", label: "TICKETS" },
+  { key: "tickets", label: "EST. TICKETS" },
   { key: "method", label: "MÉTODO" },
   { key: "status", label: "ESTADO" },
 ])

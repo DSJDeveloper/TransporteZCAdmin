@@ -10,6 +10,7 @@ import { formatCurrency } from "../utils/formatters";
 export const useTicketStore = defineStore("ticket", () => {
   // Estado
   const balance = ref(0);
+  const tickets = ref(0);
   const tasa = ref(0);
   const movimientos = ref<Movimiento[]>([]);
   const loading = ref({
@@ -35,10 +36,11 @@ export const useTicketStore = defineStore("ticket", () => {
     loading.value.balance = true;
     error.value = null;
     try {
-      const saldo = await ticketsService.getSaldoDisponible(
+      const result = await ticketsService.getSaldoDisponible(
         idclient ?? auth.idclient,
       );
-      balance.value = saldo;
+      balance.value = result.balance;
+      tickets.value = result.tickets;
     } catch (err) {
       error.value = "Error al cargar el saldo";
       console.error(err);
@@ -159,10 +161,9 @@ export const useTicketStore = defineStore("ticket", () => {
     }
   }
 
-  const cobrarTicketsBulk = async (listaTickets: TicketCobroItem[]) => {
+  const cobrarTicketsBulk = async (listaTickets: TicketCobroItem[], idstop?: number) => {
     const auth = useAuthStore();
 
-    // 1. Validar sesión antes de disparar la petición
     if (!auth.validateSession()) {
       error.value = auth.error;
       return false;
@@ -172,10 +173,10 @@ export const useTicketStore = defineStore("ticket", () => {
     error.value = null;
 
     try {
-      // 2. Enviamos el array completo y el ID del usuario/cajero que opera
       const ldtares = await ticketsService.chargeTicketsBulk(
         listaTickets,
-        auth.idclient, // El ID del creador/cajero logueado
+        auth.idclient,
+        idstop,
       );
 
       // 3. Evaluar la respuesta unificada del backend
@@ -231,6 +232,7 @@ export const useTicketStore = defineStore("ticket", () => {
   // Reset store
   const resetStore = () => {
     balance.value = 0;
+    tickets.value = 0;
     movimientos.value = [];
     loading.value = {
       balance: false,
@@ -248,6 +250,7 @@ export const useTicketStore = defineStore("ticket", () => {
   return {
     // Estado
     balance,
+    tickets,
     movimientos,
     loading,
     error,

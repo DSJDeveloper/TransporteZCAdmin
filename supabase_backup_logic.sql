@@ -1,7 +1,29 @@
 -- =====================================================
 -- BACKUP: LÓGICA DE SERVIDOR (VISTAS, RPC, RLS, TRIGGERS)
--- Fecha: 2026-06-29T14:42:49.738Z
+-- Fecha: 2026-08-22T21:03:16.985Z
 -- =====================================================
+
+-- >>> FOREIGN KEYS <<<
+ALTER TABLE public."clients" DROP CONSTRAINT IF EXISTS "clients_idroute_fkey";
+ALTER TABLE public."clients" ADD CONSTRAINT "clients_idroute_fkey" FOREIGN KEY (idroute) REFERENCES routes(id);
+ALTER TABLE public."units" DROP CONSTRAINT IF EXISTS "units_idroute_fkey";
+ALTER TABLE public."units" ADD CONSTRAINT "units_idroute_fkey" FOREIGN KEY (idroute) REFERENCES routes(id) ON DELETE SET NULL;
+ALTER TABLE public."route_horarios" DROP CONSTRAINT IF EXISTS "route_horarios_idhorario_fkey";
+ALTER TABLE public."route_horarios" ADD CONSTRAINT "route_horarios_idhorario_fkey" FOREIGN KEY (idhorario) REFERENCES horario(id) ON DELETE CASCADE;
+ALTER TABLE public."route_horarios" DROP CONSTRAINT IF EXISTS "route_horarios_idroute_fkey";
+ALTER TABLE public."route_horarios" ADD CONSTRAINT "route_horarios_idroute_fkey" FOREIGN KEY (idroute) REFERENCES routes(id) ON DELETE CASCADE;
+ALTER TABLE public."recharge" DROP CONSTRAINT IF EXISTS "recharge_idclient_fkey";
+ALTER TABLE public."recharge" ADD CONSTRAINT "recharge_idclient_fkey" FOREIGN KEY (idclient) REFERENCES clients(id);
+ALTER TABLE public."profiles" DROP CONSTRAINT IF EXISTS "profiles_id_fkey";
+ALTER TABLE public."profiles" ADD CONSTRAINT "profiles_id_fkey" FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE public."user_routes" DROP CONSTRAINT IF EXISTS "user_routes_idroute_fkey";
+ALTER TABLE public."user_routes" ADD CONSTRAINT "user_routes_idroute_fkey" FOREIGN KEY (idroute) REFERENCES routes(id) ON DELETE CASCADE;
+ALTER TABLE public."user_routes" DROP CONSTRAINT IF EXISTS "user_routes_user_id_fkey";
+ALTER TABLE public."user_routes" ADD CONSTRAINT "user_routes_user_id_fkey" FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE;
+ALTER TABLE public."transactions" DROP CONSTRAINT IF EXISTS "transactions_idclient_fkey";
+ALTER TABLE public."transactions" ADD CONSTRAINT "transactions_idclient_fkey" FOREIGN KEY (idclient) REFERENCES clients(id);
+ALTER TABLE public."routes" DROP CONSTRAINT IF EXISTS "routes_idbank_info_fkey";
+ALTER TABLE public."routes" ADD CONSTRAINT "routes_idbank_info_fkey" FOREIGN KEY (idbank_info) REFERENCES bank_info(id) ON DELETE SET NULL;
 
 -- >>> VISTAS <<<
 
@@ -400,6 +422,212 @@ BEGIN
     ) sub;
 
     RETURN json_build_object('data', COALESCE(v_data, '[]'::json));
+END;
+$function$
+;
+
+-- Función: get_recharges_paginated
+CREATE OR REPLACE FUNCTION public.get_recharges_paginated(p_page integer DEFAULT 1, p_per_page integer DEFAULT 10, p_status integer DEFAULT NULL::integer, p_date_from date DEFAULT NULL::date, p_date_to date DEFAULT NULL::date, p_method character varying DEFAULT NULL::character varying, p_sort_field text DEFAULT 'id'::text, p_sort_order text DEFAULT 'DESC'::text)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+    v_offset INTEGER;
+    v_data JSON;
+    v_total BIGINT;
+    v_route_ids BIGINT[];
+BEGIN
+    v_offset := (p_page - 1) * p_per_page;
+    v_route_ids := public.get_current_user_route_ids();
+
+    SELECT COUNT(*) INTO v_total FROM public.recharge r
+    LEFT JOIN public.clients c ON c.id = r.idclient
+    WHERE (p_status IS NULL OR r.status = p_status)
+      AND (p_date_from IS NULL OR r.date >= p_date_from)
+      AND (p_date_to IS NULL OR r.date <= p_date_to)
+      AND (p_method IS NULL OR LOWER(r.method) = LOWER(p_method) OR
+           (LOWER(p_method) = 'efectivo' AND LOWER(r.method) LIKE '%efectivo%') OR
+           (LOWER(p_method) = 'pago_movil' AND LOWER(r.method) LIKE '%pago%movil%'))
+      AND (public.is_admin() OR r.idroute = ANY(v_route_ids));
+
+    SELECT json_agg(t) INTO v_data FROM (
+        SELECT
+            r.id,
+            r.idclient,
+            r.method,
+            r.ref,
+            r.picture,
+            r.amount,
+            r.tasa,
+            r.date,
+            r.status,
+            r."createBy",
+            r."createAt",
+            r."updateAprobate",
+            r.tickets,
+            json_build_object('name', c.name) AS clients,
+            json_build_object('name', COALESCE(rt.description, rt.code), 'code', rt.code) AS route
+        FROM public.recharge r
+        LEFT JOIN public.clients c ON c.id = r.idclient
+        LEFT JOIN public.routes rt ON rt.id = r.idroute
+        WHERE (p_status IS NULL OR r.status = p_status)
+          AND (p_date_from IS NULL OR r.date >= p_date_from)
+          AND (p_date_to IS NULL OR r.date <= p_date_to)
+          AND (p_method IS NULL OR LOWER(r.method) = LOWER(p_method) OR
+               (LOWER(p_method) = 'efectivo' AND LOWER(r.method) LIKE '%efectivo%') OR
+               (LOWER(p_method) = 'pago_movil' AND LOWER(r.method) LIKE '%pago%movil%'))
+          AND (public.is_admin() OR r.idroute = ANY(v_route_ids))
+        ORDER BY
+            CASE WHEN p_sort_field = 'id'     AND p_sort_order = 'ASC'  THEN r.id        END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'id'     AND p_sort_order = 'DESC' THEN r.id        END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'date'   AND p_sort_order = 'ASC'  THEN r.date      END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'date'   AND p_sort_order = 'DESC' THEN r.date      END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'amount' AND p_sort_order = 'ASC'  THEN r.amount    END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'amount' AND p_sort_order = 'DESC' THEN r.amount    END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'method' AND p_sort_order = 'ASC'  THEN r.method    END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'method' AND p_sort_order = 'DESC' THEN r.method    END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'status' AND p_sort_order = 'ASC'  THEN r.status    END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'status' AND p_sort_order = 'DESC' THEN r.status    END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'client_name' AND p_sort_order = 'ASC'  THEN c.name END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'client_name' AND p_sort_order = 'DESC' THEN c.name END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'route_name' AND p_sort_order = 'ASC'  THEN rt.description END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'route_name' AND p_sort_order = 'DESC' THEN rt.description END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'tickets' AND p_sort_order = 'ASC'  THEN r.tickets END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'tickets' AND p_sort_order = 'DESC' THEN r.tickets END DESC NULLS LAST,
+            r.id DESC
+        LIMIT p_per_page
+        OFFSET v_offset
+    ) t;
+
+    RETURN json_build_object(
+        'data', COALESCE(v_data, '[]'::json),
+        'total', v_total
+    );
+END;
+$function$
+;
+
+-- Función: get_recharges_paginated
+CREATE OR REPLACE FUNCTION public.get_recharges_paginated(p_page integer DEFAULT 1, p_per_page integer DEFAULT 10, p_status integer DEFAULT NULL::integer, p_date_from date DEFAULT NULL::date, p_date_to date DEFAULT NULL::date, p_method character varying DEFAULT NULL::character varying, p_sort_field text DEFAULT 'id'::text, p_sort_order text DEFAULT 'DESC'::text, p_search text DEFAULT NULL::text)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+    v_offset INTEGER;
+    v_data JSON;
+    v_total BIGINT;
+    v_route_ids BIGINT[];
+    v_search text;
+BEGIN
+    v_offset := (p_page - 1) * p_per_page;
+    v_route_ids := public.get_current_user_route_ids();
+    v_search := CASE WHEN p_search IS NOT NULL THEN '%' || p_search || '%' ELSE NULL END;
+
+    SELECT COUNT(*) INTO v_total FROM public.recharge r
+    LEFT JOIN public.clients c ON c.id = r.idclient
+    WHERE (p_status IS NULL OR r.status = p_status)
+      AND (p_date_from IS NULL OR r.date >= p_date_from)
+      AND (p_date_to IS NULL OR r.date <= p_date_to)
+      AND (p_method IS NULL OR LOWER(r.method) = LOWER(p_method) OR
+           (LOWER(p_method) = 'efectivo' AND LOWER(r.method) LIKE '%efectivo%') OR
+           (LOWER(p_method) = 'pago_movil' AND LOWER(r.method) LIKE '%pago%movil%'))
+      AND (p_search IS NULL OR c.name ILIKE v_search OR r.ref ILIKE v_search OR r.id::text = p_search)
+      AND (public.is_admin() OR r.idroute = ANY(v_route_ids));
+
+    SELECT json_agg(t) INTO v_data FROM (
+        SELECT
+            r.id,
+            r.idclient,
+            r.method,
+            r.ref,
+            r.picture,
+            r.amount,
+            r.tasa,
+            r.date,
+            r.status,
+            r."createBy",
+            r."createAt",
+            r."updateAprobate",
+            r.tickets,
+            json_build_object('name', c.name) AS clients,
+            json_build_object('name', COALESCE(rt.description, rt.code), 'code', rt.code) AS route
+        FROM public.recharge r
+        LEFT JOIN public.clients c ON c.id = r.idclient
+        LEFT JOIN public.routes rt ON rt.id = r.idroute
+        WHERE (p_status IS NULL OR r.status = p_status)
+          AND (p_date_from IS NULL OR r.date >= p_date_from)
+          AND (p_date_to IS NULL OR r.date <= p_date_to)
+          AND (p_method IS NULL OR LOWER(r.method) = LOWER(p_method) OR
+               (LOWER(p_method) = 'efectivo' AND LOWER(r.method) LIKE '%efectivo%') OR
+               (LOWER(p_method) = 'pago_movil' AND LOWER(r.method) LIKE '%pago%movil%'))
+          AND (p_search IS NULL OR c.name ILIKE v_search OR r.ref ILIKE v_search OR r.id::text = p_search)
+          AND (public.is_admin() OR r.idroute = ANY(v_route_ids))
+        ORDER BY
+            CASE WHEN p_sort_field = 'id'     AND p_sort_order = 'ASC'  THEN r.id        END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'id'     AND p_sort_order = 'DESC' THEN r.id        END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'date'   AND p_sort_order = 'ASC'  THEN r.date      END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'date'   AND p_sort_order = 'DESC' THEN r.date      END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'amount' AND p_sort_order = 'ASC'  THEN r.amount    END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'amount' AND p_sort_order = 'DESC' THEN r.amount    END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'method' AND p_sort_order = 'ASC'  THEN r.method    END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'method' AND p_sort_order = 'DESC' THEN r.method    END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'status' AND p_sort_order = 'ASC'  THEN r.status    END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'status' AND p_sort_order = 'DESC' THEN r.status    END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'client_name' AND p_sort_order = 'ASC'  THEN c.name END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'client_name' AND p_sort_order = 'DESC' THEN c.name END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'route_name' AND p_sort_order = 'ASC'  THEN rt.description END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'route_name' AND p_sort_order = 'DESC' THEN rt.description END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'tickets' AND p_sort_order = 'ASC'  THEN r.tickets END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'tickets' AND p_sort_order = 'DESC' THEN r.tickets END DESC NULLS LAST,
+            r.id DESC
+        LIMIT p_per_page
+        OFFSET v_offset
+    ) t;
+
+    RETURN json_build_object(
+        'data', COALESCE(v_data, '[]'::json),
+        'total', v_total
+    );
+END;
+$function$
+;
+
+-- Función: get_recharge_by_id
+CREATE OR REPLACE FUNCTION public.get_recharge_by_id(p_id integer)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+    v_result json;
+BEGIN
+    SELECT row_to_json(t) INTO v_result FROM (
+        SELECT
+            r.id,
+            r.idclient,
+            r.method,
+            r.ref,
+            r.picture,
+            r.amount,
+            r.tasa,
+            r.date,
+            r.status,
+            r."createBy",
+            r."createAt",
+            r."updateAprobate",
+            r.tickets,
+            json_build_object('name', c.name) AS clients,
+            json_build_object('name', COALESCE(rt.description, rt.code), 'code', rt.code) AS route
+        FROM public.recharge r
+        LEFT JOIN public.clients c ON c.id = r.idclient
+        LEFT JOIN public.routes rt ON rt.id = r.idroute
+        WHERE r.id = p_id
+          AND (public.is_admin() OR r.idroute = ANY(public.get_current_user_route_ids()))
+    ) t;
+
+    RETURN COALESCE(v_result, 'null'::json);
 END;
 $function$
 ;
@@ -991,6 +1219,92 @@ END;
 $function$
 ;
 
+-- Función: get_recharges_paginated
+CREATE OR REPLACE FUNCTION public.get_recharges_paginated(p_page integer DEFAULT 1, p_per_page integer DEFAULT 10, p_status integer DEFAULT NULL::integer, p_date_from date DEFAULT NULL::date, p_date_to date DEFAULT NULL::date, p_method character varying DEFAULT NULL::character varying, p_sort_field text DEFAULT 'id'::text, p_sort_order text DEFAULT 'DESC'::text, p_search text DEFAULT NULL::text)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+    v_offset INTEGER;
+    v_data JSON;
+    v_total BIGINT;
+    v_route_ids BIGINT[];
+    v_search text;
+BEGIN
+    v_offset := (p_page - 1) * p_per_page;
+    v_route_ids := public.get_current_user_route_ids();
+    v_search := CASE WHEN p_search IS NOT NULL THEN '%' || p_search || '%' ELSE NULL END;
+
+    SELECT COUNT(*) INTO v_total FROM public.recharge r
+    LEFT JOIN public.clients c ON c.id = r.idclient
+    WHERE (p_status IS NULL OR r.status = p_status)
+      AND (p_date_from IS NULL OR r.date >= p_date_from)
+      AND (p_date_to IS NULL OR r.date <= p_date_to)
+      AND (p_method IS NULL OR LOWER(r.method) = LOWER(p_method) OR
+           (LOWER(p_method) = 'efectivo' AND LOWER(r.method) LIKE '%efectivo%') OR
+           (LOWER(p_method) = 'pago_movil' AND LOWER(r.method) LIKE '%pago%movil%'))
+      AND (p_search IS NULL OR c.name ILIKE v_search OR r.ref ILIKE v_search OR r.id::text = p_search)
+      AND (public.is_admin() OR r.idroute = ANY(v_route_ids));
+
+    SELECT json_agg(t) INTO v_data FROM (
+        SELECT
+            r.id,
+            r.idclient,
+            r.method,
+            r.ref,
+            r.picture,
+            r.amount,
+            r.tasa,
+            r.date,
+            r.status,
+            r."createBy",
+            r."createAt",
+            r."updateAprobate",
+            r.tickets,
+            json_build_object('name', c.name) AS clients,
+            json_build_object('name', COALESCE(rt.description, rt.code), 'code', rt.code) AS route
+        FROM public.recharge r
+        LEFT JOIN public.clients c ON c.id = r.idclient
+        LEFT JOIN public.routes rt ON rt.id = r.idroute
+        WHERE (p_status IS NULL OR r.status = p_status)
+          AND (p_date_from IS NULL OR r.date >= p_date_from)
+          AND (p_date_to IS NULL OR r.date <= p_date_to)
+          AND (p_method IS NULL OR LOWER(r.method) = LOWER(p_method) OR
+               (LOWER(p_method) = 'efectivo' AND LOWER(r.method) LIKE '%efectivo%') OR
+               (LOWER(p_method) = 'pago_movil' AND LOWER(r.method) LIKE '%pago%movil%'))
+          AND (p_search IS NULL OR c.name ILIKE v_search OR r.ref ILIKE v_search OR r.id::text = p_search)
+          AND (public.is_admin() OR r.idroute = ANY(v_route_ids))
+        ORDER BY
+            CASE WHEN p_sort_field = 'id'     AND p_sort_order = 'ASC'  THEN r.id        END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'id'     AND p_sort_order = 'DESC' THEN r.id        END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'date'   AND p_sort_order = 'ASC'  THEN r.date      END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'date'   AND p_sort_order = 'DESC' THEN r.date      END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'amount' AND p_sort_order = 'ASC'  THEN r.amount    END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'amount' AND p_sort_order = 'DESC' THEN r.amount    END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'method' AND p_sort_order = 'ASC'  THEN r.method    END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'method' AND p_sort_order = 'DESC' THEN r.method    END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'status' AND p_sort_order = 'ASC'  THEN r.status    END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'status' AND p_sort_order = 'DESC' THEN r.status    END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'client_name' AND p_sort_order = 'ASC'  THEN c.name END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'client_name' AND p_sort_order = 'DESC' THEN c.name END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'route_name' AND p_sort_order = 'ASC'  THEN rt.description END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'route_name' AND p_sort_order = 'DESC' THEN rt.description END DESC NULLS LAST,
+            CASE WHEN p_sort_field = 'tickets' AND p_sort_order = 'ASC'  THEN r.tickets END ASC  NULLS LAST,
+            CASE WHEN p_sort_field = 'tickets' AND p_sort_order = 'DESC' THEN r.tickets END DESC NULLS LAST,
+            r.id DESC
+        LIMIT p_per_page
+        OFFSET v_offset
+    ) t;
+
+    RETURN json_build_object(
+        'data', COALESCE(v_data, '[]'::json),
+        'total', v_total
+    );
+END;
+$function$
+;
+
 -- Función: get_complete_user_profile
 CREATE OR REPLACE FUNCTION public.get_complete_user_profile(p_uuid text, p_email text)
  RETURNS json
@@ -1242,13 +1556,9 @@ begin
   from (
     SELECT
       t.*,
-      c.name AS client_name,
-      r.description as route_name,
-      u.name as unit_name
+      c.name AS client_name
     FROM public.transactions t
     LEFT JOIN public.clients c ON t.idclient = c.id
-    LEFT JOIN public.routes r on t.idroute= r.id
-    LEFT JOIN public.units u on t.idunit= u.id
     WHERE t.idclient = p_client_id
       AND t.created_at::timestamp >= p_from::timestamp
       AND t.created_at::timestamp <= p_to::timestamp
@@ -3345,162 +3655,185 @@ END;$function$
 
 -- >>> POLÍTICAS DE SEGURIDAD (RLS) <<<
 
--- Política para: clients
-ALTER TABLE public."clients" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Permitir lectura por email" ON public."clients";
-CREATE POLICY "Permitir lectura por email" ON public."clients" FOR SELECT TO authenticated USING (((email)::text = (auth.jwt() ->> 'email'::text)));
+ALTER TABLE "public"."bank_info" ENABLE ROW LEVEL SECURITY;
+-- Política: "bank_info_select_all" sobre "public"."bank_info"
+DROP POLICY IF EXISTS "bank_info_select_all" ON "public"."bank_info";
+CREATE POLICY "bank_info_select_all" ON "public"."bank_info" AS PERMISSIVE FOR SELECT TO authenticated USING (true);
 
--- Política para: transactions
-ALTER TABLE public."transactions" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Usuarios ven lo suyo o Admins ven todo" ON public."transactions";
-CREATE POLICY "Usuarios ven lo suyo o Admins ven todo" ON public."transactions" FOR SELECT TO authenticated USING (((EXISTS ( SELECT 1
+-- Política: "bank_info_insert_admin" sobre "public"."bank_info"
+DROP POLICY IF EXISTS "bank_info_insert_admin" ON "public"."bank_info";
+CREATE POLICY "bank_info_insert_admin" ON "public"."bank_info" AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK (is_admin());
+
+-- Política: "bank_info_delete_admin" sobre "public"."bank_info"
+DROP POLICY IF EXISTS "bank_info_delete_admin" ON "public"."bank_info";
+CREATE POLICY "bank_info_delete_admin" ON "public"."bank_info" AS PERMISSIVE FOR DELETE TO authenticated USING (is_admin());
+
+-- Política: "bank_info_update_admin" sobre "public"."bank_info"
+DROP POLICY IF EXISTS "bank_info_update_admin" ON "public"."bank_info";
+CREATE POLICY "bank_info_update_admin" ON "public"."bank_info" AS PERMISSIVE FOR UPDATE TO authenticated USING (is_admin()) WITH CHECK (is_admin());
+
+ALTER TABLE "public"."clients" ENABLE ROW LEVEL SECURITY;
+-- Política: "Permitir lectura por email" sobre "public"."clients"
+DROP POLICY IF EXISTS "Permitir lectura por email" ON "public"."clients";
+CREATE POLICY "Permitir lectura por email" ON "public"."clients" AS PERMISSIVE FOR SELECT TO authenticated USING (((email)::text = (auth.jwt() ->> 'email'::text)));
+
+-- Política: "Permitir lectura general de clientes" sobre "public"."clients"
+DROP POLICY IF EXISTS "Permitir lectura general de clientes" ON "public"."clients";
+CREATE POLICY "Permitir lectura general de clientes" ON "public"."clients" AS PERMISSIVE FOR SELECT TO authenticated USING (true);
+
+ALTER TABLE "public"."company" ENABLE ROW LEVEL SECURITY;
+-- Política: "company_select_all" sobre "public"."company"
+DROP POLICY IF EXISTS "company_select_all" ON "public"."company";
+CREATE POLICY "company_select_all" ON "public"."company" AS PERMISSIVE FOR SELECT TO authenticated USING (true);
+
+-- Política: "company_delete_admin" sobre "public"."company"
+DROP POLICY IF EXISTS "company_delete_admin" ON "public"."company";
+CREATE POLICY "company_delete_admin" ON "public"."company" AS PERMISSIVE FOR DELETE TO authenticated USING (is_admin());
+
+-- Política: "company_update_admin" sobre "public"."company"
+DROP POLICY IF EXISTS "company_update_admin" ON "public"."company";
+CREATE POLICY "company_update_admin" ON "public"."company" AS PERMISSIVE FOR UPDATE TO authenticated USING (is_admin()) WITH CHECK (is_admin());
+
+-- Política: "company_insert_admin" sobre "public"."company"
+DROP POLICY IF EXISTS "company_insert_admin" ON "public"."company";
+CREATE POLICY "company_insert_admin" ON "public"."company" AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK (is_admin());
+
+ALTER TABLE "public"."horario" ENABLE ROW LEVEL SECURITY;
+-- Política: "horario_select_all" sobre "public"."horario"
+DROP POLICY IF EXISTS "horario_select_all" ON "public"."horario";
+CREATE POLICY "horario_select_all" ON "public"."horario" AS PERMISSIVE FOR SELECT TO authenticated USING (true);
+
+-- Política: "horario_insert_admin" sobre "public"."horario"
+DROP POLICY IF EXISTS "horario_insert_admin" ON "public"."horario";
+CREATE POLICY "horario_insert_admin" ON "public"."horario" AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK (is_admin());
+
+-- Política: "horario_update_admin" sobre "public"."horario"
+DROP POLICY IF EXISTS "horario_update_admin" ON "public"."horario";
+CREATE POLICY "horario_update_admin" ON "public"."horario" AS PERMISSIVE FOR UPDATE TO authenticated USING (is_admin()) WITH CHECK (is_admin());
+
+-- Política: "horario_delete_admin" sobre "public"."horario"
+DROP POLICY IF EXISTS "horario_delete_admin" ON "public"."horario";
+CREATE POLICY "horario_delete_admin" ON "public"."horario" AS PERMISSIVE FOR DELETE TO authenticated USING (is_admin());
+
+ALTER TABLE "public"."profiles" ENABLE ROW LEVEL SECURITY;
+-- Política: "Usuarios leen su propio perfil" sobre "public"."profiles"
+DROP POLICY IF EXISTS "Usuarios leen su propio perfil" ON "public"."profiles";
+CREATE POLICY "Usuarios leen su propio perfil" ON "public"."profiles" AS PERMISSIVE FOR SELECT TO authenticated USING ((id = auth.uid()));
+
+ALTER TABLE "public"."route_horarios" ENABLE ROW LEVEL SECURITY;
+-- Política: "route_horarios_insert_admin" sobre "public"."route_horarios"
+DROP POLICY IF EXISTS "route_horarios_insert_admin" ON "public"."route_horarios";
+CREATE POLICY "route_horarios_insert_admin" ON "public"."route_horarios" AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK (is_admin());
+
+-- Política: "route_horarios_delete_admin" sobre "public"."route_horarios"
+DROP POLICY IF EXISTS "route_horarios_delete_admin" ON "public"."route_horarios";
+CREATE POLICY "route_horarios_delete_admin" ON "public"."route_horarios" AS PERMISSIVE FOR DELETE TO authenticated USING (is_admin());
+
+-- Política: "route_horarios_select_all" sobre "public"."route_horarios"
+DROP POLICY IF EXISTS "route_horarios_select_all" ON "public"."route_horarios";
+CREATE POLICY "route_horarios_select_all" ON "public"."route_horarios" AS PERMISSIVE FOR SELECT TO authenticated USING (true);
+
+ALTER TABLE "public"."routes" ENABLE ROW LEVEL SECURITY;
+-- Política: "routes_insert_admin" sobre "public"."routes"
+DROP POLICY IF EXISTS "routes_insert_admin" ON "public"."routes";
+CREATE POLICY "routes_insert_admin" ON "public"."routes" AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK (is_admin());
+
+-- Política: "routes_update_admin" sobre "public"."routes"
+DROP POLICY IF EXISTS "routes_update_admin" ON "public"."routes";
+CREATE POLICY "routes_update_admin" ON "public"."routes" AS PERMISSIVE FOR UPDATE TO authenticated USING (is_admin()) WITH CHECK (is_admin());
+
+-- Política: "routes_select_all" sobre "public"."routes"
+DROP POLICY IF EXISTS "routes_select_all" ON "public"."routes";
+CREATE POLICY "routes_select_all" ON "public"."routes" AS PERMISSIVE FOR SELECT TO authenticated USING (true);
+
+-- Política: "routes_delete_admin" sobre "public"."routes"
+DROP POLICY IF EXISTS "routes_delete_admin" ON "public"."routes";
+CREATE POLICY "routes_delete_admin" ON "public"."routes" AS PERMISSIVE FOR DELETE TO authenticated USING (is_admin());
+
+ALTER TABLE "public"."solicitude" ENABLE ROW LEVEL SECURITY;
+-- Política: "admin_update_all" sobre "public"."solicitude"
+DROP POLICY IF EXISTS "admin_update_all" ON "public"."solicitude";
+CREATE POLICY "admin_update_all" ON "public"."solicitude" AS PERMISSIVE FOR UPDATE TO public USING (is_admin()) WITH CHECK (is_admin());
+
+-- Política: "users_select_own" sobre "public"."solicitude"
+DROP POLICY IF EXISTS "users_select_own" ON "public"."solicitude";
+CREATE POLICY "users_select_own" ON "public"."solicitude" AS PERMISSIVE FOR SELECT TO public USING ((idclient = get_my_client_id()));
+
+-- Política: "users_insert_own" sobre "public"."solicitude"
+DROP POLICY IF EXISTS "users_insert_own" ON "public"."solicitude";
+CREATE POLICY "users_insert_own" ON "public"."solicitude" AS PERMISSIVE FOR INSERT TO public WITH CHECK ((idclient = get_my_client_id()));
+
+-- Política: "users_update_own" sobre "public"."solicitude"
+DROP POLICY IF EXISTS "users_update_own" ON "public"."solicitude";
+CREATE POLICY "users_update_own" ON "public"."solicitude" AS PERMISSIVE FOR UPDATE TO public USING ((idclient = get_my_client_id())) WITH CHECK ((idclient = get_my_client_id()));
+
+-- Política: "admin_select_all" sobre "public"."solicitude"
+DROP POLICY IF EXISTS "admin_select_all" ON "public"."solicitude";
+CREATE POLICY "admin_select_all" ON "public"."solicitude" AS PERMISSIVE FOR SELECT TO public USING (is_admin());
+
+-- Política: "admin_insert_all" sobre "public"."solicitude"
+DROP POLICY IF EXISTS "admin_insert_all" ON "public"."solicitude";
+CREATE POLICY "admin_insert_all" ON "public"."solicitude" AS PERMISSIVE FOR INSERT TO public WITH CHECK (is_admin());
+
+-- Política: "admin_delete_all" sobre "public"."solicitude"
+DROP POLICY IF EXISTS "admin_delete_all" ON "public"."solicitude";
+CREATE POLICY "admin_delete_all" ON "public"."solicitude" AS PERMISSIVE FOR DELETE TO public USING (is_admin());
+
+ALTER TABLE "public"."transactions" ENABLE ROW LEVEL SECURITY;
+-- Política: "Usuarios ven lo suyo o Admins ven todo" sobre "public"."transactions"
+DROP POLICY IF EXISTS "Usuarios ven lo suyo o Admins ven todo" ON "public"."transactions";
+CREATE POLICY "Usuarios ven lo suyo o Admins ven todo" ON "public"."transactions" AS PERMISSIVE FOR SELECT TO authenticated USING (((EXISTS ( SELECT 1
    FROM clients
   WHERE (clients.id = transactions.idclient))) OR (COALESCE(((auth.jwt() ->> 'is_super_admin'::text))::boolean, false) = true)));
 
--- Política para: profiles
-ALTER TABLE public."profiles" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Usuarios leen su propio perfil" ON public."profiles";
-CREATE POLICY "Usuarios leen su propio perfil" ON public."profiles" FOR SELECT TO authenticated USING ((id = auth.uid()));
+ALTER TABLE "public"."units" ENABLE ROW LEVEL SECURITY;
+-- Política: "Permitir lectura general de unidades" sobre "public"."units"
+DROP POLICY IF EXISTS "Permitir lectura general de unidades" ON "public"."units";
+CREATE POLICY "Permitir lectura general de unidades" ON "public"."units" AS PERMISSIVE FOR SELECT TO authenticated USING (true);
 
--- Política para: solicitude
-ALTER TABLE public."solicitude" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "users_select_own" ON public."solicitude";
-CREATE POLICY "users_select_own" ON public."solicitude" FOR SELECT TO public USING ((idclient = get_my_client_id()));
+-- Política: "Service role can insert payments-evidence" sobre "storage"."objects"
+DROP POLICY IF EXISTS "Service role can insert payments-evidence" ON "storage"."objects";
+CREATE POLICY "Service role can insert payments-evidence" ON "storage"."objects" AS PERMISSIVE FOR INSERT TO service_role WITH CHECK ((bucket_id = 'payments-evidence'::text));
 
--- Política para: solicitude
-ALTER TABLE public."solicitude" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "users_insert_own" ON public."solicitude";
-CREATE POLICY "users_insert_own" ON public."solicitude" FOR INSERT TO public WITH CHECK ((idclient = get_my_client_id()));
+-- Política: "Authenticated users can read payments-evidence" sobre "storage"."objects"
+DROP POLICY IF EXISTS "Authenticated users can read payments-evidence" ON "storage"."objects";
+CREATE POLICY "Authenticated users can read payments-evidence" ON "storage"."objects" AS PERMISSIVE FOR SELECT TO authenticated USING ((bucket_id = 'payments-evidence'::text));
 
--- Política para: solicitude
-ALTER TABLE public."solicitude" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "users_update_own" ON public."solicitude";
-CREATE POLICY "users_update_own" ON public."solicitude" FOR UPDATE TO public USING ((idclient = get_my_client_id())) WITH CHECK ((idclient = get_my_client_id()));
+-- Política: "Give authenticated users access to folder units_1" sobre "storage"."objects"
+DROP POLICY IF EXISTS "Give authenticated users access to folder units_1" ON "storage"."objects";
+CREATE POLICY "Give authenticated users access to folder units_1" ON "storage"."objects" AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK (((bucket_id = 'payments-evidence'::text) AND ((storage.foldername(name))[1] = 'units'::text)));
 
--- Política para: solicitude
-ALTER TABLE public."solicitude" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "admin_select_all" ON public."solicitude";
-CREATE POLICY "admin_select_all" ON public."solicitude" FOR SELECT TO public USING (is_admin());
+-- Política: "Give authenticated users UPDATE access to folder units_2" sobre "storage"."objects"
+DROP POLICY IF EXISTS "Give authenticated users UPDATE access to folder units_2" ON "storage"."objects";
+CREATE POLICY "Give authenticated users UPDATE access to folder units_2" ON "storage"."objects" AS PERMISSIVE FOR UPDATE TO authenticated USING (((bucket_id = 'payments-evidence'::text) AND ((storage.foldername(name))[1] = 'units'::text)));
 
--- Política para: solicitude
-ALTER TABLE public."solicitude" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "admin_insert_all" ON public."solicitude";
-CREATE POLICY "admin_insert_all" ON public."solicitude" FOR INSERT TO public WITH CHECK (is_admin());
+-- Política: "Give authenticated users DELETE access to folder units_3" sobre "storage"."objects"
+DROP POLICY IF EXISTS "Give authenticated users DELETE access to folder units_3" ON "storage"."objects";
+CREATE POLICY "Give authenticated users DELETE access to folder units_3" ON "storage"."objects" AS PERMISSIVE FOR DELETE TO authenticated USING (((bucket_id = 'payments-evidence'::text) AND ((storage.foldername(name))[1] = 'units'::text)));
 
--- Política para: solicitude
-ALTER TABLE public."solicitude" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "admin_update_all" ON public."solicitude";
-CREATE POLICY "admin_update_all" ON public."solicitude" FOR UPDATE TO public USING (is_admin()) WITH CHECK (is_admin());
+-- Política: "Lectura pública de archivos bptl2v_0" sobre "storage"."objects"
+DROP POLICY IF EXISTS "Lectura pública de archivos bptl2v_0" ON "storage"."objects";
+CREATE POLICY "Lectura pública de archivos bptl2v_0" ON "storage"."objects" AS PERMISSIVE FOR SELECT TO authenticated USING ((bucket_id = 'payments-evidence'::text));
 
--- Política para: solicitude
-ALTER TABLE public."solicitude" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "admin_delete_all" ON public."solicitude";
-CREATE POLICY "admin_delete_all" ON public."solicitude" FOR DELETE TO public USING (is_admin());
+-- Política: "Permitir subida a usuarios autenticados bptl2v_0" sobre "storage"."objects"
+DROP POLICY IF EXISTS "Permitir subida a usuarios autenticados bptl2v_0" ON "storage"."objects";
+CREATE POLICY "Permitir subida a usuarios autenticados bptl2v_0" ON "storage"."objects" AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK ((bucket_id = 'payments-evidence'::text));
 
--- Política para: units
-ALTER TABLE public."units" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Permitir lectura general de unidades" ON public."units";
-CREATE POLICY "Permitir lectura general de unidades" ON public."units" FOR SELECT TO authenticated USING (true);
+-- Política: "anon_insert_profiles" sobre "storage"."objects"
+DROP POLICY IF EXISTS "anon_insert_profiles" ON "storage"."objects";
+CREATE POLICY "anon_insert_profiles" ON "storage"."objects" AS PERMISSIVE FOR INSERT TO anon WITH CHECK (((bucket_id = 'payments-evidence'::text) AND ("left"(name, 9) = 'profiles/'::text)));
 
--- Política para: clients
-ALTER TABLE public."clients" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Permitir lectura general de clientes" ON public."clients";
-CREATE POLICY "Permitir lectura general de clientes" ON public."clients" FOR SELECT TO authenticated USING (true);
+-- Política: "Service role can delete payments-evidence" sobre "storage"."objects"
+DROP POLICY IF EXISTS "Service role can delete payments-evidence" ON "storage"."objects";
+CREATE POLICY "Service role can delete payments-evidence" ON "storage"."objects" AS PERMISSIVE FOR DELETE TO service_role USING ((bucket_id = 'payments-evidence'::text));
 
--- Política para: company
-ALTER TABLE public."company" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "company_select_all" ON public."company";
-CREATE POLICY "company_select_all" ON public."company" FOR SELECT TO authenticated USING (true);
+-- Política: "public_select_profiles" sobre "storage"."objects"
+DROP POLICY IF EXISTS "public_select_profiles" ON "storage"."objects";
+CREATE POLICY "public_select_profiles" ON "storage"."objects" AS PERMISSIVE FOR SELECT TO anon, authenticated USING (((bucket_id = 'payments-evidence'::text) AND ("left"(name, 9) = 'profiles/'::text)));
 
--- Política para: company
-ALTER TABLE public."company" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "company_insert_admin" ON public."company";
-CREATE POLICY "company_insert_admin" ON public."company" FOR INSERT TO authenticated WITH CHECK (is_admin());
-
--- Política para: company
-ALTER TABLE public."company" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "company_update_admin" ON public."company";
-CREATE POLICY "company_update_admin" ON public."company" FOR UPDATE TO authenticated USING (is_admin()) WITH CHECK (is_admin());
-
--- Política para: company
-ALTER TABLE public."company" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "company_delete_admin" ON public."company";
-CREATE POLICY "company_delete_admin" ON public."company" FOR DELETE TO authenticated USING (is_admin());
-
--- Política para: horario
-ALTER TABLE public."horario" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "horario_select_all" ON public."horario";
-CREATE POLICY "horario_select_all" ON public."horario" FOR SELECT TO authenticated USING (true);
-
--- Política para: horario
-ALTER TABLE public."horario" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "horario_insert_admin" ON public."horario";
-CREATE POLICY "horario_insert_admin" ON public."horario" FOR INSERT TO authenticated WITH CHECK (is_admin());
-
--- Política para: horario
-ALTER TABLE public."horario" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "horario_update_admin" ON public."horario";
-CREATE POLICY "horario_update_admin" ON public."horario" FOR UPDATE TO authenticated USING (is_admin()) WITH CHECK (is_admin());
-
--- Política para: horario
-ALTER TABLE public."horario" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "horario_delete_admin" ON public."horario";
-CREATE POLICY "horario_delete_admin" ON public."horario" FOR DELETE TO authenticated USING (is_admin());
-
--- Política para: bank_info
-ALTER TABLE public."bank_info" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "bank_info_select_all" ON public."bank_info";
-CREATE POLICY "bank_info_select_all" ON public."bank_info" FOR SELECT TO authenticated USING (true);
-
--- Política para: bank_info
-ALTER TABLE public."bank_info" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "bank_info_insert_admin" ON public."bank_info";
-CREATE POLICY "bank_info_insert_admin" ON public."bank_info" FOR INSERT TO authenticated WITH CHECK (is_admin());
-
--- Política para: bank_info
-ALTER TABLE public."bank_info" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "bank_info_update_admin" ON public."bank_info";
-CREATE POLICY "bank_info_update_admin" ON public."bank_info" FOR UPDATE TO authenticated USING (is_admin()) WITH CHECK (is_admin());
-
--- Política para: bank_info
-ALTER TABLE public."bank_info" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "bank_info_delete_admin" ON public."bank_info";
-CREATE POLICY "bank_info_delete_admin" ON public."bank_info" FOR DELETE TO authenticated USING (is_admin());
-
--- Política para: routes
-ALTER TABLE public."routes" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "routes_select_all" ON public."routes";
-CREATE POLICY "routes_select_all" ON public."routes" FOR SELECT TO authenticated USING (true);
-
--- Política para: routes
-ALTER TABLE public."routes" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "routes_insert_admin" ON public."routes";
-CREATE POLICY "routes_insert_admin" ON public."routes" FOR INSERT TO authenticated WITH CHECK (is_admin());
-
--- Política para: routes
-ALTER TABLE public."routes" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "routes_update_admin" ON public."routes";
-CREATE POLICY "routes_update_admin" ON public."routes" FOR UPDATE TO authenticated USING (is_admin()) WITH CHECK (is_admin());
-
--- Política para: routes
-ALTER TABLE public."routes" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "routes_delete_admin" ON public."routes";
-CREATE POLICY "routes_delete_admin" ON public."routes" FOR DELETE TO authenticated USING (is_admin());
-
--- Política para: route_horarios
-ALTER TABLE public."route_horarios" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "route_horarios_select_all" ON public."route_horarios";
-CREATE POLICY "route_horarios_select_all" ON public."route_horarios" FOR SELECT TO authenticated USING (true);
-
--- Política para: route_horarios
-ALTER TABLE public."route_horarios" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "route_horarios_insert_admin" ON public."route_horarios";
-CREATE POLICY "route_horarios_insert_admin" ON public."route_horarios" FOR INSERT TO authenticated WITH CHECK (is_admin());
-
--- Política para: route_horarios
-ALTER TABLE public."route_horarios" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "route_horarios_delete_admin" ON public."route_horarios";
-CREATE POLICY "route_horarios_delete_admin" ON public."route_horarios" FOR DELETE TO authenticated USING (is_admin());
+-- Política: "Service role can update payments-evidence" sobre "storage"."objects"
+DROP POLICY IF EXISTS "Service role can update payments-evidence" ON "storage"."objects";
+CREATE POLICY "Service role can update payments-evidence" ON "storage"."objects" AS PERMISSIVE FOR UPDATE TO service_role USING ((bucket_id = 'payments-evidence'::text));
 
 -- >>> TRIGGERS <<<
 

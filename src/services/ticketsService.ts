@@ -171,10 +171,10 @@ export const ticketsService = {
     });
 
     if (error) throw error;
-    const result = raw as unknown as { success: boolean; balance?: number; message?: string };
+    const result = raw as unknown as { success: boolean; balance?: number; tickets?: number; message?: string };
     if (!result.success) throw new Error(result.message ?? "Error al obtener el saldo");
 
-    return result.balance ?? 0;
+    return { balance: result.balance ?? 0, tickets: result.tickets ?? 0 };
   },
 
   async getClienteByUid(uid: string) {
@@ -358,14 +358,15 @@ export const ticketsService = {
       shedule: string;
     }>,
     iddriver: number,
+    idstop?: number,
   ) {
     try {
-      // 🚀 Invocamos el nuevo RPC pasándole el array completo de objetos
       const { data, error: rpcError } = await supabase.rpc(
         "charge_tickets_bulk",
         {
           p_transactions: transactions,
           p_create_by: iddriver,
+          ...(idstop != null ? { p_idstop: idstop } : {}),
         },
       );
 
@@ -399,7 +400,7 @@ export const ticketsService = {
       p_create_by: createBy,
     })
     if (error) throw error
-    return data as { success: boolean; message?: string; new_balance?: number }
+    return data as { success: boolean; message?: string; new_balance?: number; new_tickets?: number }
   },
 
   /**

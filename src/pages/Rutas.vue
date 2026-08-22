@@ -4,11 +4,18 @@ import { useRouteStore } from "../stores/routeStore"
 import { useBankInfoStore } from "../stores/bankInfoStore"
 import { useRouteHorarioStore } from "../stores/routeHorarioStore"
 import { useHorarioStore } from "../stores/horarioStore"
+import { useStopStore } from "../stores/stopStore"
+import { useRouteStopStore } from "../stores/routeStopStore"
+import { useCompanyStore } from "../stores/companyStore"
 import type { Route, RouteForm } from "../services/routeService"
+import type { RouteStop } from "../services/routeStopService"
 
 const bankInfoStore = useBankInfoStore()
 const horarioStore = useHorarioStore()
 const routeHorarioStore = useRouteHorarioStore()
+const stopStore = useStopStore()
+const routeStopStore = useRouteStopStore()
+const companyStore = useCompanyStore()
 
 const store = useRouteStore()
 
@@ -39,6 +46,12 @@ const horarioRoute = ref<Route | null>(null)
 const assignedHorarios = ref<Set<number>>(new Set())
 const togglingHorario = ref(false)
 
+const stopDialog = ref(false)
+const stopRoute = ref<Route | null>(null)
+const formStops = ref<RouteStop[]>([])
+const savingStops = ref(false)
+const newStopId = ref<number | null>(null)
+
 async function openHorarios(r: Route) {
   horarioRoute.value = r
   await loadHorariosData(r)
@@ -62,6 +75,117 @@ async function toggleHorario(idhorario: number) {
     }
   } finally {
     togglingHorario.value = false
+  }
+}
+
+const availableStops = computed(() => {
+  const assignedIds = new Set(formStops.value.map((s) => s.stop_id))
+  return stopStore.list.filter((s) => !assignedIds.has(s.id))
+})
+
+const maxStopOrder = computed(() => {
+  if (formStops.value.length === 0) return 0
+  return Math.max(...formStops.value.map((s) => s.stop_order))
+})
+
+async function openStops(r: Route) {
+  stopRoute.value = r
+  const serverStops = await routeStopStore.fetchByRoute(r.id)
+  formStops.value = serverStops.map((s) => ({ ...s }))
+  newStopId.value = null
+  stopDialog.value = true
+}
+
+function addFormStop() {
+  if (!newStopId.value || !stopRoute.value) return
+  const stop = stopStore.list.find((s) => s.id === newStopId.value)
+  if (!stop) return
+  formStops.value.push({
+    id: 0,
+    route_id: stopRoute.value.id,
+    stop_id: stop.id,
+    price: companyStore.company?.ticket ?? 0,
+    stop_order: maxStopOrder.value + 1,
+    name: stop.name,
+    description: stop.description,
+  })
+  newStopId.value = null
+}
+
+function removeFormStop(index: number) {
+  formStops.value.splice(index, 1)
+  reassignOrders()
+}
+
+function moveFormStop(index: number, direction: -1 | 1) {
+  const newIndex = index + direction
+  if (newIndex < 0 || newIndex >= formStops.value.length) return
+  const arr = [...formStops.value]
+  const temp = arr[index]!
+  arr[index] = arr[newIndex]!
+  arr[newIndex] = temp
+  formStops.value = arr
+  reassignOrders()
+}
+
+function reassignOrders() {
+  formStops.value.forEach((s, i) => {
+    s.stop_order = i + 1
+  })
+}
+
+function updateFormStopPrice(index: number, value: string) {
+  const num = parseFloat(value)
+  const current = formStops.value[index]
+  if (!isNaN(num) && num >= 0 && current) {
+    formStops.value[index] = { ...current, price: num }
+  }
+}
+
+async function saveStops() {
+  if (!stopRoute.value) return
+  savingStops.value = true
+  try {
+    const routeId = stopRoute.value.id
+    const serverStops = routeStopStore.getStops(routeId)
+    const serverMap = new Map(serverStops.map((s) => [s.stop_id, s]))
+    const formMap = new Map(formStops.value.map((s) => [s.stop_id, s]))
+
+    const toInsert = formStops.value.filter((s) => !serverMap.has(s.stop_id))
+    const toDelete = serverStops.filter((s) => !formMap.has(s.stop_id))
+    const toUpdate = formStops.value.filter((s) => {
+      const server = serverMap.get(s.stop_id)
+      if (!server) return false
+      return server.price !== s.price || server.stop_order !== s.stop_order
+    })
+
+    for (const s of toInsert) {
+      await routeStopStore.assign({
+        route_id: routeId,
+        stop_id: s.stop_id,
+        price: s.price,
+        stop_order: s.stop_order,
+      })
+    }
+
+    for (const s of toDelete) {
+      await routeStopStore.remove(s.id, routeId)
+    }
+
+    for (const s of toUpdate) {
+      const server = serverMap.get(s.stop_id)
+      if (server) {
+        await routeStopStore.update(server.id, routeId, {
+          price: s.price,
+          stop_order: s.stop_order,
+        })
+      }
+    }
+
+    await routeStopStore.fetchByRoute(routeId)
+    stopDialog.value = false
+  } finally {
+    savingStops.value = false
   }
 }
 
@@ -230,6 +354,8 @@ onMounted(() => {
   store.fetchAll()
   bankInfoStore.fetchAll()
   horarioStore.fetchAll()
+  stopStore.fetchAll()
+  companyStore.fetchCompany()
 })
 </script>
 
@@ -338,6 +464,9 @@ onMounted(() => {
                     <button class="p-xs hover:bg-secondary/10 rounded-lg text-secondary transition-colors" title="Horarios" @click="openHorarios(r)">
                       <span class="material-symbols-outlined">schedule</span>
                     </button>
+                    <button class="p-xs hover:bg-tertiary/10 rounded-lg text-tertiary transition-colors" title="Paradas" @click="openStops(r)">
+                      <span class="material-symbols-outlined">pin_drop</span>
+                    </button>
                     <button class="p-xs hover:bg-primary/10 rounded-lg text-primary transition-colors" title="Editar" @click="openEdit(r)">
                       <span class="material-symbols-outlined">edit</span>
                     </button>
@@ -385,6 +514,13 @@ onMounted(() => {
               >
                 <span class="material-symbols-outlined text-[18px]">schedule</span>
                 Horarios
+              </button>
+              <button
+                class="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border border-outline-variant text-tertiary font-bold text-[13px] hover:bg-tertiary-container/10 transition-colors"
+                @click="openStops(r)"
+              >
+                <span class="material-symbols-outlined text-[18px]">pin_drop</span>
+                Paradas
               </button>
               <button
                 class="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border border-outline-variant text-primary font-bold text-[13px] hover:bg-primary-container/10 transition-colors"
@@ -627,6 +763,132 @@ onMounted(() => {
               @click="horarioDialog = false"
             >Cerrar</button>
           </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div v-if="stopDialog" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" @click="stopDialog = false"></div>
+        <div class="relative bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant w-full max-w-3xl mx-auto p-md md:p-xl max-h-[92vh] overflow-y-auto">
+          <div class="flex items-center justify-between mb-lg">
+            <h3 class="font-headline-sm text-headline-sm text-on-surface">
+              Paradas — {{ stopRoute?.code }} {{ stopRoute?.description }}
+            </h3>
+            <button class="text-outline hover:text-on-surface transition-colors" @click="stopDialog = false">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <div v-if="stopStore.loading" class="p-xl text-center text-on-surface-variant">
+            <span class="animate-spin material-symbols-outlined inline-block">sync</span>
+            <p class="mt-2">Cargando paradas...</p>
+          </div>
+
+          <template v-else>
+            <div class="flex items-center gap-md mb-lg">
+              <select
+                v-model.number="newStopId"
+                class="flex-1 h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface"
+              >
+                <option :value="null">Seleccionar parada...</option>
+                <option v-for="s in availableStops" :key="s.id" :value="s.id">
+                  {{ s.name }}{{ s.description ? ' — ' + s.description : '' }}
+                </option>
+              </select>
+              <button
+                :disabled="!newStopId"
+                class="h-11 px-lg rounded-xl bg-primary text-on-primary font-bold hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-xs shrink-0"
+                @click="addFormStop"
+              >
+                <span class="material-symbols-outlined text-[18px]">add_circle</span>
+                Agregar
+              </button>
+            </div>
+
+            <div v-if="!formStops.length" class="p-xl text-center text-on-surface-variant">
+              <span class="material-symbols-outlined text-[48px] text-outline">pin_drop</span>
+              <p class="mt-2">No hay paradas asignadas a esta ruta.</p>
+              <p class="text-body-sm text-on-surface-variant mt-1">Selecciona una parada del menú superior para agregarla.</p>
+            </div>
+
+            <div v-else class="space-y-sm">
+              <div
+                v-for="(s, index) in formStops"
+                :key="s.stop_id"
+                class="flex items-center gap-md p-md rounded-xl border border-outline-variant hover:bg-surface-container-low transition-all"
+              >
+                <div class="flex items-center gap-xs shrink-0">
+                  <button
+                    :disabled="index === 0"
+                    class="p-1 rounded hover:bg-surface-container-high transition-colors disabled:opacity-30"
+                    title="Subir"
+                    @click="moveFormStop(index, -1)"
+                  >
+                    <span class="material-symbols-outlined text-[18px]">keyboard_arrow_up</span>
+                  </button>
+                  <button
+                    :disabled="index === formStops.length - 1"
+                    class="p-1 rounded hover:bg-surface-container-high transition-colors disabled:opacity-30"
+                    title="Bajar"
+                    @click="moveFormStop(index, 1)"
+                  >
+                    <span class="material-symbols-outlined text-[18px]">keyboard_arrow_down</span>
+                  </button>
+                </div>
+
+                <span class="bg-surface-container-high text-on-surface-variant px-2 py-0.5 rounded-full text-[12px] font-bold shrink-0">
+                  {{ index + 1 }}
+                </span>
+
+                <div class="flex-1 min-w-0">
+                  <span class="font-bold text-on-surface block truncate">{{ s.name }}</span>
+                  <span v-if="s.description" class="text-body-sm text-on-surface-variant truncate block">{{ s.description }}</span>
+                </div>
+
+                <div class="flex items-center gap-xs shrink-0">
+                  <span class="text-on-surface-variant text-[12px]">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    :value="s.price"
+                    class="w-24 h-9 px-sm bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md text-on-surface text-right outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+                    placeholder="0.00"
+                    @input="updateFormStopPrice(index, ($event.target as HTMLInputElement).value)"
+                  />
+                </div>
+
+                <button
+                  class="p-1.5 rounded-lg hover:bg-error/10 text-error transition-colors shrink-0"
+                  title="Remover parada"
+                  @click="removeFormStop(index)"
+                >
+                  <span class="material-symbols-outlined text-[18px]">close</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="flex flex-col-reverse sm:flex-row justify-end gap-md pt-lg mt-lg border-t border-outline-variant">
+              <button
+                class="h-11 px-lg rounded-xl border border-outline-variant text-on-surface-variant font-bold hover:bg-surface-container transition-all"
+                @click="stopDialog = false"
+              >Cancelar</button>
+              <button
+                :disabled="savingStops"
+                class="h-11 px-lg rounded-xl bg-primary text-on-primary font-bold hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-xs"
+                @click="saveStops"
+              >
+                <template v-if="savingStops">
+                  <span class="animate-spin material-symbols-outlined text-[18px]">sync</span>
+                  Guardando...
+                </template>
+                <template v-else>
+                  Guardar Paradas
+                </template>
+              </button>
+            </div>
+          </template>
         </div>
       </div>
     </Teleport>
