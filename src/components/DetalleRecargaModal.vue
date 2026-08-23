@@ -136,6 +136,28 @@ function onPreviewImgError() {
                     <span class="font-bold text-on-surface text-body-md">{{ recharge.clients?.name ?? "—" }}</span>
                   </div>
                 </div>
+                <div v-if="recharge.route">
+                  <label
+                    class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-base">Ruta</label>
+                  <div class="flex items-center gap-sm">
+                    <span class="material-symbols-outlined text-outline">route</span>
+                    <span class="text-on-surface font-medium">{{ recharge.route.name }}</span>
+                    <span v-if="recharge.route.code" class="text-label-sm text-outline">({{ recharge.route.code }})</span>
+                  </div>
+                </div>
+                <div>
+                  <label
+                    class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-base">Parada</label>
+                  <div v-if="recharge.stop" class="flex items-center gap-sm">
+                    <span class="material-symbols-outlined text-outline">pin_drop</span>
+                    <span class="text-on-surface font-medium">{{ recharge.stop.name }}</span>
+                    <span v-if="recharge.stop.price > 0" class="text-label-sm text-outline">{{ formatCurrency(recharge.stop.price) }}</span>
+                  </div>
+                  <div v-else class="flex items-center gap-sm">
+                    <span class="material-symbols-outlined text-outline">pin_drop</span>
+                    <span class="text-outline-variant italic">No asignada</span>
+                  </div>
+                </div>
                 <div>
                   <label
                     class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-base">Método
@@ -156,7 +178,7 @@ function onPreviewImgError() {
                       recharge.ref }}</code>
                   </div>
                 </div>
-                <div>
+                <!-- <div>
                   <label
                     class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-base">Registrado
                     por</label>
@@ -164,7 +186,7 @@ function onPreviewImgError() {
                     <span class="material-symbols-outlined text-outline">person</span>
                     <span class="text-on-surface">{{ recharge.createBy ?? "—" }}</span>
                   </div>
-                </div>
+                </div> -->
               </div>
               <div class="space-y-md">
                 <div>

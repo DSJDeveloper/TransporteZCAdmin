@@ -117,7 +117,7 @@ async function handleSubmit() {
             <a class="text-primary hover:underline font-bold" href="#">Contactar Soporte IT</a>
           </p> -->
           <div class="mt-md flex justify-center gap-md">
-            <span class="font-label-md text-label-md text-outline">v1.0.1</span>
+            <span class="font-label-md text-label-md text-outline">v2.0.0</span>
             <!-- <span class="font-label-md text-label-md text-outline">•</span> -->
             <!-- <span class="font-label-md text-label-md text-outline">LogiTrack Enterprise</span> -->
           </div>

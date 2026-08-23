@@ -16,6 +16,7 @@ export interface Recharge {
   tickets: number | null
   clients: { name: string } | null
   route: { name: string; code: string } | null
+  stop: { id: number; name: string; price: number; stop_order: number } | null
 }
 
 export interface RechargeStats {

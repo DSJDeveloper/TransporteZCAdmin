@@ -153,7 +153,7 @@ const columns = computed<{ key: SortField; label: string; hide?: string }[]>(() 
   { key: "client_name", label: "CLIENTE" },
   { key: "route_name", label: "RUTA" },
   { key: "amount", label: "MONTO" },
-  { key: "tickets", label: "EST. TICKETS" },
+  //{ key: "tickets", label: "EST. TICKETS" },
   { key: "method", label: "MÉTODO" },
   { key: "status", label: "ESTADO" },
 ])
@@ -439,10 +439,10 @@ onMounted(async () => {
                   {{ formatCurrency(r.amount) }}
                   <span v-if="r.tasa && r.tasa > 0" class="text-[11px] text-outline ml-1"><small>Tasa</small> {{ r.tasa }}</span>
                 </td>
-                <td class="px-lg py-md text-center">
+                <!-- <td class="px-lg py-md text-center">
                   <span v-if="r.tickets != null" class="font-bold text-on-surface">{{ r.tickets.toFixed(2) }}</span>
                   <span v-else class="text-outline">—</span>
-                </td>
+                </td> -->
                 <td class="px-lg py-md text-on-surface-variant">{{ getMethodLabel(r.method) }}</td>
                 <td class="px-lg py-md">
                   <span class="px-sm py-[2px] rounded-full text-[11px] font-bold uppercase tracking-wider"
@@ -500,10 +500,10 @@ onMounted(async () => {
               <span class="material-symbols-outlined text-[14px]">route</span>
               <span>{{ r.route?.name ?? "Sin ruta" }}</span>
             </div>
-            <div v-if="r.tickets != null" class="flex items-center gap-sm text-[12px] text-on-surface-variant">
+            <!-- <div v-if="r.tickets != null" class="flex items-center gap-sm text-[12px] text-on-surface-variant">
               <span class="material-symbols-outlined text-[14px]">confirmation_number</span>
               <span>{{ r.tickets.toFixed(2) }} ticket(s)</span>
-            </div>
+            </div> -->
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2 text-body-md">
                 <span class="font-bold text-on-surface">{{ formatCurrency(r.amount) }}</span>

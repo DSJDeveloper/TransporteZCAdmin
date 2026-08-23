@@ -175,9 +175,9 @@ async function exportAllData() {
         { key: 'unidad', label: 'Unidad' },
         { key: 'ruta', label: 'Ruta' },
         { key: 'monto_usd', label: 'Monto (USD)' },
-        { key: 'tickets', label: 'Tickets' },
+        // { key: 'tickets', label: 'Tickets' },
         { key: 'nuevo_saldo_usd', label: 'Nuevo Saldo (USD)' },
-        { key: 'nuevos_tickets', label: 'Nuevos Tickets' },
+        //{ key: 'nuevos_tickets', label: 'Nuevos Tickets' },
         { key: 'estatus', label: 'Estatus' },
       ],
     )
@@ -434,7 +434,7 @@ onMounted(async () => {
             </template>
           </Column>
           <!-- Tickets — hide on mobile -->
-          <Column field="ticket" header="Tickets" :sortable="true"
+          <!-- <Column field="ticket" header="Tickets" :sortable="true"
             :pt="{
               headerCell: { class: 'hidden md:table-cell' },
               bodyCell: { class: 'hidden md:table-cell' },
@@ -443,7 +443,7 @@ onMounted(async () => {
             <template #body="{ data }">
               <span class="text-right block text-on-surface text-nowrap">{{ ((data as Transaction).ticket ?? 0).toFixed(2) }}</span>
             </template>
-          </Column>
+          </Column> -->
           <!-- Nuevo Saldo (USD) — hide on mobile -->
           <Column field="newBalanceClient" header="Nuevo Saldo" :sortable="true"
             :pt="{
