@@ -8,8 +8,9 @@ import type { Client, ClientForm } from "../services/clientService"
 import { sanitizeDocumentId } from "../services/clientService"
 import { getRouteNames } from "../services/routeService"
 import type { RouteName } from "../services/routeService"
+import { getStopsByRoute, type RouteStop } from "../services/routeStopService"
 import ticketsService from "../services/ticketsService"
-import type { Movimiento } from "../services/ticketsService"
+import type { Movimiento, ClientStopTicket } from "../services/ticketsService"
 import { formatDateTime, formatCurrency } from "../utils/formatters"
 import { useDialog } from "../composables/useDialog"
 import ConfirmDialog from "../components/ConfirmDialog.vue"
@@ -29,6 +30,7 @@ const selectedClient = ref<Client | null>(null)
 const movements = ref<Movimiento[]>([])
 const movementsLoading = ref(false)
 const movementsError = ref("")
+const clientStopTickets = ref<ClientStopTicket[]>([])
 
 const search = ref("")
 const page = ref(1)
@@ -138,9 +140,14 @@ async function openMovements(c: Client) {
   movements.value = []
   movementsError.value = ""
   movementsLoading.value = true
+  clientStopTickets.value = []
   try {
-    const result = await ticketsService.getMovimientosUnificado(c.id)
+    const [result, cstResult] = await Promise.all([
+      ticketsService.getMovimientosUnificado(c.id),
+      ticketsService.getClientStopTickets(c.id),
+    ])
     movements.value = result.history.slice(0, movementsLimit)
+    clientStopTickets.value = cstResult
   } catch (err) {
     movementsError.value = "Error al cargar los movimientos"
     console.error(err)
@@ -152,6 +159,39 @@ async function openMovements(c: Client) {
 function closeMovements() {
   selectedClient.value = null
   movements.value = []
+}
+
+const stopTicketsOpen = ref(false)
+const stopTicketsClient = ref<Client | null>(null)
+const stopTicketsData = ref<ClientStopTicket[]>([])
+const stopTicketsLoading = ref(false)
+
+async function openStopTickets(c: Client) {
+  stopTicketsClient.value = c
+  stopTicketsData.value = []
+  stopTicketsLoading.value = true
+  stopTicketsOpen.value = true
+  try {
+    stopTicketsData.value = await ticketsService.getClientStopTickets(c.id)
+  } catch (err) {
+    console.error(err)
+  } finally {
+    stopTicketsLoading.value = false
+  }
+}
+
+function groupedByRoute(tickets: ClientStopTicket[]): Record<string, ClientStopTicket[]> {
+  const groups: Record<string, ClientStopTicket[]> = {}
+  for (const t of tickets) {
+    const key = t.route_name ?? "Sin ruta"
+    const arr = groups[key]
+    if (arr) { arr.push(t) } else { groups[key] = [t] }
+  }
+  return groups
+}
+
+function ticketClass(val: number): string {
+  return val < 0 ? "text-error font-bold" : "text-on-surface font-bold"
 }
 
 function movementStatusLabel(status: number): string {
@@ -315,10 +355,11 @@ function openCreate() {
   editing.value = null
   form.value = { name: "", documentID: "", email: "", phone: "", carrer: "", creditLimit: "", status: "0", idroute: null, photo_url: null }
   clearErrors()
+  clientStopTickets.value = []
   dialogOpen.value = true
 }
 
-function openEdit(c: Client) {
+async function openEdit(c: Client) {
   editing.value = c
   form.value = {
     name: c.name,
@@ -333,6 +374,12 @@ function openEdit(c: Client) {
   }
   clearErrors()
   dialogOpen.value = true
+  clientStopTickets.value = []
+  try {
+    clientStopTickets.value = await ticketsService.getClientStopTickets(c.id)
+  } catch (err) {
+    console.error(err)
+  }
 }
 
 async function save() {
@@ -392,25 +439,66 @@ const deactivationMsg = ref("")
 const ticketDeductDialog = useDialog<{ client: Client }>()
 const ticketCount = ref(1)
 const deducting = ref(false)
-const confirmTicketDeduct = useDialog<{ client: Client; count: number }>()
+const confirmTicketDeduct = useDialog<{ client: Client; count: number; routeId: number | null; stopId: number | null }>()
+
+const deductRouteId  = ref<number | null>(null)
+const deductStops    = ref<RouteStop[]>([])
+const deductStopId   = ref<number | null>(null)
+const deductStopPrice = computed(() => deductStops.value.find((s) => s.id === deductStopId.value)?.price ?? 0)
+const deductUsd      = computed(() => Math.round(ticketCount.value * deductStopPrice.value * 100) / 100)
+const canConfirmDeduct = computed(() => deductRouteId.value != null && deductStopId.value != null && ticketCount.value > 0)
 
 const ticketAddDialog = useDialog<{ client: Client }>()
 const ticketAddCount = ref(1)
 const adding = ref(false)
-const confirmTicketAdd = useDialog<{ client: Client; count: number }>()
+const confirmTicketAdd = useDialog<{ client: Client; count: number; routeId: number | null; stopId: number | null }>()
+
+const addRouteId  = ref<number | null>(null)
+const addStops    = ref<RouteStop[]>([])
+const addStopId   = ref<number | null>(null)
+const addStopPrice = computed(() => addStops.value.find((s) => s.id === addStopId.value)?.price ?? 0)
+const addUsd      = computed(() => Math.round(ticketAddCount.value * addStopPrice.value * 100) / 100)
+const canConfirmAdd = computed(() => addRouteId.value != null && addStopId.value != null && ticketAddCount.value > 0)
+
+async function loadDeductStops() {
+  deductStopId.value = null
+  deductStops.value = []
+  if (deductRouteId.value == null) return
+  deductStops.value = await getStopsByRoute(deductRouteId.value)
+  if (deductStops.value.length === 1) deductStopId.value = deductStops.value[0]!.id
+}
+
+async function loadAddStops() {
+  addStopId.value = null
+  addStops.value = []
+  if (addRouteId.value == null) return
+  addStops.value = await getStopsByRoute(addRouteId.value)
+  if (addStops.value.length === 1) addStopId.value = addStops.value[0]!.id
+}
+
+watch(() => ticketDeductDialog.data.value, (c) => {
+  if (!c) return
+  ticketCount.value = 1
+  deductRouteId.value = c.client.idroute ?? null
+  loadDeductStops()
+})
+
+watch(() => ticketAddDialog.data.value, (c) => {
+  if (!c) return
+  ticketAddCount.value = 1
+  addRouteId.value = c.client.idroute ?? null
+  loadAddStops()
+})
 
 async function doDeductTickets() {
   const payload = confirmTicketDeduct.data.value
   if (!payload) return
   deducting.value = true
   try {
-    const ok = await ticketStore.cobrarTicketsBulk([
-      {
-        client_uid: payload.client.uid,
-        ticket_count: payload.count,
-        shedule: "Deducción",
-      },
-    ])
+    const ok = await ticketStore.cobrarTicketsBulk(
+      [{ client_uid: payload.client.uid, ticket_count: payload.count, shedule: "Deducción" }],
+      payload.stopId ?? undefined,
+    )
     if (ok) {
       await store.fetchAll(storeParams.value)
       confirmTicketDeduct.close()
@@ -426,7 +514,7 @@ async function doAddTickets() {
   if (!payload) return
   adding.value = true
   try {
-    const ok = await ticketStore.addTickets(payload.client.id, payload.count)
+    const ok = await ticketStore.addTickets(payload.client.id, payload.count, payload.routeId, payload.stopId)
     if (ok) {
       await store.fetchAll(storeParams.value)
       confirmTicketAdd.close()
@@ -578,8 +666,14 @@ onMounted(async () => {
                 <td class="px-lg py-md text-right font-bold" :class="c.balance < 0 ? 'text-error' : 'text-primary'">
                   {{ formatCurrency(c.balance) }}
                 </td>
-                <td class="px-lg py-md text-right font-bold text-on-surface-variant">
-                  {{ (c.tickets ?? 0).toFixed(2) }}
+                <td class="px-lg py-md text-right">
+                  <button
+                    class="inline-flex items-center gap-1 px-sm py-0.5 rounded-full text-[12px] hover:bg-secondary-container/40 transition-colors cursor-pointer"
+                    title="Ver tickets por parada"
+                    @click="openStopTickets(c)">
+                    <span :class="ticketClass(c.tickets ?? 0)">{{ (c.tickets ?? 0).toFixed(2) }}</span>
+                    <span class="material-symbols-outlined text-[12px] text-secondary">pin_drop</span>
+                  </button>
                 </td>
                 <td class="px-lg py-md text-center">
                   <div
@@ -656,7 +750,11 @@ onMounted(async () => {
               <span class="font-bold" :class="c.balance < 0 ? 'text-error' : 'text-primary'">
                 {{ formatCurrency(c.balance) }}
               </span>
-              <span class="text-on-surface-variant text-body-sm">{{ (c.tickets ?? 0).toFixed(2) }} tickets</span>
+              <span class="text-body-sm cursor-pointer hover:text-secondary transition-colors"
+                @click="openStopTickets(c)">
+                <span :class="ticketClass(c.tickets ?? 0)">{{ (c.tickets ?? 0).toFixed(2) }} tickets</span>
+                <span class="material-symbols-outlined text-[12px] align-middle">pin_drop</span>
+              </span>
               <div class="flex gap-xs">
                 <button
                   class="flex-1 flex items-center justify-center gap-1 py-2 px-3 rounded-lg border border-outline-variant text-secondary font-bold text-[13px] hover:bg-secondary/10 transition-colors"
@@ -761,8 +859,11 @@ onMounted(async () => {
             <p class="ml-2">Sin movimientos registrados</p>
           </div>
 
+          <!-- Movements content -->
+          <div v-else class="flex-1 flex flex-col min-h-0">
+
           <!-- Movements: Desktop table -->
-          <div v-else class="flex-1 overflow-y-auto custom-scrollbar -mx-md md:-mx-xl">
+          <div class="flex-1 overflow-y-auto custom-scrollbar -mx-md md:-mx-xl">
             <table class="w-full text-left font-body-md text-body-md border-collapse hidden md:table">
               <thead class="bg-surface-container-high/30 sticky top-0 z-10">
                 <tr>
@@ -887,6 +988,9 @@ onMounted(async () => {
             </div>
           </div>
 
+        
+          </div>
+
           <!-- Footer -->
           <div class="flex items-center justify-end pt-md mt-md border-t border-outline-variant shrink-0">
             <button class="h-11 px-lg rounded-xl bg-primary text-on-primary font-bold hover:shadow-lg transition-all"
@@ -920,20 +1024,44 @@ onMounted(async () => {
                       formatCurrency(ticketDeductDialog.data.value?.client.balance ?? 0) }} · {{ (ticketDeductDialog.data.value?.client.tickets ?? 0).toFixed(2) }} tickets</strong></p>
               </div>
             </div>
+
+            <div class="space-y-base">
+              <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Ruta</label>
+              <select v-model="deductRouteId" @change="loadDeductStops"
+                class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface">
+                <option :value="null">Seleccione ruta</option>
+                <option v-for="r in routes" :key="r.id" :value="r.id">{{ r.code }} - {{ r.description }}</option>
+              </select>
+            </div>
+
+            <div class="space-y-base">
+              <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Parada</label>
+              <select v-model="deductStopId" :disabled="!deductRouteId"
+                class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface disabled:opacity-50">
+                <option :value="null">{{ deductStops.length ? 'Seleccione parada' : 'Sin paradas disponibles' }}</option>
+                <option v-for="s in deductStops" :key="s.id" :value="s.id">{{ s.name }} ({{ formatCurrency(s.price) }})</option>
+              </select>
+            </div>
+
             <div class="space-y-base">
               <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Cantidad de
                 tickets</label>
               <input type="number" v-model.number="ticketCount" min="1" step="1"
                 class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface"
                 placeholder="Ej. 5" />
+              <p v-if="deductStopPrice > 0" class="text-body-sm text-on-surface-variant">
+                Equivalencia: <strong class="text-on-surface">{{ formatCurrency(deductUsd) }}</strong> USD
+              </p>
             </div>
+
             <div class="flex flex-col-reverse sm:flex-row justify-end gap-md pt-md border-t border-outline-variant">
               <button
                 class="h-11 px-lg rounded-xl border border-outline-variant text-on-surface-variant font-bold hover:bg-surface-container transition-all"
                 @click="ticketDeductDialog.close">Cancelar</button>
               <button
-                class="h-11 px-lg rounded-xl bg-warning text-white font-bold hover:shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-xs"
-                @click="confirmTicketDeduct.open({ client: ticketDeductDialog.data.value!.client, count: ticketCount })">
+                class="h-11 px-lg rounded-xl bg-warning text-white font-bold hover:shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-xs disabled:opacity-50"
+                :disabled="!canConfirmDeduct"
+                @click="confirmTicketDeduct.open({ client: ticketDeductDialog.data.value!.client, count: ticketCount, routeId: deductRouteId, stopId: deductStopId })">
                 <span class="material-symbols-outlined text-[18px]">do_disturb</span>
                 Procesar
               </button>
@@ -972,20 +1100,44 @@ onMounted(async () => {
                       formatCurrency(ticketAddDialog.data.value?.client.balance ?? 0) }} · {{ (ticketAddDialog.data.value?.client.tickets ?? 0).toFixed(2) }} tickets</strong></p>
               </div>
             </div>
+
+            <div class="space-y-base">
+              <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Ruta</label>
+              <select v-model="addRouteId" @change="loadAddStops"
+                class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface">
+                <option :value="null">Seleccione ruta</option>
+                <option v-for="r in routes" :key="r.id" :value="r.id">{{ r.code }} - {{ r.description }}</option>
+              </select>
+            </div>
+
+            <div class="space-y-base">
+              <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Parada</label>
+              <select v-model="addStopId" :disabled="!addRouteId"
+                class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface disabled:opacity-50">
+                <option :value="null">{{ addStops.length ? 'Seleccione parada' : 'Sin paradas disponibles' }}</option>
+                <option v-for="s in addStops" :key="s.id" :value="s.id">{{ s.name }} ({{ formatCurrency(s.price) }})</option>
+              </select>
+            </div>
+
             <div class="space-y-base">
               <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Cantidad de
                 tickets</label>
               <input type="number" v-model.number="ticketAddCount" min="1" step="1"
                 class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface"
                 placeholder="Ej. 20" />
+              <p v-if="addStopPrice > 0" class="text-body-sm text-on-surface-variant">
+                Equivalencia: <strong class="text-on-surface">{{ formatCurrency(addUsd) }}</strong> USD
+              </p>
             </div>
+
             <div class="flex flex-col-reverse sm:flex-row justify-end gap-md pt-md border-t border-outline-variant">
               <button
                 class="h-11 px-lg rounded-xl border border-outline-variant text-on-surface-variant font-bold hover:bg-surface-container transition-all"
                 @click="ticketAddDialog.close">Cancelar</button>
               <button
-                class="h-11 px-lg rounded-xl bg-primary text-on-primary font-bold hover:shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-xs"
-                @click="confirmTicketAdd.open({ client: ticketAddDialog.data.value!.client, count: ticketAddCount })">
+                class="h-11 px-lg rounded-xl bg-primary text-on-primary font-bold hover:shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-xs disabled:opacity-50"
+                :disabled="!canConfirmAdd"
+                @click="confirmTicketAdd.open({ client: ticketAddDialog.data.value!.client, count: ticketAddCount, routeId: addRouteId, stopId: addStopId })">
                 <span class="material-symbols-outlined text-[18px]">add_circle</span>
                 Procesar
               </button>
@@ -1112,6 +1264,35 @@ onMounted(async () => {
                 </div>
               </div>
             </div>
+
+            <!-- Stop Tickets (edit mode only) -->
+            <div v-if="editing && clientStopTickets.length" class="border-t border-outline-variant pt-lg">
+              <h4 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-sm flex items-center gap-xs">
+                <span class="material-symbols-outlined text-[14px] text-secondary">pin_drop</span>
+                Tickets por parada
+              </h4>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-sm">
+                <div v-for="cst in clientStopTickets" :key="cst.idstop"
+                  class="flex items-center justify-between gap-md px-md py-sm bg-surface-container rounded-lg border border-outline-variant/20">
+                  <div class="flex items-center gap-xs min-w-0">
+                    <span class="material-symbols-outlined text-[14px] text-primary shrink-0">stop_circle</span>
+                    <div class="min-w-0">
+                      <span class="text-body-sm text-on-surface truncate block">{{ cst.stop_name }}</span>
+                      <span class="text-[11px] text-on-surface-variant truncate block">{{ cst.route_name }}</span>
+                    </div>
+                  </div>
+                  <span class="text-body-sm whitespace-nowrap" :class="ticketClass(cst.tickets)">
+                    {{ cst.tickets.toFixed(2) }}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div v-else-if="editing && !clientStopTickets.length" class="border-t border-outline-variant pt-lg">
+              <p class="text-body-sm text-on-surface-variant text-center">
+                Sin tickets por parada asignados
+              </p>
+            </div>
+
             <div class="flex flex-col-reverse sm:flex-row justify-end gap-md pt-md border-t border-outline-variant">
               <button type="button"
                 class="h-11 px-lg rounded-xl border border-outline-variant text-on-surface-variant font-bold hover:bg-surface-container transition-all"
@@ -1129,6 +1310,65 @@ onMounted(async () => {
             </div>
 
           </form>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Stop Tickets Detail Dialog -->
+    <Teleport to="body">
+      <div v-if="stopTicketsOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" @click="stopTicketsOpen = false"></div>
+        <div
+          class="relative bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant w-full max-w-lg mx-auto p-md md:p-xl max-h-[80vh] flex flex-col">
+          <div class="flex items-center justify-between mb-lg shrink-0">
+            <div>
+              <h3 class="font-headline-sm text-headline-sm text-on-surface">Tickets por Parada</h3>
+              <p class="text-body-md text-on-surface-variant mt-xs">
+                Desglose de <strong>{{ stopTicketsClient?.name }}</strong>
+              </p>
+            </div>
+            <button class="text-outline hover:text-on-surface transition-colors" @click="stopTicketsOpen = false">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <div v-if="stopTicketsLoading" class="flex-1 flex items-center justify-center text-on-surface-variant py-xl">
+            <span class="animate-spin material-symbols-outlined inline-block">sync</span>
+            <p class="ml-2">Cargando...</p>
+          </div>
+
+          <div v-else-if="!stopTicketsData.length"
+            class="flex-1 flex flex-col items-center justify-center text-on-surface-variant py-xl gap-sm">
+            <span class="material-symbols-outlined text-[40px] text-outline">pin_drop</span>
+            <p class="text-body-md font-bold">Sin tickets por parada asignados</p>
+            <p class="text-body-sm text-on-surface-variant">Este cliente no tiene tickets acumulados en ninguna parada.</p>
+          </div>
+
+          <div v-else class="flex-1 overflow-y-auto custom-scrollbar space-y-md">
+            <div v-for="(entries, routeName) in groupedByRoute(stopTicketsData)" :key="routeName">
+              <h4 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-xs flex items-center gap-xs">
+                <span class="material-symbols-outlined text-[14px] text-primary">route</span>
+                {{ routeName }}
+              </h4>
+              <div class="space-y-xs">
+                <div v-for="cst in entries" :key="cst.idstop"
+                  class="flex items-center justify-between px-md py-sm bg-surface-container rounded-lg border border-outline-variant/20">
+                  <div class="flex items-center gap-xs min-w-0">
+                    <span class="material-symbols-outlined text-[14px] text-secondary shrink-0">stop_circle</span>
+                    <span class="text-body-sm text-on-surface truncate">{{ cst.stop_name }}</span>
+                  </div>
+                  <span class="text-body-sm whitespace-nowrap" :class="ticketClass(cst.tickets)">
+                    {{ cst.tickets.toFixed(2) }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-end pt-md mt-md border-t border-outline-variant shrink-0">
+            <button class="h-11 px-lg rounded-xl bg-primary text-on-primary font-bold hover:shadow-lg transition-all"
+              @click="stopTicketsOpen = false">Cerrar</button>
+          </div>
         </div>
       </div>
     </Teleport>

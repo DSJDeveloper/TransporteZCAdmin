@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, watch } from "vue"
+import { ref, computed, watch } from "vue"
 import type { Recharge } from "../services/rechargeService"
 import { formatDate, formatDateTime, formatCurrency } from "../utils/formatters"
+import { useCompanyStore } from "../stores/companyStore"
 
 const props = withDefaults(defineProps<{
   visible: boolean
@@ -17,6 +18,28 @@ const emit = defineEmits<{
   reject: [recharge: Recharge]
 }>()
 
+const companyStore = useCompanyStore()
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100
+}
+
+const ticketsAcreditar = computed<number | null>(() => {
+  const r = props.recharge
+  if (!r) return null
+  const stopPrice = r.stop?.price
+  if (stopPrice && stopPrice > 0) return round2(r.amount / stopPrice)
+  if (r.tickets != null && r.tickets > 0) return r.tickets
+  const global = companyStore.company?.ticket
+  if (global && global > 0) return round2(r.amount / global)
+  return null
+})
+
+function formatTickets(n: number | null): string {
+  if (n == null) return "—"
+  return Number.isInteger(n) ? String(n) : n.toFixed(2)
+}
+
 const previewImage = ref<string | null>(null)
 const previewPdf = ref<string | null>(null)
 const imgError = ref(false)
@@ -27,6 +50,8 @@ watch(() => props.visible, (v) => {
     previewImage.value = null
     previewPdf.value = null
     imgError.value = false
+  } else if (!companyStore.company) {
+    companyStore.fetchCompany()
   }
 })
 
@@ -196,6 +221,26 @@ function onPreviewImgError() {
                     {{ formatCurrency(recharge.amount) }}
                     <span class="text-body-md text-outline font-normal">USD</span>
                   </div>
+                </div>
+                <div class="border-t border-outline-variant pt-lg">
+                  <label class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-base">Tickets a Recibir</label>
+                  <div class="flex items-center gap-sm">
+                    <span class="material-symbols-outlined text-outline">confirmation_number</span>
+                    <span v-if="ticketsAcreditar != null"
+                      class="px-md py-xs rounded-full bg-tertiary-container/20 text-tertiary font-bold text-[15px]">
+                      +{{ formatTickets(ticketsAcreditar) }} ticket(s)
+                    </span>
+                    <span v-else class="text-outline-variant italic">—</span>
+                  </div>
+                  <p class="text-label-md text-on-surface-variant mt-xs">
+                    <template v-if="recharge.stop?.price && recharge.stop.price > 0">
+                      Base: {{ formatCurrency(recharge.stop?.price) }} por pasaje en {{ recharge.stop?.name ?? "—" }}
+                    </template>
+                    <template v-else-if="companyStore.company?.ticket && companyStore.company.ticket > 0">
+                      Base global: {{ formatCurrency(companyStore.company?.ticket) }} por pasaje
+                    </template>
+                    <template v-else>Sin tarifa de referencia</template>
+                  </p>
                 </div>
                 <div v-if="recharge.tasa && recharge.tasa > 0">
                   <label

@@ -133,7 +133,7 @@ export const useTicketStore = defineStore("ticket", () => {
     return true;
   };
 
-  const addTickets = async (idclient: number, ticketCount: number) => {
+  const addTickets = async (idclient: number, ticketCount: number, idroute?: number | null, idstop?: number | null) => {
     const auth = useAuthStore()
 
     if (!auth.validateSession()) {
@@ -145,7 +145,7 @@ export const useTicketStore = defineStore("ticket", () => {
     error.value = null
 
     try {
-      const result = await ticketsService.addTicketsToClient(idclient, ticketCount, auth.idclient)
+      const result = await ticketsService.addTicketsToClient(idclient, ticketCount, auth.idclient, idroute, idstop)
       if (result.success) {
         return true
       } else {

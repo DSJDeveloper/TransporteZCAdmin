@@ -46,6 +46,16 @@ export interface Movimiento {
   ref: string | null;
   isRecharge: boolean;
 }
+export interface ClientStopTicket {
+  idclient: number;
+  idroute: number;
+  route_name: string;
+  stop_name: string;
+  stop_price: number;
+  idstop: number;
+  tickets: number;
+  updated_at: string;
+}
 // Definimos una interfaz limpia para TypeScript
 export interface TicketCobroItem {
   client_uid: string;
@@ -382,6 +392,15 @@ export const ticketsService = {
       };
     }
   },
+  async getClientStopTickets(idclient: number): Promise<ClientStopTicket[]> {
+    const { data, error } = await supabase.rpc("get_client_stop_tickets", {
+      p_client_id: idclient,
+    });
+    if (error) throw error;
+    const result = data as unknown as { success: boolean; data: ClientStopTicket[]; message?: string };
+    if (!result.success) throw new Error(result.message ?? "Error al obtener tickets por parada");
+    return result.data ?? [];
+  },
   /* async procesarPago(monto: number, referencia: string) {
     const { data, error } = await supabase.rpc("process_payment", {
       p_monto: monto,
@@ -393,11 +412,28 @@ export const ticketsService = {
     return data;
   },
 */
-  async addTicketsToClient(idclient: number, ticketCount: number, createBy: number) {
+  /**
+   * Adds tickets (and USD balance) to a client; optionally links to a specific route/stop.
+   * When p_idstop is provided, uses route_stops.price and UPSERTs client_stop_tickets.
+   * @param idclient - Client PK
+   * @param ticketCount - Number of tickets to add (positive integer)
+   * @param createBy - Admin user id (auth.idclient)
+   * @param idroute - Optional route FK (derived from p_idstop when set server-side)
+   * @param idstop - Optional route_stops.id for per-stop inventory
+   */
+  async addTicketsToClient(
+    idclient: number,
+    ticketCount: number,
+    createBy: number,
+    idroute?: number | null,
+    idstop?: number | null,
+  ) {
     const { data, error } = await supabase.rpc("add_tickets_to_client", {
       p_idclient: idclient,
       p_ticket_count: ticketCount,
       p_create_by: createBy,
+      ...(idroute != null ? { p_idroute: idroute } : {}),
+      ...(idstop != null ? { p_idstop: idstop } : {}),
     })
     if (error) throw error
     return data as { success: boolean; message?: string; new_balance?: number; new_tickets?: number }
