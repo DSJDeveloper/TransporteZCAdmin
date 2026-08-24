@@ -17,6 +17,19 @@ AS $function$
     SELECT UPPER(REGEXP_REPLACE(COALESCE(p_value, ''), '[.\-\,\s]', '', 'g'));
 $function$
 ;
+-- 1.1 sanitize_document_id(text): cédula robusta [^a-zA-Z0-9] (registro público)
+DROP FUNCTION IF EXISTS public.sanitize_document_id(character varying);
+CREATE OR REPLACE FUNCTION public.sanitize_document_id(p_value text)
+ RETURNS text
+ LANGUAGE sql
+ IMMUTABLE
+ PARALLEL SAFE
+AS $function$
+    SELECT UPPER(REGEXP_REPLACE(COALESCE(p_value, ''), '[^a-zA-Z0-9]', '', 'g'))
+$function$
+;
+
+
 
 -- 2. Índice único normalizado sobre documentID
 --    Previene duplicados aunque los valores tengan formato distinto
