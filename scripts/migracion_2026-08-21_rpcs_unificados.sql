@@ -272,71 +272,146 @@ UPDATE public.clients
 SET balance = balance * (SELECT ticket FROM public.company LIMIT 1);
 -- 2. calculate_tickets_from_amount
 DROP FUNCTION IF EXISTS public.calculate_tickets_from_amount(numeric);
-CREATE OR REPLACE FUNCTION public.calculate_tickets_from_amount(p_amount_usd numeric)
-RETURNS numeric(10,2)
-    LANGUAGE plpgsql
-    SECURITY DEFINER
-AS $function$
-DECLARE
-    v_ticket_price NUMERIC(10,2);
-BEGIN
-    SELECT ticket INTO v_ticket_price FROM public.company LIMIT 1;
-    IF v_ticket_price IS NULL OR v_ticket_price <= 0 THEN
-        RAISE EXCEPTION 'Precio de ticket no configurado en company.ticket';
-    END IF;
-    RETURN TRUNC(p_amount_usd / v_ticket_price, 2);
-END;
-$function$
-;
+-- CREATE OR REPLACE FUNCTION public.calculate_tickets_from_amount(p_amount_usd numeric)
+-- RETURNS numeric(10,2)
+--     LANGUAGE plpgsql
+--     SECURITY DEFINER
+-- AS $function$
+-- DECLARE
+--     v_ticket_price NUMERIC(10,2);
+-- BEGIN
+--     SELECT ticket INTO v_ticket_price FROM public.company LIMIT 1;
+--     IF v_ticket_price IS NULL OR v_ticket_price <= 0 THEN
+--         RAISE EXCEPTION 'Precio de ticket no configurado en company.ticket';
+--     END IF;
+--     RETURN TRUNC(p_amount_usd / v_ticket_price, 2);
+-- END;
+-- $function$
+-- ;
 
 -- 3. calculate_tickets (4-param con fallback route_stops → company)
 DROP FUNCTION IF EXISTS public.calculate_tickets(numeric, character varying, numeric);
 DROP FUNCTION IF EXISTS public.calculate_tickets(numeric, character varying, numeric, bigint);
-CREATE OR REPLACE FUNCTION public.calculate_tickets(p_amount numeric, p_method character varying, p_tasa numeric, p_idroute bigint DEFAULT NULL)
+-- CREATE OR REPLACE FUNCTION public.calculate_tickets(p_amount numeric, p_method character varying, p_tasa numeric, p_idroute bigint DEFAULT NULL)
+-- RETURNS json
+--     LANGUAGE plpgsql
+--     SECURITY DEFINER
+-- AS $function$
+-- DECLARE
+--     v_ticket_price NUMERIC(10,2);
+--     v_amount_in_usd NUMERIC(10,2);
+--     v_estimated_tickets NUMERIC(10,2);
+-- BEGIN
+--     IF p_idroute IS NOT NULL THEN
+--         SELECT rs.price INTO v_ticket_price
+--         FROM public.route_stops rs
+--         WHERE rs.route_id = p_idroute
+--         ORDER BY rs.stop_order
+--         LIMIT 1;
+--     END IF;
+
+--     IF v_ticket_price IS NULL OR v_ticket_price <= 0 THEN
+--         SELECT ticket INTO v_ticket_price FROM public.company LIMIT 1;
+--     END IF;
+
+--     IF v_ticket_price IS NULL OR v_ticket_price <= 0 THEN
+--         RAISE EXCEPTION 'Error de configuracion: El precio del ticket no esta configurado.';
+--     END IF;
+
+--     IF LOWER(p_method) = 'efectivo' THEN
+--         v_amount_in_usd := p_amount;
+--     ELSE
+--         IF p_tasa IS NULL OR p_tasa <= 0 THEN
+--             RAISE EXCEPTION 'Conversion fallida: Se requiere una tasa valida mayor a cero para pagos en Bs.';
+--         END IF;
+--         v_amount_in_usd := p_amount / p_tasa;
+--     END IF;
+
+--     v_estimated_tickets := TRUNC(v_amount_in_usd / v_ticket_price, 2);
+
+--     RETURN json_build_object(
+--         'usd_amount', ROUND(v_amount_in_usd, 2),
+--         'estimated_tickets', v_estimated_tickets
+--     );
+-- END;
+-- $function$
+-- ;
+
+
+-- 1. Eliminar la versión previa para evitar conflictos de sobrecarga en la API de Supabase
+DROP FUNCTION IF EXISTS public.calculate_tickets(numeric, character varying, numeric, bigint);
+DROP FUNCTION IF EXISTS public.calculate_tickets(numeric, character varying, numeric);
+
+-- 2. Crear la función con p_idstop (o p_idroute) obligatorio y búsqueda directa de precio
+CREATE OR REPLACE FUNCTION public.calculate_tickets(
+    p_amount numeric,
+    p_method character varying,
+    p_tasa numeric,
+    p_idstop bigint
+)
 RETURNS json
-    LANGUAGE plpgsql
-    SECURITY DEFINER
+LANGUAGE plpgsql
+SECURITY DEFINER
 AS $function$
 DECLARE
     v_ticket_price NUMERIC(10,2);
     v_amount_in_usd NUMERIC(10,2);
     v_estimated_tickets NUMERIC(10,2);
 BEGIN
-    IF p_idroute IS NOT NULL THEN
+    -- Validar que el parámetro de parada/ruta sea obligatorio
+    IF p_idstop IS NULL OR p_idstop <= 0 THEN
+        RAISE EXCEPTION 'Parámetro requerido: Debe indicar una parada válida para calcular los tickets.';
+    END IF;
+
+    -- Validar monto positivo
+    IF p_amount IS NULL OR p_amount <= 0 THEN
+        RAISE EXCEPTION 'Monto inválido: El monto debe ser mayor a cero.';
+    END IF;
+
+    -- Buscar precio de la parada en route_stops por su ID (o fallback a route_id si se pasa idroute)
+    SELECT rs.price INTO v_ticket_price
+    FROM public.route_stops rs
+    WHERE rs.id = p_idstop
+    LIMIT 1;
+
+    -- Si no se encontró por ID directo de parada, intentar por route_id tomando la parada base
+    IF v_ticket_price IS NULL THEN
         SELECT rs.price INTO v_ticket_price
         FROM public.route_stops rs
-        WHERE rs.route_id = p_idroute
-        ORDER BY rs.stop_order
+        WHERE rs.route_id = p_idstop
+        ORDER BY rs.stop_order ASC
         LIMIT 1;
     END IF;
 
+    -- Fallback de seguridad a la configuración global de company si la parada no tiene precio configurado
     IF v_ticket_price IS NULL OR v_ticket_price <= 0 THEN
         SELECT ticket INTO v_ticket_price FROM public.company LIMIT 1;
     END IF;
 
     IF v_ticket_price IS NULL OR v_ticket_price <= 0 THEN
-        RAISE EXCEPTION 'Error de configuracion: El precio del ticket no esta configurado.';
+        RAISE EXCEPTION 'Error de configuración: No se encontró un precio de ticket válido para la parada seleccionada.';
     END IF;
 
-    IF LOWER(p_method) = 'efectivo' THEN
+    -- Conversión a USD según el método de pago
+    IF LOWER(TRIM(p_method)) = 'efectivo' THEN
         v_amount_in_usd := p_amount;
     ELSE
         IF p_tasa IS NULL OR p_tasa <= 0 THEN
-            RAISE EXCEPTION 'Conversion fallida: Se requiere una tasa valida mayor a cero para pagos en Bs.';
+            RAISE EXCEPTION 'Conversión fallida: Se requiere una tasa válida mayor a cero para pagos en moneda local.';
         END IF;
         v_amount_in_usd := p_amount / p_tasa;
     END IF;
 
+    -- Cálculo de tickets según la tarifa individual de la parada
     v_estimated_tickets := TRUNC(v_amount_in_usd / v_ticket_price, 2);
 
     RETURN json_build_object(
         'usd_amount', ROUND(v_amount_in_usd, 2),
+        'ticket_price', ROUND(v_ticket_price, 2),
         'estimated_tickets', v_estimated_tickets
     );
 END;
-$function$
-;
-
+$function$;
 -- ============================================================
 -- SECCIÓN 2: STOPS & ROUTE STOPS
 -- ============================================================
@@ -641,7 +716,21 @@ BEGIN
         'balance', c.balance,
         'tickets', c.tickets,
         'photo_url', c.photo_url,
-        'email', c.email
+        'email', c.email,
+     'route_tickets', COALESCE((
+            SELECT json_agg(
+                json_build_object(
+                    'idstop', cst.idstop,
+                    'stop_name', s.name,
+                    'tickets', cst.tickets
+                )
+            )
+            FROM public.client_stop_tickets cst
+            JOIN public.route_stops rs ON rs.id = cst.idstop
+            JOIN public.stops s ON s.id = rs.stop_id
+            WHERE cst.idclient = c.id
+              AND cst.idroute = c.idroute
+        ), '[]'::json)
     )
     INTO result
     FROM public.clients c
@@ -671,7 +760,7 @@ BEGIN
         SELECT
             c.id,
             c.name,
-            c.documentid,
+            c."documentID",
             c.balance,
             c.tickets,
             r.description AS route_name
@@ -785,66 +874,6 @@ $function$
 
 -- 12. process_payment (11-param — el usado por frontend)
 DROP FUNCTION IF EXISTS public.process_payment(integer, numeric, character varying, character varying, numeric, date, character varying, character varying, character varying, bigint, bigint);
-CREATE OR REPLACE FUNCTION public.process_payment(p_idclient integer, p_amount numeric, p_method character varying, p_ref character varying DEFAULT NULL::character varying, p_tasa numeric DEFAULT NULL::numeric, p_date date DEFAULT CURRENT_DATE, p_picture character varying DEFAULT NULL::character varying, p_create_by character varying DEFAULT NULL::character varying, p_codigo_banco character varying DEFAULT NULL::character varying, p_idroute bigint DEFAULT NULL::bigint, p_idshedule bigint DEFAULT NULL::bigint)
-RETURNS json
-    LANGUAGE plpgsql
-    SECURITY DEFINER
-AS $function$
-DECLARE
-    v_current_balance NUMERIC(10,2);
-    v_recharge_id BIGINT;
-    v_amount_in_usd NUMERIC(10,2);
-    v_estimated_tickets NUMERIC(10,2);
-    v_calc JSON;
-    v_idroute BIGINT;
-BEGIN
-    IF auth.role() <> 'authenticated' THEN
-        RETURN json_build_object('success', false, 'message', 'No autorizado.');
-    END IF;
-
-    IF p_amount <= 0 THEN
-        RETURN json_build_object('success', false, 'message', 'El monto de la recarga debe ser mayor a cero.');
-    END IF;
-
-    SELECT balance, idroute INTO v_current_balance, v_idroute FROM public.clients WHERE id = p_idclient;
-    IF v_current_balance IS NULL THEN
-        RETURN json_build_object('success', false, 'message', 'El cliente especificado no existe.');
-    END IF;
-
-    IF p_idroute IS NOT NULL THEN
-        v_idroute := p_idroute;
-    END IF;
-
-    -- Usa precio de parada de la ruta si existe, fallback a company.ticket
-    v_calc := public.calculate_tickets(p_amount, p_method, p_tasa, v_idroute);
-    v_amount_in_usd := (v_calc->>'usd_amount')::NUMERIC;
-    v_estimated_tickets := (v_calc->>'estimated_tickets')::NUMERIC;
-
-    INSERT INTO public.recharge (
-        idclient, method, ref, picture, amount, tasa, date, status, "createBy", "createAt", codigo_banco, idroute, tickets, idshedule
-    )
-    VALUES (
-        p_idclient, p_method, NULLIF(p_ref, ''), NULLIF(p_picture, ''),
-        v_amount_in_usd, p_tasa, p_date, 0, p_create_by, NOW(),
-        NULLIF(p_codigo_banco, ''), v_idroute, v_estimated_tickets, p_idshedule
-    )
-    RETURNING id INTO v_recharge_id;
-
-    RETURN json_build_object(
-        'success', true,
-        'message', 'Pago registrado exitosamente. En espera por verificacion administrativa.',
-        'recharge_id', v_recharge_id,
-        'estimated_tickets', v_estimated_tickets,
-        'current_balance', v_current_balance
-    );
-EXCEPTION
-    WHEN SQLSTATE '23505' THEN
-        RETURN json_build_object('success', false, 'message', 'Esta combinacion de banco y referencia ya fue procesada. Verifique los datos e intente de nuevo.');
-    WHEN OTHERS THEN
-        RETURN json_build_object('success', false, 'message', 'Error en transaccion: ' || SQLERRM);
-END;
-$function$
-;
 
 -- 13. process_recharge_status (dual-write: balance USD + tickets units)
 DROP FUNCTION IF EXISTS public.process_recharge_status(bigint, character varying, character varying);
@@ -2256,10 +2285,10 @@ BEGIN
     END IF;
 
     -- Usa precio de parada de la ruta si existe, fallback a company.ticket
-    v_calc := public.calculate_tickets(p_amount, p_method, p_tasa, v_idroute);
+    v_calc := public.calculate_tickets(p_amount, p_method, p_tasa, p_idstop);
     v_amount_in_usd := (v_calc->>'usd_amount')::NUMERIC;
     v_estimated_tickets := (v_calc->>'estimated_tickets')::NUMERIC;
-
+    
     INSERT INTO public.recharge (
         idclient, method, ref, picture, amount, tasa, date, status, "createBy", "createAt",
         codigo_banco, idroute, tickets, idshedule, idstop
