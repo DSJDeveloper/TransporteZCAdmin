@@ -674,31 +674,30 @@ $function$
 DROP FUNCTION IF EXISTS public.get_client_balance(integer);
 CREATE OR REPLACE FUNCTION public.get_client_balance(p_client_id integer)
 RETURNS json
-    LANGUAGE plpgsql
-    SECURITY DEFINER
+LANGUAGE plpgsql
+SECURITY DEFINER
 AS $function$
 DECLARE
-    v_balance_record record;
+    result json;
 BEGIN
-    SELECT
-        c.balance AS balance,
-        c.tickets AS tickets
-    INTO v_balance_record
+    -- Construcción atómica directa en JSON en una sola pasada de consulta
+    SELECT json_build_object(
+        'success', true,
+        'balance', c.balance,
+        'tickets', c.tickets,
+        'route_tickets',public.fn_get_client_route_tickets(c.id, c.idroute)
+    )
+    INTO result
     FROM public.clients c
     WHERE c.id = p_client_id;
 
-    IF v_balance_record IS NULL THEN
+    IF result IS NULL THEN
         RETURN json_build_object('success', false, 'message', 'Cliente no encontrado.');
     END IF;
 
-    RETURN json_build_object(
-        'success', true,
-        'balance', v_balance_record.balance,
-        'tickets', v_balance_record.tickets
-    );
+    RETURN result;
 END;
-$function$
-;
+$function$;
 
 -- 9. get_client_by_uid
 DROP FUNCTION IF EXISTS public.get_client_by_uid(varchar);
@@ -717,20 +716,7 @@ BEGIN
         'tickets', c.tickets,
         'photo_url', c.photo_url,
         'email', c.email,
-     'route_tickets', COALESCE((
-            SELECT json_agg(
-                json_build_object(
-                    'idstop', cst.idstop,
-                    'stop_name', s.name,
-                    'tickets', cst.tickets
-                )
-            )
-            FROM public.client_stop_tickets cst
-            JOIN public.route_stops rs ON rs.id = cst.idstop
-            JOIN public.stops s ON s.id = rs.stop_id
-            WHERE cst.idclient = c.id
-              AND cst.idroute = c.idroute
-        ), '[]'::json)
+       'route_tickets', public.fn_get_client_route_tickets(c.id, c.idroute)
     )
     INTO result
     FROM public.clients c
@@ -3599,3 +3585,36 @@ $function$
 NOTIFY pgrst, 'reload schema';
 
 COMMIT;
+
+
+DROP FUNCTION IF EXISTS public.fn_get_client_route_tickets(integer, bigint);
+DROP FUNCTION IF EXISTS public.fn_get_client_route_tickets(bigint, bigint);
+DROP FUNCTION IF EXISTS public.fn_get_client_route_tickets(bigint, integer);
+DROP FUNCTION IF EXISTS public.fn_get_client_route_tickets(integer, integer);
+
+CREATE OR REPLACE FUNCTION public.fn_get_client_route_tickets(
+    p_client_id bigint, 
+    p_idroute bigint DEFAULT NULL
+)
+RETURNS json
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+AS $function$
+    SELECT COALESCE(
+        json_agg(
+            json_build_object(
+                'idstop', cst.idstop,
+                'stop_name', s.name,
+                'tickets', cst.tickets
+            )
+            ORDER BY rs.stop_order ASC NULLS LAST, s.name ASC
+        ),
+        '[]'::json
+    )
+    FROM public.client_stop_tickets cst
+    JOIN public.route_stops rs ON rs.id = cst.idstop
+    JOIN public.stops s ON s.id = rs.stop_id
+    WHERE cst.idclient = p_client_id
+      AND (p_idroute IS NULL OR cst.idroute = p_idroute);
+$function$;

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { solicitudeService } from '@/services/solicitudeService'
+import { ref, onMounted, watch } from 'vue'
+import { solicitudeService, type SolicitudeWithClient } from '@/services/solicitudeService'
 import { formatDate } from '@/utils/formatters'
 
 import RouteMultiSelect from '@/components/RouteMultiSelect.vue'
@@ -12,24 +12,39 @@ const dateTo = ref<Date>(new Date())
 const selectedRoutes = ref<(number | null)[] | null>(null)
 const selectedHorarios = ref<(number | null)[] | null>(null)
 const exporting = ref(false)
+const loading = ref(false)
+const rows = ref<SolicitudeWithClient[]>([])
+
+function toLocalDateStr(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+async function fetchRows() {
+  loading.value = true
+  try {
+    const fromStr = toLocalDateStr(dateFrom.value)
+    const toStr = toLocalDateStr(dateTo.value)
+    rows.value = await solicitudeService.getByDateRange(fromStr, toStr, selectedRoutes.value, selectedHorarios.value)
+  } catch (err) {
+    console.error('Error fetching reservations:', err)
+  } finally {
+    loading.value = false
+  }
+}
 
 async function exportPdf() {
   exporting.value = true
   try {
-    const fromStr = dateFrom.value.toISOString().split('T')[0] ?? ''
-    const toStr = dateTo.value.toISOString().split('T')[0] ?? ''
-    const rows = await solicitudeService.getByDateRange(fromStr, toStr, selectedRoutes.value, selectedHorarios.value)
+    if (!rows.value.length) await fetchRows()
+    const fromStr = toLocalDateStr(dateFrom.value)
+    const toStr = toLocalDateStr(dateTo.value)
     const dateLabel = `${fmtDate(dateFrom.value)} — ${fmtDate(dateTo.value)}`
 
     const container = document.createElement('div')
-    // container.style.cssText = 'padding:40px 30px;font-family:Inter,Arial,Helvetica,sans-serif;width:680px;'
-    // <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:6px;">
-    //     <h1 style="font-size:16pt;font-weight:700;margin:0;color:#1e293b;">Listado de Reservaciones</h1>
-    //     <span style="font-size:10pt;color:#64748b;">${dateLabel}</span>
-    //   </div>
-    //   <hr style="border:none;border-top:1px solid #cbd5e1;margin:0 0 16px;">
     container.innerHTML = `
-      
       <table style="width:100%;border-collapse:collapse;font-size:10pt;">
         <thead>
           <tr style="background:#f2f2f2;">
@@ -41,7 +56,7 @@ async function exportPdf() {
           </tr>
         </thead>
         <tbody>
-          ${rows.map((r, i) => `
+          ${rows.value.map((r, i) => `
             <tr style="background:${i % 2 === 0 ? '#fff' : '#f9f9f9'};">
               <td style="padding:6px 12px;border:1px solid #ddd;color:#334155;">${formatDate(r.date)}</td>
               <td style="padding:6px 12px;border:1px solid #ddd;color:#334155;">${r.client_document ?? ''}</td>
@@ -53,7 +68,7 @@ async function exportPdf() {
         </tbody>
       </table>
       <div style="display:flex;justify-content:space-between;padding:10px 12px;margin-top:8px;background:#f8fafc;border:1px solid #ddd;font-size:10pt;">
-        <span style="color:#475569;">Total de reservaciones: <strong style="color:#1e293b;">${rows.length}</strong></span>
+        <span style="color:#475569;">Total de reservaciones: <strong style="color:#1e293b;">${rows.value.length}</strong></span>
         <span style="color:#475569;">${dateLabel}</span>
       </div>
     `
@@ -73,6 +88,10 @@ function fmtDate(d: Date): string {
   const year = d.getFullYear()
   return `${day}/${month}/${year}`
 }
+
+watch([dateFrom, dateTo, selectedRoutes, selectedHorarios], () => { fetchRows() })
+
+onMounted(() => { fetchRows() })
 </script>
 
 <template>

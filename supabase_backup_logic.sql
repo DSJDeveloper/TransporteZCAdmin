@@ -1,6 +1,6 @@
 -- =====================================================
 -- BACKUP: LÓGICA DE SERVIDOR (VISTAS, RPC, RLS, TRIGGERS)
--- Fecha: 2026-08-24T02:05:09.941Z
+-- Fecha: 2026-08-25T10:34:50.452Z
 -- =====================================================
 
 -- >>> FOREIGN KEYS <<<
@@ -2175,7 +2175,21 @@ BEGIN
         'balance', c.balance,
         'tickets', c.tickets,
         'photo_url', c.photo_url,
-        'email', c.email
+        'email', c.email,
+        'route_tickets', COALESCE((
+            SELECT json_agg(
+                json_build_object(
+                    'idstop', cst.idstop,
+                    'stop_name', s.name,
+                    'tickets', cst.tickets
+                )
+            )
+            FROM public.client_stop_tickets cst
+            JOIN public.route_stops rs ON rs.id = cst.idstop
+            JOIN public.stops s ON s.id = rs.stop_id
+            WHERE cst.idclient = c.id
+              AND cst.idroute = c.idroute
+        ), '[]'::json)
     )
     INTO result
     FROM public.clients c
@@ -2204,7 +2218,7 @@ BEGIN
         SELECT
             c.id,
             c.name,
-            c.documentid,
+            c."documentID",
             c.balance,
             c.tickets,
             r.description AS route_name
