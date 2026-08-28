@@ -177,6 +177,11 @@ function openEdit(u: Unit) {
 async function save() {
   clearErrors()
   if (!validate()) return
+  if (auth.isSupervisor && !form.value.idroute) {
+    const e: Record<string, string> = { idroute: "Debe seleccionar una ruta asignada a su perfil" }
+    Object.assign(errors, e)
+    return
+  }
   saving.value = true
   try {
     if (photoFile.value) {
@@ -249,6 +254,7 @@ onMounted(() => {
         <p class="font-body-lg text-body-lg text-on-surface-variant hidden sm:block">Control centralizado de flota y conductores</p>
       </div>
       <button
+        v-if="!auth.isSupervisor || auth.assignedRouteCount > 0"
         class="bg-primary hover:bg-surface-tint text-on-primary px-lg py-sm rounded-xl font-headline-sm text-headline-sm flex items-center justify-center gap-sm transition-all shadow-md active:scale-95 w-full sm:w-auto"
         @click="openCreate"
       >
@@ -562,15 +568,21 @@ onMounted(() => {
                 <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Ruta</label>
                 <select
                   v-model.number="form.idroute"
-                  class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface"
+                  :class="[
+                    'w-full h-11 px-md bg-surface-container-lowest border rounded-xl transition-all font-body-md text-body-md text-on-surface outline-none',
+                    errors.idroute
+                      ? 'border-error focus:ring-2 focus:ring-error focus:border-error'
+                      : 'border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary'
+                  ]"
                 >
-                  <option :value="null">Sin ruta</option>
+                  <option v-if="!auth.isSupervisor" :value="null">Sin ruta</option>
                   <option
                     v-for="r in routeStore.list"
                     :key="r.id"
                     :value="r.id"
                   >{{ r.code }} - {{ r.description }}</option>
                 </select>
+                <p v-if="errors.idroute" class="text-error text-[12px] font-bold">{{ errors.idroute }}</p>
               </div>
               <div class="space-y-base md:col-span-2">
                 <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Foto de la Unidad</label>
