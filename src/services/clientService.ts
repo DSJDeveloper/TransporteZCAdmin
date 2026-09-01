@@ -32,6 +32,7 @@ export interface Client {
   idroute: number | null
   route_name: string | null
   auth_user_name: string | null
+  username: string | null
   photo_url: string | null
 }
 
@@ -60,6 +61,19 @@ export type ClientForm = {
   status: string
   idroute: number | null
   photo_url: string | null
+}
+
+/**
+ * Campos editables por un supervisor sobre clientes de sus rutas asignadas.
+ * documentID/email/idroute son admin-only (el RPC los ignora).
+ */
+export type SupervisorClientUpdate = {
+  name?: string
+  phone?: string
+  carrer?: string
+  creditLimit?: string
+  status?: string
+  photo_url?: string | null
 }
 
 interface RpcResult<T> {
@@ -138,6 +152,44 @@ export async function updateClient(id: number, client: Partial<ClientForm>): Pro
   if (error) throw error
   const result = raw as unknown as RpcResult<Client>
   if (!result.success) throw new Error(result.message ?? "Error al actualizar el cliente")
+  return result.data as Client
+}
+
+/**
+ * @description Updates a client scoped to a supervisor's assigned routes.
+ * @param {number} id - Client PK.
+ * @param {SupervisorClientUpdate} client - Whitelisted fields (name/phone/carrer/creditLimit/status/photo_url).
+ * @returns {Promise<Client>} Updated client record.
+ */
+export async function updateClientBySupervisor(id: number, client: SupervisorClientUpdate): Promise<Client> {
+  const { data: raw, error } = await supabase.rpc("manage_client_supervisor", {
+    p_action: "update",
+    p_id: id,
+    p_name: client.name ?? null,
+    p_phone: client.phone ?? null,
+    p_carrer: client.carrer ?? null,
+    p_credit_limit: client.creditLimit ?? null,
+    p_status: client.status ?? null,
+    p_photo_url: client.photo_url ?? null,
+  })
+  if (error) throw error
+  const result = raw as unknown as RpcResult<Client>
+  if (!result.success) throw new Error(result.message ?? "Error al actualizar el cliente")
+  return result.data as Client
+}
+
+/**
+ * @description Approves a pending client (status '2' -> '0').
+ * @param {number} id - Client PK.
+ * @returns {Promise<Client>} Approved client record.
+ */
+export async function approveClient(id: number): Promise<Client> {
+  const { data: raw, error } = await supabase.rpc("approve_client", {
+    p_id: id,
+  })
+  if (error) throw error
+  const result = raw as unknown as RpcResult<Client>
+  if (!result.success) throw new Error(result.message ?? "Error al aprobar el cliente")
   return result.data as Client
 }
 

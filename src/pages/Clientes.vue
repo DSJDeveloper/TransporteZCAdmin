@@ -75,6 +75,8 @@ const errorMessage = ref("")
 const errorVisible = ref(false)
 const form = ref<ClientForm>({ name: "", documentID: "", email: "", phone: "", carrer: "", creditLimit: "", status: "0", idroute: null, photo_url: null })
 const errors = reactive<Record<string, string>>({})
+
+//const nameLocked = computed(() => !!editing.value?.auth_user_name)
 const routes = ref<RouteName[]>([])
 
 const refreshing = ref(false)
@@ -283,6 +285,28 @@ async function handleConfirmAction() {
   confirmAction.close()
 }
 
+const approveConfirm = useDialog<Client>()
+const approving = ref(false)
+
+async function doApprove() {
+  const c = approveConfirm.data.value
+  if (!c || approving.value) return
+  approving.value = true
+  try {
+    const ok = await store.approve(c.id)
+    if (ok) {
+      toast.add({ severity: "success", summary: "Aprobado", detail: `Cliente ${clientName(c)} aprobado correctamente.`, life: 3000 })
+      approveConfirm.close()
+      await store.fetchAll(storeParams.value)
+    } else if (store.error) {
+      errorMessage.value = store.error
+      errorVisible.value = true
+    }
+  } finally {
+    approving.value = false
+  }
+}
+
 const deleting = ref<Client | null>(null)
 const deletingConfirm = ref(false)
 
@@ -297,6 +321,10 @@ const columns = [
   { key: "balance", label: "SALDO (USD)" },
   { key: "tickets", label: "TICKETS" },
 ]
+
+function clientName(c: Client | null | undefined): string {
+  return  c?.name ?? c?.auth_user_name ??""
+}
 
 function statusLabel(s: string): string {
   if (s === '0') return 'ACTIVO'
@@ -362,7 +390,7 @@ function openCreate() {
 async function openEdit(c: Client) {
   editing.value = c
   form.value = {
-    name: c.name,
+    name: clientName(c),
     documentID: c.documentID,
     email: c.email,
     phone: c.phone,
@@ -388,9 +416,21 @@ async function save() {
   if (!validate()) return
   saving.value = true
   try {
-    const ok = editing.value
-      ? await store.update(editing.value.id, form.value)
-      : await store.create(form.value)
+    let ok: boolean
+    if (editing.value && auth.isSupervisor) {
+      ok = await store.updateAsSupervisor(editing.value.id, {
+        name: form.value.name,
+        phone: form.value.phone,
+        carrer: form.value.carrer,
+        creditLimit: form.value.creditLimit,
+        status: form.value.status,
+        photo_url: form.value.photo_url,
+      })
+    } else {
+      ok = editing.value
+        ? await store.update(editing.value.id, form.value)
+        : await store.create(form.value)
+    }
     if (ok) {
       dialogOpen.value = false
       await store.fetchAll(storeParams.value)
@@ -547,6 +587,7 @@ onMounted(async () => {
         </nav>
       </div>
       <button
+        v-if="!auth.isSupervisor"
         class="bg-primary hover:bg-surface-tint text-on-primary px-lg py-sm rounded-xl font-headline-sm text-headline-sm flex items-center justify-center gap-sm transition-all shadow-md active:scale-95 w-full sm:w-auto"
         @click="openCreate">
         <span class="material-symbols-outlined">add</span>
@@ -644,10 +685,10 @@ onMounted(async () => {
                       class="w-8 h-8 rounded-full object-cover shrink-0" />
                     <div v-else class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0"
                       :class="statusAvatarClass(c.status)">
-                      {{ initials(c.name) }}
+                      {{ initials(clientName(c)) }}
                     </div>
                     <div class="flex items-center gap-xs">
-                      <span class="font-body-md font-semibold text-on-surface">{{ c.name }}</span>
+                      <span class="font-body-md font-semibold text-on-surface">{{ clientName(c) }}</span>
                       <span v-if="c.status !== '0'"
                         class="bg-outline-variant text-on-surface-variant text-[10px] px-xs py-[2px] rounded-full font-bold">{{
                           statusInlineLabel(c.status) }}</span>
@@ -690,11 +731,15 @@ onMounted(async () => {
                       title="Sumar saldo" @click="ticketAddDialog.open({ client: c })">
                       <span class="material-symbols-outlined text-[20px]">add_circle</span>
                     </button>
+                    <button v-if="c.status === '2'" class="p-xs hover:bg-tertiary/10 rounded-lg text-tertiary transition-colors"
+                      title="Aprobar cliente" @click="approveConfirm.open(c)">
+                      <span class="material-symbols-outlined text-[20px]">check_circle</span>
+                    </button>
                     <button class="p-xs hover:bg-primary/10 rounded-lg text-primary transition-colors" title="Editar"
                       @click="openEdit(c)">
                       <span class="material-symbols-outlined text-[20px]">edit</span>
                     </button>
-                    <button class="p-xs hover:bg-error/10 rounded-lg text-error transition-colors" title="Eliminar"
+                    <button v-if="!auth.isSupervisor" class="p-xs hover:bg-error/10 rounded-lg text-error transition-colors" title="Eliminar"
                       @click="confirmDelete(c)">
                       <span class="material-symbols-outlined text-[20px]">delete</span>
                     </button>
@@ -713,10 +758,10 @@ onMounted(async () => {
                 <img v-if="c.photo_url" :src="c.photo_url" alt="" class="w-8 h-8 rounded-full object-cover shrink-0" />
                 <div v-else class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0"
                   :class="statusAvatarClass(c.status)">
-                  {{ initials(c.name) }}
+                  {{ initials(clientName(c)) }}
                 </div>
                 <div>
-                  <span class="font-bold text-on-surface">{{ c.name }}</span>
+                  <span class="font-bold text-on-surface">{{ clientName(c) }}</span>
                   <span v-if="c.status !== '0'"
                     class="ml-1 bg-outline-variant text-on-surface-variant text-[10px] px-1 py-[2px] rounded-full font-bold">{{
                       statusInlineLabel(c.status) }}</span>
@@ -774,13 +819,19 @@ onMounted(async () => {
                   <span class="material-symbols-outlined text-[18px]">add_circle</span>
                   Sumar
                 </button>
+                <button v-if="c.status === '2'"
+                  class="flex-1 flex items-center justify-center gap-1 py-2 px-3 rounded-lg border border-outline-variant text-tertiary font-bold text-[13px] hover:bg-tertiary/10 transition-colors"
+                  @click="approveConfirm.open(c)">
+                  <span class="material-symbols-outlined text-[18px]">check_circle</span>
+                  Aprobar
+                </button>
                 <button
                   class="flex-1 flex items-center justify-center gap-1 py-2 px-3 rounded-lg border border-outline-variant text-primary font-bold text-[13px] hover:bg-primary-container/10 transition-colors"
                   @click="openEdit(c)">
                   <span class="material-symbols-outlined text-[18px]">edit</span>
                   Editar
                 </button>
-                <button
+                <button v-if="!auth.isSupervisor"
                   class="flex-1 flex items-center justify-center gap-1 py-2 px-3 rounded-lg border border-outline-variant text-error font-bold text-[13px] hover:bg-error-container/10 transition-colors"
                   @click="confirmDelete(c)">
                   <span class="material-symbols-outlined text-[18px]">delete</span>
@@ -833,7 +884,7 @@ onMounted(async () => {
             <div>
               <h3 class="font-headline-sm text-headline-sm text-on-surface">Movimientos</h3>
               <p class="text-body-md text-on-surface-variant mt-xs">
-                Últimos <strong>{{ movementsLimit }}</strong> movimientos de <strong>{{ selectedClient.name }}</strong>
+                Últimos <strong>{{ movementsLimit }}</strong> movimientos de <strong>{{ clientName(selectedClient) }}</strong>
               </p>
             </div>
             <button class="text-outline hover:text-on-surface transition-colors" @click="closeMovements">
@@ -1018,7 +1069,7 @@ onMounted(async () => {
                 <span class="material-symbols-outlined">person</span>
               </div>
               <div>
-                <p class="font-bold text-on-surface">{{ ticketDeductDialog.data.value?.client.name }}</p>
+                <p class="font-bold text-on-surface">{{ clientName(ticketDeductDialog.data.value?.client) }}</p>
                 <p class="text-body-md text-on-surface-variant">Saldo actual: <strong
                     :class="(ticketDeductDialog.data.value?.client.balance ?? 0) < 0 ? 'text-error' : 'text-primary'">{{
                       formatCurrency(ticketDeductDialog.data.value?.client.balance ?? 0) }} · {{ (ticketDeductDialog.data.value?.client.tickets ?? 0).toFixed(2) }} tickets</strong></p>
@@ -1072,7 +1123,7 @@ onMounted(async () => {
     </Teleport>
 
     <ConfirmDialog :visible="confirmTicketDeduct.visible.value" title="Restar Saldo"
-      :message="`¿Está seguro de descontar <strong>${(confirmTicketDeduct.data.value?.count ?? 0).toFixed(2)} tickets</strong> del saldo de <strong>${confirmTicketDeduct.data.value?.client.name ?? ''}</strong>?`"
+      :message="`¿Está seguro de descontar <strong>${(confirmTicketDeduct.data.value?.count ?? 0).toFixed(2)} tickets</strong> del saldo de <strong>${clientName(confirmTicketDeduct.data.value?.client)}</strong>?`"
       confirm-label="Sí, descontar" variant="danger" :loading="deducting" @confirm="doDeductTickets"
       @cancel="confirmTicketDeduct.close" />
 
@@ -1094,7 +1145,7 @@ onMounted(async () => {
                 <span class="material-symbols-outlined">person</span>
               </div>
               <div>
-                <p class="font-bold text-on-surface">{{ ticketAddDialog.data.value?.client.name }}</p>
+                <p class="font-bold text-on-surface">{{ clientName(ticketAddDialog.data.value?.client) }}</p>
                 <p class="text-body-md text-on-surface-variant">Saldo actual: <strong
                     :class="(ticketAddDialog.data.value?.client.balance ?? 0) < 0 ? 'text-error' : 'text-primary'">{{
                       formatCurrency(ticketAddDialog.data.value?.client.balance ?? 0) }} · {{ (ticketAddDialog.data.value?.client.tickets ?? 0).toFixed(2) }} tickets</strong></p>
@@ -1148,7 +1199,7 @@ onMounted(async () => {
     </Teleport>
 
     <ConfirmDialog :visible="confirmTicketAdd.visible.value" title="Sumar Saldo"
-      :message="`¿Está seguro de agregar <strong>${(confirmTicketAdd.data.value?.count ?? 0).toFixed(2)} tickets</strong> al saldo de <strong>${confirmTicketAdd.data.value?.client.name ?? ''}</strong>?`"
+      :message="`¿Está seguro de agregar <strong>${(confirmTicketAdd.data.value?.count ?? 0).toFixed(2)} tickets</strong> al saldo de <strong>${clientName(confirmTicketAdd.data.value?.client)}</strong>?`"
       confirm-label="Sí, agregar saldo" variant="primary" :loading="adding" @confirm="doAddTickets"
       @cancel="confirmTicketAdd.close" />
 
@@ -1175,15 +1226,20 @@ onMounted(async () => {
               <div class="space-y-base md:col-span-2">
                 <label
                   class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Nombre</label>
-                <input v-model="form.name" :class="[
+                <input v-model="form.name"  :class="[
                   'w-full h-11 px-md bg-surface-container-lowest border rounded-xl transition-all font-body-md text-body-md outline-none',
+                  ,
                   errors.name
                     ? 'border-error focus:ring-2 focus:ring-error focus:border-error'
                     : 'border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary'
                 ]" placeholder="Nombre completo" @input="errors.name && delete errors.name" />
                 <p v-if="errors.name" class="text-error text-[12px] font-bold">{{ errors.name }}</p>
+                <!-- <p v-if="nameLocked" class="text-[12px] text-on-surface-variant flex items-center gap-1">
+                  <span class="material-symbols-outlined text-[14px]">lock</span>
+                  El nombre se gestiona desde el módulo Usuarios
+                </p> -->
               </div>
-              <div class="space-y-base">
+              <div v-if="!auth.isSupervisor" class="space-y-base">
                 <label
                   class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Cédula</label>
                 <input v-model="form.documentID" :class="[
@@ -1194,7 +1250,7 @@ onMounted(async () => {
                 ]" placeholder="Ej. V-12345678" @input="errors.documentID && delete errors.documentID" />
                 <p v-if="errors.documentID" class="text-error text-[12px] font-bold">{{ errors.documentID }}</p>
               </div>
-              <div class="space-y-base">
+              <div v-if="!auth.isSupervisor" class="space-y-base">
                 <label
                   class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Correo</label>
                 <input v-model="form.email" :class="[
@@ -1229,13 +1285,13 @@ onMounted(async () => {
               </div>
               <div class="space-y-base">
                 <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Límite de
-                  Crédito</label>
+                  Tickets a Crédito</label>
                 <input v-model="form.creditLimit" :class="[
                   'w-full h-11 px-md bg-surface-container-lowest border rounded-xl transition-all font-body-md text-body-md outline-none',
                   errors.creditLimit
                     ? 'border-error focus:ring-2 focus:ring-error focus:border-error'
                     : 'border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary'
-                ]" placeholder="Ej. 100.00" @input="errors.creditLimit && delete errors.creditLimit" />
+                ]" placeholder="Ej. 10" @input="errors.creditLimit && delete errors.creditLimit" />
                 <p v-if="errors.creditLimit" class="text-error text-[12px] font-bold">{{ errors.creditLimit }}</p>
               </div>
               <div class="space-y-base">
@@ -1250,11 +1306,15 @@ onMounted(async () => {
               </div>
               <div class="space-y-base md:col-span-2">
                 <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Ruta</label>
-                <select v-model="form.idroute"
+                <select v-if="!auth.isSupervisor" v-model="form.idroute"
                   class="w-full h-11 px-md bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md text-on-surface">
                   <option :value="null">Sin ruta</option>
                   <option v-for="r in routes" :key="r.id" :value="r.id">{{ r.code }} - {{ r.description }}</option>
                 </select>
+                <div v-else
+                  class="w-full h-11 px-md bg-surface-container-low border border-outline-variant rounded-xl flex items-center font-body-md text-body-md text-on-surface-variant">
+                  {{ routeName(form.idroute) }}
+                </div>
                 <div hidden class="space-y-base md:col-span-2">
                   <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Foto
                     URL</label>
@@ -1324,7 +1384,7 @@ onMounted(async () => {
             <div>
               <h3 class="font-headline-sm text-headline-sm text-on-surface">Tickets por Parada</h3>
               <p class="text-body-md text-on-surface-variant mt-xs">
-                Desglose de <strong>{{ stopTicketsClient?.name }}</strong>
+                Desglose de <strong>{{ clientName(stopTicketsClient) }}</strong>
               </p>
             </div>
             <button class="text-outline hover:text-on-surface transition-colors" @click="stopTicketsOpen = false">
@@ -1385,7 +1445,7 @@ onMounted(async () => {
             </div>
             <div>
               <h3 class="font-headline-sm text-headline-sm text-on-surface">Eliminar Cliente</h3>
-              <p class="text-body-md text-on-surface-variant mt-1">¿Estás seguro de eliminar <strong>{{ deleting?.name
+              <p class="text-body-md text-on-surface-variant mt-1">¿Estás seguro de eliminar <strong>{{ clientName(deleting)
                   }}</strong>?</p>
               <p class="text-body-md text-on-surface-variant">Esta acción no se puede deshacer.</p>
             </div>
@@ -1441,6 +1501,17 @@ onMounted(async () => {
       :loading="processingId !== null"
       @confirm="handleConfirmAction"
       @cancel="confirmAction.close"
+    />
+
+    <ConfirmDialog
+      :visible="approveConfirm.visible.value"
+      title="Aprobar Cliente"
+      :message="`¿Está seguro de <strong>aprobar</strong> al cliente <strong>${clientName(approveConfirm.data.value)}</strong>?`"
+      confirm-label="Sí, aprobar"
+      variant="primary"
+      :loading="approving"
+      @confirm="doApprove"
+      @cancel="approveConfirm.close"
     />
 
     <Toast position="top-right" />

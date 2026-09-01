@@ -1,6 +1,6 @@
 import { defineStore } from "pinia"
 import { ref } from "vue"
-import { getClientsPaginated, createClient, updateClient, deleteClient, type Client, type ClientForm, type PaginatedClientsParams } from "../services/clientService"
+import { getClientsPaginated, createClient, updateClient, updateClientBySupervisor, approveClient, deleteClient, type Client, type ClientForm, type SupervisorClientUpdate, type PaginatedClientsParams } from "../services/clientService"
 
 export const useClientStore = defineStore("client", () => {
   const records = ref<Client[]>([])
@@ -55,6 +55,36 @@ export const useClientStore = defineStore("client", () => {
     }
   }
 
+  async function updateAsSupervisor(id: number, input: SupervisorClientUpdate) {
+    loading.value = true
+    error.value = null
+    try {
+      await updateClientBySupervisor(id, input)
+      return true
+    } catch (err) {
+      error.value = (err as Error).message || "Error al actualizar el cliente"
+      console.error(err)
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function approve(id: number) {
+    loading.value = true
+    error.value = null
+    try {
+      await approveClient(id)
+      return true
+    } catch (err) {
+      error.value = (err as Error).message || "Error al aprobar el cliente"
+      console.error(err)
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function remove(id: number): Promise<{ success: boolean; message?: string; deactivated?: boolean }> {
     loading.value = true
     error.value = null
@@ -85,6 +115,8 @@ export const useClientStore = defineStore("client", () => {
     fetchAll,
     create,
     update,
+    updateAsSupervisor,
+    approve,
     remove,
     $reset,
   }

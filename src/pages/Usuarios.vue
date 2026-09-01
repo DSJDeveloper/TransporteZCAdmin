@@ -208,6 +208,7 @@ async function save() {
     }
     if (ok) {
       dialogOpen.value = false
+      await store.fetchAll()
     } else {
       errorDialogMessage.value = store.error || 'Error al guardar el usuario'
     }

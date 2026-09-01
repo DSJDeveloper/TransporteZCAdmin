@@ -427,3 +427,4 @@ calculate_tickets_from_amount(p_amount_usd NUMERIC) → NUMERIC(10,2)
 6. Ejecutar `scripts/migracion_2026-08-21_tickets_centralized_rpc.sql` en Supabase.
 7. Ejecutar `scripts/migracion_2026-08-21_split_balance_tickets.sql` en Supabase.
 8. Ejecutar `scripts/migracion_2026-08-21_transactions_dual_fields.sql` en Supabase.
+9. Ejecutar `scripts/migracion_2026-09-03_clients_profiles_integridad.sql` en Supabase (unifica: `get_clients_paginated` con nombre resuelto desde profiles, `manage_client` blindado sin writes a `profiles.name`, sync bidireccional SOLO de email vía triggers; sustituye a los borrados 2026-09-01 y 2026-09-02).
