@@ -43,8 +43,15 @@ const deletingConfirm = ref(false)
 
 const horarioDialog = ref(false)
 const horarioRoute = ref<Route | null>(null)
-const assignedHorarios = ref<Set<number>>(new Set())
 const togglingHorario = ref(false)
+
+const assignedHorarioIds = computed(() => {
+  const route = horarioRoute.value
+  if (!route) return new Set<number>()
+  return new Set(routeHorarioStore.getHorarios(route.id).map((h) => h.idhorario))
+})
+
+const selectedHorarioIds = ref<number[]>([])
 
 const stopDialog = ref(false)
 const stopRoute = ref<Route | null>(null)
@@ -54,6 +61,9 @@ const newStopId = ref<number | null>(null)
 
 async function openHorarios(r: Route) {
   horarioRoute.value = r
+  if (!horarioStore.list.length && !horarioStore.loading) {
+    await horarioStore.fetchAll()
+  }
   await loadHorariosData(r)
   horarioDialog.value = true
 }
@@ -67,14 +77,21 @@ async function toggleHorario(idhorario: number) {
     const existing = assigned.find((h) => h.idhorario === idhorario)
 
     if (existing) {
-      const ok = await routeHorarioStore.remove(existing.id, routeId)
-      if (ok) assignedHorarios.value.delete(idhorario)
+      await routeHorarioStore.remove(existing.id, routeId)
     } else {
-      const ok = await routeHorarioStore.assign(routeId, idhorario)
-      if (ok) assignedHorarios.value.add(idhorario)
+      await routeHorarioStore.assign(routeId, idhorario)
     }
   } finally {
     togglingHorario.value = false
+  }
+}
+
+function toggleSelectedHorario(idhorario: number) {
+  const idx = selectedHorarioIds.value.indexOf(idhorario)
+  if (idx === -1) {
+    selectedHorarioIds.value = [...selectedHorarioIds.value, idhorario]
+  } else {
+    selectedHorarioIds.value = selectedHorarioIds.value.filter((id) => id !== idhorario)
   }
 }
 
@@ -297,11 +314,12 @@ function clearErrors() {
 function openCreate() {
   editing.value = null
   form.value = { code: "", description: "", idbank_info: null, status: 0 }
+  selectedHorarioIds.value = []
   clearErrors()
   dialogOpen.value = true
 }
 
-function openEdit(r: Route) {
+async function openEdit(r: Route) {
   editing.value = r
   form.value = {
     code: r.code,
@@ -309,6 +327,11 @@ function openEdit(r: Route) {
     idbank_info: r.idbank_info,
     status: r.status,
   }
+  if (!horarioStore.list.length && !horarioStore.loading) {
+    await horarioStore.fetchAll()
+  }
+  await routeHorarioStore.fetchByRoute(r.id)
+  selectedHorarioIds.value = routeHorarioStore.getHorarios(r.id).map((h) => h.idhorario)
   clearErrors()
   dialogOpen.value = true
 }
@@ -318,14 +341,40 @@ async function save() {
   if (!validate()) return
   saving.value = true
   try {
-    const ok = editing.value
-      ? await store.update(editing.value.id, form.value)
-      : await store.create(form.value)
+    let routeId: number | null = editing.value?.id ?? null
+    let ok = false
+    if (editing.value) {
+      ok = await store.update(editing.value.id, form.value)
+    } else {
+      const created = await store.create(form.value)
+      ok = created !== null
+      routeId = created?.id ?? null
+    }
     if (ok) {
+      await syncSelectedHorarios(routeId)
       dialogOpen.value = false
     }
   } finally {
     saving.value = false
+  }
+}
+
+async function syncSelectedHorarios(routeId: number | null) {
+  if (!routeId) return
+  await routeHorarioStore.fetchByRoute(routeId)
+  const current = routeHorarioStore.getHorarios(routeId)
+  const currentIds = new Set(current.map((h) => h.idhorario))
+  const target = new Set(selectedHorarioIds.value)
+
+  for (const h of current) {
+    if (!target.has(h.idhorario)) {
+      await routeHorarioStore.remove(h.id, routeId)
+    }
+  }
+  for (const id of selectedHorarioIds.value) {
+    if (!currentIds.has(id)) {
+      await routeHorarioStore.assign(routeId, id)
+    }
   }
 }
 
@@ -345,9 +394,6 @@ async function doDelete() {
 
 async function loadHorariosData(r: Route) {
   await routeHorarioStore.fetchByRoute(r.id)
-  assignedHorarios.value = new Set(
-    routeHorarioStore.getHorarios(r.id).map((h) => h.idhorario),
-  )
 }
 
 onMounted(() => {
@@ -647,6 +693,28 @@ onMounted(() => {
                   >{{ b.bank_name }} ({{ b.bank_code }})</option>
                 </select>
               </div>
+              <div class="space-y-base md:col-span-2">
+                <label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Horarios</label>
+                <div v-if="!sortedHorarios.length" class="text-body-sm text-on-surface-variant">
+                  No hay horarios en el catálogo. Créalos primero en <strong>Horarios</strong>.
+                </div>
+                <div v-else class="flex flex-wrap gap-sm">
+                  <button
+                    v-for="h in sortedHorarios"
+                    :key="h.id"
+                    type="button"
+                    :disabled="h.status !== 0"
+                    class="h-10 px-md rounded-xl border font-bold text-body-md transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    :class="selectedHorarioIds.includes(h.id)
+                      ? 'bg-primary text-on-primary border-primary'
+                      : 'border-outline-variant text-on-surface-variant hover:bg-surface-container-low'"
+                    @click="toggleSelectedHorario(h.id)"
+                  >
+                    <span class="material-symbols-outlined text-[16px] align-middle mr-1">{{ selectedHorarioIds.includes(h.id) ? 'check_circle' : 'schedule' }}</span>
+                    {{ h.shudle }}
+                  </button>
+                </div>
+              </div>
             </div>
             <div class="flex flex-col-reverse sm:flex-row justify-end gap-md pt-md border-t border-outline-variant">
               <button
@@ -729,7 +797,7 @@ onMounted(() => {
               v-for="h in sortedHorarios"
               :key="h.id"
               class="flex items-center justify-between p-md rounded-xl border transition-all cursor-pointer select-none"
-              :class="assignedHorarios.has(h.id)
+              :class="assignedHorarioIds.has(h.id)
                 ? 'bg-primary-container/10 border-primary text-on-surface'
                 : 'border-outline-variant text-on-surface hover:bg-surface-container-low'"
               @click="toggleHorario(h.id)"
@@ -737,9 +805,9 @@ onMounted(() => {
               <div class="flex items-center gap-md">
                 <span
                   class="material-symbols-outlined"
-                  :class="assignedHorarios.has(h.id) ? 'text-primary' : 'text-outline'"
+                  :class="assignedHorarioIds.has(h.id) ? 'text-primary' : 'text-outline'"
                 >
-                  {{ assignedHorarios.has(h.id) ? 'check_circle' : 'radio_button_unchecked' }}
+                  {{ assignedHorarioIds.has(h.id) ? 'check_circle' : 'radio_button_unchecked' }}
                 </span>
                 <div>
                   <span class="font-bold">{{ h.shudle }}</span>

@@ -29,17 +29,17 @@ export const useRouteStore = defineStore("route", () => {
     }
   }
 
-  async function create(input: RouteForm) {
+  async function create(input: RouteForm): Promise<Route | null> {
     loading.value = true
     error.value = null
     try {
       const record = await createRoute(input)
       list.value.push(record)
-      return true
+      return record
     } catch (err) {
       error.value = "Error al crear la ruta"
       console.error(err)
-      return false
+      return null
     } finally {
       loading.value = false
     }
