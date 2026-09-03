@@ -15,6 +15,10 @@ export interface Debtor {
   documentID: string
   balance: number
   tickets: number
+  email?: string | null
+  idroute?: number | null
+  route_name?: string | null
+  auth_user_name?: string | null
 }
 
 export interface Client {

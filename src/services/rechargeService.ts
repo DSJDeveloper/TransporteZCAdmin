@@ -42,6 +42,7 @@ export interface RechargeFilters {
   dateTo?: string | null
   method?: string | null
   search?: string | null
+  idroute?: number | null
 }
 
 export async function getRecharges(
@@ -61,6 +62,7 @@ export async function getRecharges(
     p_sort_field: sortField ?? "id",
     p_sort_order: sortAsc !== undefined ? (sortAsc ? "ASC" : "DESC") : "DESC",
     p_search: filters?.search ?? null,
+    p_idroute: filters?.idroute ?? null,
   })
   if (error) throw error
   const result = raw as unknown as PaginatedResult

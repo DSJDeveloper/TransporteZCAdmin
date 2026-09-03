@@ -11,6 +11,7 @@ import { formatDate, formatCurrency, toStr } from "../utils/formatters.ts"
 import ConfirmDialog from "../components/ConfirmDialog.vue"
 import DetalleRecargaModal from "../components/DetalleRecargaModal.vue"
 import { useDialog } from "../composables/useDialog"
+import { getRouteNames, type RouteName } from "../services/routeService"
 
 const ALLOWED_SORT_FIELDS = ["id", "date", "amount", "tickets", "method", "status", "client_name", "route_name"] as const
 type SortField = typeof ALLOWED_SORT_FIELDS[number]
@@ -26,6 +27,8 @@ const statusFilter = ref<number | null>(null)
 const methodFilter = ref<string | null>(null)
 const dateFrom = ref<string>(hoy)
 const dateTo = ref<string>(hoy)
+const routeFilter = ref<number | null>(null)
+const routeOptions = ref<RouteName[]>([])
 
 const search = ref("")
 const detailRecharge = ref<Recharge | null>(null)
@@ -100,7 +103,24 @@ async function loadPage() {
     dateFrom: dateFrom.value || null,
     dateTo: dateTo.value || null,
     search: search.value.trim() || null,
+    idroute: routeFilter.value,
   })
+}
+
+async function loadRouteOptions() {
+  try {
+    const names = await getRouteNames()
+    if (authStore.isSupervisor) {
+      await authStore.fetchAssignedRoutes()
+      const allowed = new Set(authStore.assignedRoutes.map((r) => r.idroute))
+      routeOptions.value = names.filter((r) => allowed.has(r.id))
+    } else {
+      routeOptions.value = names
+    }
+  } catch (err) {
+    console.error("Error loading route options:", err)
+    routeOptions.value = []
+  }
 }
 
 watch(page, loadPage)
@@ -108,7 +128,7 @@ watch(perPage, () => {
   page.value = 1
   loadPage()
 })
-watch([statusFilter, methodFilter], () => {
+watch([statusFilter, methodFilter, routeFilter], () => {
   page.value = 1
   loadPage()
 })
@@ -138,6 +158,7 @@ function clearFilters() {
   dateFrom.value = ""
   dateTo.value = ""
   search.value = ""
+  routeFilter.value = null
   page.value = 1
   loadPage()
 }
@@ -229,6 +250,7 @@ async function handleAction(r: Recharge, action: "approve" | "reject") {
 }
 
 onMounted(async () => {
+  await loadRouteOptions()
   await Promise.all([store.fetchStats(), loadPage()])
 })
 </script>
@@ -325,6 +347,17 @@ onMounted(async () => {
             <option :value="null">Todos</option>
             <option value="efectivo">Efectivo $</option>
             <option value="pago_movil">Pago Movil</option>
+          </select>
+        </div>
+
+        <!-- Route -->
+        <div>
+          <label
+            class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-base ml-1">Ruta</label>
+          <select v-model="routeFilter"
+            class="w-full h-10 px-sm bg-surface-container-lowest border border-outline-variant rounded-xl text-body-md outline-none focus:ring-2 focus:ring-primary transition-all">
+            <option :value="null">Todas las rutas</option>
+            <option v-for="r in routeOptions" :key="r.id" :value="r.id">{{ r.code }} - {{ r.description }}</option>
           </select>
         </div>
 

@@ -283,6 +283,7 @@ export const useAuthStore = defineStore("auth", () => {
     initialized,
     idclient,
     isSupervisor,
+    assignedRoutes,
     assignedRouteCount,
     assignedRouteNames,
     fetchAssignedRoutes,
