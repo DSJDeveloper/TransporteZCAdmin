@@ -135,7 +135,7 @@ const pageRange = computed(() => {
   return pages
 })
 
-const movementsLimit = 20
+const movementsLimit = 200
 
 async function openMovements(c: Client) {
   selectedClient.value = c
